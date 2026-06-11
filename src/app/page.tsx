@@ -1,0 +1,169 @@
+import type { Metadata } from "next";
+import { AllInOneSection } from "@/components/AllInOneSection";
+import { CTASection } from "@/components/CTASection";
+import { FAQAccordion } from "@/components/FAQAccordion";
+import { Hero } from "@/components/Hero";
+import { ImageSection } from "@/components/ImageSection";
+import { LocationGrid } from "@/components/LocationGrid";
+import { ProcessSteps } from "@/components/ProcessSteps";
+import { ReviewSection } from "@/components/ReviewSection";
+import { SectionHeading } from "@/components/SectionHeading";
+import { SEOJsonLd } from "@/components/SEOJsonLd";
+import { ServiceCard } from "@/components/ServiceCard";
+import { ServiceFunnel } from "@/components/ServiceFunnel";
+import { TrustBar } from "@/components/TrustBar";
+import {
+  ASSETS,
+  homeFaqs,
+  overviewLocations,
+  processSteps,
+  targetCards,
+  trustItems,
+} from "@/lib/site";
+import { faqSchema, graph, metadataForPage } from "@/lib/seo";
+
+export const metadata: Metadata = metadataForPage({
+  title: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",
+  description:
+    "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung. Jetzt Bedarf online zusammenstellen und kostenlos anfragen.",
+  path: "/",
+});
+
+export default function Home() {
+  return (
+    <main>
+      <Hero
+        eyebrow="Hausvia Hausmeisterservice"
+        title="Hausmeisterservice in Hannover – zuverlässige Objektbetreuung mit Hausvia"
+        text="Hausvia unterstützt Hausverwaltungen, Eigentümer und Gewerbekunden bei der laufenden Pflege, Kontrolle und Betreuung von Immobilien in Hannover und Umgebung."
+        image={ASSETS.hero}
+        imageAlt="Hausvia Team für Hausmeisterservice in Hannover bei der Treppenhausreinigung"
+        primaryLabel="Kosten jetzt einschätzen"
+        secondaryHref="/hausmeisterservice-hannover"
+        secondaryLabel="Leistungen ansehen"
+        trustText="Zuverlässige Objektbetreuung für WEGs, Privathaushalte und Gewerbe"
+        bullets={[
+          "Unverbindliche Ersteinschätzung",
+          "Flexible Leistungspakete",
+          "Regelmäßige Betreuung statt Einzelchaos",
+          "Transparente Einschätzung nach Fläche und Aufwand",
+        ]}
+      />
+      <TrustBar items={trustItems} />
+
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
+          <div>
+            <SectionHeading
+              eyebrow="Kostencheck"
+              title="Was kostet ein Hausmeisterservice für Ihr Objekt?"
+              text="Beantworten Sie wenige Fragen zu Objektart, Fläche, Außenanlagen, Häufigkeit und gewünschten Leistungen. So entsteht eine realistische unverbindliche Ersteinschätzung für Ihren konkreten Bedarf."
+            />
+            <div className="mt-8 grid gap-3 text-sm font-semibold text-slate-750 md:grid-cols-3">
+              <div className="min-h-24 rounded-lg border border-slate-200 bg-slate-50 p-5">
+                Für WEGs, Privathaushalte und Gewerbeobjekte.
+              </div>
+              <div className="min-h-24 rounded-lg border border-slate-200 bg-slate-50 p-5">
+                Unverbindliche Ersteinschätzung statt Dumping-Angebot.
+              </div>
+              <div className="min-h-24 rounded-lg border border-slate-200 bg-slate-50 p-5">
+                Transparente Einschätzung nach Fläche, Aufwand und Leistungsumfang.
+              </div>
+            </div>
+          </div>
+          <div className="mt-8">
+            <ServiceFunnel compact />
+          </div>
+        </div>
+      </section>
+
+      <AllInOneSection />
+
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <SectionHeading
+            eyebrow="Zielgruppen"
+            title="Für wen Hausvia arbeitet"
+            text="Die Website ist auf die typischen Anforderungen von Verwaltungen, Eigentümern und gewerblichen Nutzern ausgelegt."
+          />
+          <div className="mt-9 grid gap-4 md:grid-cols-3">
+            {targetCards.map((item) => (
+              <ServiceCard key={item.href} item={item} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <ImageSection
+        title="Das können Kunden von Hausvia erwarten"
+        text="Hausvia setzt auf klare Kommunikation, feste Ansprechpartner und eine sichtbare, regelmäßige Objektpflege. Statt pauschaler Versprechen zählt, dass Aufgaben sauber abgestimmt und verlässlich umgesetzt werden."
+        image={ASSETS.repair}
+        imageAlt="Hausvia Mitarbeiter prüft eine Klingelanlage bei der Objektbetreuung in Hannover"
+        points={[
+          "Schnelle Rückmeldung bei Schäden und Auffälligkeiten",
+          "Regelmäßige Kontrollgänge statt reiner Einzelaufträge",
+          "Individuelle Leistungspakete für Wohnanlagen und Gewerbe",
+          "Geeignet für Hausverwaltungen, WEGs und private Eigentümer",
+        ]}
+      />
+
+      <ReviewSection />
+
+      <section className="bg-slate-50">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <SectionHeading
+            eyebrow="Ablauf"
+            title="So wird aus einer Anfrage eine passende Betreuung"
+            text="Der Prozess bleibt bewusst einfach: Bedarf klären, Rückmeldung erhalten, Objektbetreuung starten."
+          />
+          <div className="mt-9">
+            <ProcessSteps steps={processSteps} />
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <SectionHeading
+            eyebrow="Lokal"
+            title="Einsatzgebiete in Hannover und Umgebung"
+            text="Hausvia ist lokal auf Hannover und passende Orte im Umland ausgerichtet. Die Ortsseiten zeigen typische Objektarten und Leistungen für den jeweiligen Standort."
+          />
+          <div className="mt-9">
+            <LocationGrid locations={overviewLocations} />
+          </div>
+        </div>
+      </section>
+
+      <ImageSection
+        reverse
+        title="Über Hausvia"
+        text="Hausvia steht für praktische, verbindliche Objektbetreuung. Im Mittelpunkt stehen gepflegte Immobilien, erreichbare Ansprechpartner und eine Arbeitsweise, die für Verwaltungen und Eigentümer nachvollziehbar bleibt."
+        image={ASSETS.garden}
+        imageAlt="Hausvia Team bei Gartenpflege und Grünanlagenpflege in Hannover"
+        points={[
+          "Regionaler Fokus auf Hannover und Umgebung",
+          "Saubere Ausführung in Innen- und Außenbereichen",
+          "Klare Abstimmung von Turnus, Umfang und Ansprechpartnern",
+          "Keine erfundenen Bewertungen, sondern konkrete Erwartungen",
+        ]}
+      />
+
+      <section className="bg-slate-50">
+        <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+          <SectionHeading eyebrow="FAQ" title="Häufige Fragen zu Hausvia" />
+          <div className="mt-9">
+            <FAQAccordion items={homeFaqs} />
+          </div>
+        </div>
+      </section>
+
+      <CTASection
+        title="Hausmeisterservice in Hannover jetzt anfragen"
+        text="Nutzen Sie den Service-Konfigurator und stellen Sie in wenigen Schritten zusammen, welche Betreuung Ihr Objekt braucht."
+        label="Kostenlose Anfrage starten"
+      />
+      <SEOJsonLd data={graph([faqSchema(homeFaqs)])} />
+    </main>
+  );
+}

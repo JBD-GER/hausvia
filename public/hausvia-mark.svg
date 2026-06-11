@@ -1,0 +1,11 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
+  <title id="title">Hausvia Bildmarke</title>
+  <rect width="512" height="512" rx="96" fill="#F7F9FC"/>
+  <path d="M132 302V206L256 112L380 206V302" stroke="#082B61" stroke-width="38" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M132 339C188 307 249 293 319 299C265 310 229 329 210 364H96C104 354 116 346 132 339Z" fill="#082B61"/>
+  <path d="M292 355C314 335 348 333 416 381H272C275 370 281 362 292 355Z" fill="#737D8C"/>
+  <rect x="229" y="226" width="24" height="24" fill="#737D8C"/>
+  <rect x="263" y="226" width="24" height="24" fill="#737D8C"/>
+  <rect x="229" y="260" width="24" height="24" fill="#737D8C"/>
+  <rect x="263" y="260" width="24" height="24" fill="#737D8C"/>
+</svg>
