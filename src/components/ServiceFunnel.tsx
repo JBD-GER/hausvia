@@ -441,19 +441,29 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
               >
                 Außerhalb
               </button>
-              {locationChips.map((location) => (
-                <button
-                  key={location}
-                  type="button"
-                  onClick={() => {
-                    setLead((current) => ({ ...current, location, outsideArea: false }));
-                    setError("");
-                  }}
-                  className="min-h-11 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 hover:border-brand/50 hover:text-brand"
-                >
-                  {location}
-                </button>
-              ))}
+              {locationChips.map((location) => {
+                const isActiveLocation = !lead.outsideArea && lead.location === location;
+
+                return (
+                  <button
+                    key={location}
+                    type="button"
+                    aria-pressed={isActiveLocation}
+                    onClick={() => {
+                      setLead((current) => ({ ...current, location, outsideArea: false }));
+                      setError("");
+                    }}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-bold transition active:scale-[0.98] ${
+                      isActiveLocation
+                        ? "border-brand bg-brand text-white shadow-sm shadow-brand/20"
+                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-brand/50 hover:text-brand"
+                    }`}
+                  >
+                    {isActiveLocation ? <Check aria-hidden="true" className="h-4 w-4" /> : null}
+                    {location}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}
