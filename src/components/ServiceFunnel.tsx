@@ -321,14 +321,14 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
       });
 
       if (!response.ok) {
-        throw new Error("Lead request failed");
+        const result = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(result?.message || "Lead request failed");
       }
 
       setSuccess(true);
-    } catch {
-      setError(
-        "Die Anfrage konnte gerade nicht gesendet werden. Bitte versuchen Sie es erneut oder nutzen Sie die Kontaktseite.",
-      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setError(message || "Der E-Mail-Versand konnte gerade nicht abgeschlossen werden. Bitte versuchen Sie es erneut.");
     } finally {
       setSubmitting(false);
     }
@@ -597,57 +597,12 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
               Die Kostenspanne wird erst nach dem Absenden serverseitig berechnet und als offizielles Hausvia-Dokument
               per E-Mail verschickt.
             </p>
-            <div className="mt-5 rounded-lg border border-brand/20 bg-brand-soft p-5 sm:p-6">
-              <p className="text-sm font-extrabold uppercase tracking-wide text-brand">Ihre Angaben sind vollständig</p>
-              <p className="mt-2 text-3xl font-extrabold leading-tight text-slate-950 sm:text-4xl">
-                Einschätzung per E-Mail erhalten
-              </p>
-              <div className="mt-5 grid gap-2 text-sm font-semibold text-slate-750 sm:grid-cols-3">
-                <span className="rounded-md bg-white px-3 py-2">Kostenspanne als Dokument</span>
-                <span className="rounded-md bg-white px-3 py-2">alle Angaben aufgelistet</span>
-                <span className="rounded-md bg-white px-3 py-2">Kopie an Hausvia</span>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-slate-700">
-                Vor dem Absenden wird keine konkrete Kostenspanne angezeigt. Der genaue Richtwert wird serverseitig
-                berechnet und zusammen mit Objektart, Flächen, Leistungen und Kontaktdaten als PDF versendet.
-              </p>
-            </div>
-
-            <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-              {[
-                ["Objektart", selectedObjectType?.label ?? lead.objectType],
-                ["Standort", lead.outsideArea ? `Außerhalb: ${lead.location}` : lead.location],
-                ["Einheiten", `${lead.unitCount || "0"} Einheit(en)`],
-                ["Ø Fläche je Einheit", `${lead.averageUnitArea || "0"} m²`],
-                ["Wohn-/Nutzfläche", `${computedUsableArea.toLocaleString("de-DE")} m² berechnet`],
-                ["Außenfläche", `${lead.outdoorArea || "0"} m² aktiv zu betreuende Fläche`],
-                ["Leistungen", selectedServiceLabels.join(", ")],
-                ["Häufigkeit", selectedFrequency?.label ?? lead.frequency],
-                ["Komplexität", selectedComplexity?.label ?? lead.complexity],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-md border border-slate-200 bg-slate-50 p-4">
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt>
-                  <dd className="mt-1 text-sm font-semibold leading-6 text-slate-900">{value}</dd>
-                </div>
-              ))}
-            </dl>
-
-            <div className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h4 className="text-lg font-extrabold text-slate-950">Warum die Einschätzung nur ein Richtwert ist</h4>
-              <p className="mt-2 text-sm leading-7 text-slate-650">
-                Jedes Objekt ist anders. Zugänglichkeit, Verschmutzungsgrad, Gartenpflege, Winterdienst, Kontrollaufwand
-                und saisonale Arbeiten beeinflussen den finalen Preis. Die Einschätzung hilft, schnell ein
-                realistisches Budget zu bekommen, bleibt aber unverbindlich.
-              </p>
-            </div>
-
-            <div id="funnel-contact" className="mt-7 rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <div id="funnel-contact" className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-5">
               <h4 className="text-xl font-extrabold text-slate-950">
-                Kosteneinschätzung anfordern
+                Kontaktdaten eintragen
               </h4>
               <p className="mt-2 text-sm leading-6 text-slate-650">
-                Nach dem Absenden erhalten Sie die unverbindliche Einschätzung per E-Mail. Hausvia erhält die gleiche
-                Kopie zur Bearbeitung Ihrer Anfrage.
+                Nach dem Absenden erhalten Sie die unverbindliche Einschätzung per E-Mail.
               </p>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <label className="block">
@@ -730,6 +685,50 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                 </label>
               </div>
             </div>
+
+            <div className="mt-5 rounded-lg border border-brand/20 bg-brand-soft p-5 sm:p-6">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-brand">Ihre Angaben sind vollständig</p>
+              <p className="mt-2 text-3xl font-extrabold leading-tight text-slate-950 sm:text-4xl">
+                Einschätzung per E-Mail erhalten
+              </p>
+              <div className="mt-5 grid gap-2 text-sm font-semibold text-slate-750 sm:grid-cols-2">
+                <span className="rounded-md bg-white px-3 py-2">Kostenspanne als Dokument</span>
+                <span className="rounded-md bg-white px-3 py-2">alle Angaben aufgelistet</span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-700">
+                Vor dem Absenden wird keine konkrete Kostenspanne angezeigt. Der genaue Richtwert wird serverseitig
+                berechnet und zusammen mit Objektart, Flächen, Leistungen und Kontaktdaten als PDF versendet.
+              </p>
+            </div>
+
+            <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+              {[
+                ["Objektart", selectedObjectType?.label ?? lead.objectType],
+                ["Standort", lead.outsideArea ? `Außerhalb: ${lead.location}` : lead.location],
+                ["Einheiten", `${lead.unitCount || "0"} Einheit(en)`],
+                ["Ø Fläche je Einheit", `${lead.averageUnitArea || "0"} m²`],
+                ["Wohn-/Nutzfläche", `${computedUsableArea.toLocaleString("de-DE")} m² berechnet`],
+                ["Außenfläche", `${lead.outdoorArea || "0"} m² aktiv zu betreuende Fläche`],
+                ["Leistungen", selectedServiceLabels.join(", ")],
+                ["Häufigkeit", selectedFrequency?.label ?? lead.frequency],
+                ["Komplexität", selectedComplexity?.label ?? lead.complexity],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt>
+                  <dd className="mt-1 text-sm font-semibold leading-6 text-slate-900">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h4 className="text-lg font-extrabold text-slate-950">Warum die Einschätzung nur ein Richtwert ist</h4>
+              <p className="mt-2 text-sm leading-7 text-slate-650">
+                Jedes Objekt ist anders. Zugänglichkeit, Verschmutzungsgrad, Gartenpflege, Winterdienst, Kontrollaufwand
+                und saisonale Arbeiten beeinflussen den finalen Preis. Die Einschätzung hilft, schnell ein
+                realistisches Budget zu bekommen, bleibt aber unverbindlich.
+              </p>
+            </div>
+
           </div>
         ) : null}
 

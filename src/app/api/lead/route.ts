@@ -269,7 +269,11 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Hausvia Resend delivery failed", error);
     return NextResponse.json(
-      { ok: false, message: "Email delivery failed. Check Resend configuration." },
+      {
+        ok: false,
+        message:
+          "Der E-Mail-Versand ist aktuell noch nicht korrekt konfiguriert. Bitte prüfen Sie die Resend-Einstellungen in Vercel.",
+      },
       { status: 502 },
     );
   }
