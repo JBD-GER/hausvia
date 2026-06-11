@@ -179,6 +179,9 @@ export const ASSETS = {
   blogGardenCare: "/images/ratgeber-gartenpflege-wohnanlage-hannover.jpg",
   blogMinorRepairs: "/images/ratgeber-kleinreparaturen-mehrfamilienhaus-hannover.jpg",
   blogControlDocs: "/images/ratgeber-kontrollgaenge-dokumentation-hannover.jpg",
+  blogDoorControl: "/images/ratgeber-objektkontrolle-haustuer-hannover.svg",
+  blogCleaningPlan: "/images/ratgeber-reinigungsplan-besen-hannover.svg",
+  blogContractorAccess: "/images/ratgeber-dienstleisterzugang-schluessel-hannover.svg",
 };
 
 export const mainNav: LinkItem[] = [
@@ -2756,6 +2759,301 @@ export const blogPosts: BlogPost[] = [
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
       { label: "Service konfigurieren", href: "/angebot-anfragen" },
+    ],
+  },
+  {
+    slug: "objektkontrolle-mehrfamilienhaus-hannover-checkliste",
+    category: "objektbetreuung",
+    title: "Objektkontrolle Mehrfamilienhaus Hannover | Checkliste",
+    description:
+      "Objektkontrolle im Mehrfamilienhaus in Hannover: Checkliste für Eingänge, Treppenhaus, Müllplatz, Außenflächen und Rückmeldung.",
+    h1: "Objektkontrolle im Mehrfamilienhaus: Worauf Verwaltungen in Hannover achten sollten",
+    excerpt:
+      "Eine gute Objektkontrolle macht Zustände früh sichtbar. Dieser Ratgeber zeigt, welche Bereiche regelmäßig geprüft werden sollten und wie daraus eine planbare Objektbetreuung entsteht.",
+    image: ASSETS.blogDoorControl,
+    imageAlt: "Grafik einer Haustür als Symbol für Objektkontrolle im Mehrfamilienhaus in Hannover",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readTime: "7 Minuten",
+    intro: [
+      "Objektkontrolle im Mehrfamilienhaus klingt nach einer kleinen Aufgabe, entscheidet im Alltag aber oft darüber, ob eine Immobilie gepflegt, sicher und gut organisiert wirkt. Gerade in Wohnanlagen mit mehreren Parteien fallen Schäden, Verschmutzungen oder unklare Zuständigkeiten schnell erst dann auf, wenn Bewohner sich bereits beschweren.",
+      "Für Hausverwaltungen, WEGs und Eigentümer in Hannover ist deshalb ein klarer Kontrollrhythmus sinnvoll. Es geht nicht um eine technische Fachprüfung, sondern um regelmäßige Sichtkontrollen, klare Rückmeldungen und eine Betreuung, die typische Problemstellen zuverlässig im Blick behält.",
+    ],
+    sections: [
+      {
+        title: "Welche Bereiche bei der Objektkontrolle wichtig sind",
+        paragraphs: [
+          "Jedes Mehrfamilienhaus hat eigene Schwerpunkte. Ein Altbau in Linden braucht andere Aufmerksamkeit als eine Neubauanlage in der List oder ein Objekt mit großem Außenbereich in Kirchrode. Trotzdem gibt es Bereiche, die fast immer relevant sind.",
+        ],
+        items: [
+          "Hauseingang, Haustür, Klingelanlage und Briefkastenbereich.",
+          "Treppenhaus, Flure, Kellerzugänge und gemeinschaftliche Nebenräume.",
+          "Müllplatz, Tonnenstellplatz und Wege dorthin.",
+          "Außenwege, Hofbereiche, Fahrradflächen und sichtbare Grünflächen.",
+          "Beleuchtung, Türschließer, offensichtliche Schäden und Stolperstellen.",
+        ],
+      },
+      {
+        title: "Warum regelmäßige Sichtkontrollen Beschwerden reduzieren",
+        paragraphs: [
+          "Viele Beschwerden entstehen nicht durch große Schäden, sondern durch wiederkehrende Kleinigkeiten: volle Müllbereiche, schmutzige Eingänge, defekte Leuchten oder Türen, die nicht sauber schließen. Wenn diese Punkte regelmäßig auffallen, können Verwaltung oder Eigentümer schneller reagieren.",
+          "Eine Objektkontrolle ersetzt keine Fachfirma. Sie sorgt aber dafür, dass Auffälligkeiten nicht liegen bleiben. Das ist besonders hilfreich, wenn mehrere Dienstleister am Objekt arbeiten und trotzdem eine zentrale Rückmeldung gebraucht wird.",
+        ],
+      },
+      {
+        title: "Checkliste für den Kontrollgang",
+        paragraphs: [
+          "Eine einfache Checkliste hilft, Kontrollgänge vergleichbar und nachvollziehbar zu machen. Sie muss nicht kompliziert sein, sollte aber die wichtigsten Bereiche des Objekts abbilden.",
+        ],
+        items: [
+          "Sind Eingangsbereich und Treppenhaus sauber und frei nutzbar?",
+          "Sind Müllplatz und Tonnenstellplatz ordentlich und zugänglich?",
+          "Funktionieren sichtbare Leuchten in Gemeinschaftsbereichen?",
+          "Gibt es Schäden an Türen, Wänden, Geländern, Briefkästen oder Klingelbereich?",
+          "Sind Wege, Hof und Außenflächen frei von auffälligen Verschmutzungen?",
+          "Gibt es Themen, die an Verwaltung, Beirat oder Fachbetrieb gemeldet werden sollten?",
+        ],
+      },
+      {
+        title: "Wie oft sollte kontrolliert werden?",
+        paragraphs: [
+          "Der passende Turnus hängt von Größe, Nutzung und Zustand des Objekts ab. Kleine Häuser können mit monatlichen Sichtkontrollen gut betreut sein, während stark genutzte Wohnanlagen häufig einen wöchentlichen oder sogar engeren Rhythmus benötigen.",
+          "Entscheidend ist, dass der Turnus zum Alltag passt. Wenn Müllplätze oft überlastet sind, die Außenflächen stark genutzt werden oder viele Bewohner im Objekt leben, sollte die Kontrolle nicht zu selten angesetzt werden.",
+        ],
+      },
+      {
+        title: "Dokumentation ohne unnötigen Aufwand",
+        paragraphs: [
+          "Eine gute Rückmeldung muss nicht überladen sein. Für viele Hausverwaltungen reicht eine kurze, klare Information: Was wurde gesehen, wo befindet sich die Auffälligkeit und welcher nächste Schritt ist sinnvoll?",
+          "Bei relevanten Schäden oder wiederkehrenden Themen können Fotos und kurze Notizen helfen. So bleibt nachvollziehbar, ob eine Kleinaufgabe direkt erledigt werden kann oder ob ein Fachbetrieb beauftragt werden sollte.",
+        ],
+      },
+      {
+        title: "Fazit: Objektkontrolle schafft Verlässlichkeit",
+        paragraphs: [
+          "Regelmäßige Objektkontrolle macht Mehrfamilienhäuser planbarer. Eingänge, Treppenhäuser, Müllplätze und Außenflächen bleiben besser im Blick, und Verwaltungen erhalten schneller verwertbare Rückmeldungen.",
+          "Hausvia verbindet Objektkontrolle in Hannover auf Wunsch mit Hausmeisterservice, Treppenhausreinigung, Mülltonnenservice, Gartenpflege und weiteren Leistungen rund um die laufende Objektbetreuung.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Was ist eine Objektkontrolle im Mehrfamilienhaus?",
+        answer:
+          "Eine Objektkontrolle ist eine regelmäßige Sichtkontrolle gemeinschaftlicher Bereiche wie Eingang, Treppenhaus, Müllplatz, Außenflächen und sichtbarer Schadensstellen.",
+      },
+      {
+        question: "Wie oft sollte ein Mehrfamilienhaus kontrolliert werden?",
+        answer:
+          "Das hängt von Größe, Nutzung und Zustand ab. Viele Objekte profitieren von wöchentlichen oder monatlichen Kontrollgängen, stark genutzte Anlagen oft von engeren Routinen.",
+      },
+      {
+        question: "Ersetzt eine Objektkontrolle technische Wartungen?",
+        answer:
+          "Nein. Sie ersetzt keine Fachwartung. Auffälligkeiten können aber erkannt, dokumentiert und für weitere Abstimmung gemeldet werden.",
+      },
+    ],
+    internalLinks: [
+      { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
+      { label: "Kontrollgänge Hannover", href: "/kontrollgaenge-hannover" },
+      { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
+      { label: "Kostencheck starten", href: "/angebot-anfragen" },
+    ],
+  },
+  {
+    slug: "reinigungsplan-treppenhaus-wohnanlage-hannover",
+    category: "reinigung-ordnung",
+    title: "Reinigungsplan Treppenhaus Hannover | Wohnanlage",
+    description:
+      "Reinigungsplan für Treppenhaus und Wohnanlage in Hannover: Turnus, Aufgaben, Müllplatz, Außenbereiche und klare Zuständigkeiten.",
+    h1: "Reinigungsplan fürs Treppenhaus: So bleibt eine Wohnanlage dauerhaft gepflegt",
+    excerpt:
+      "Ein guter Reinigungsplan verhindert Reibung im Objekt. Der Beitrag zeigt, wie Treppenhaus, Eingänge, Müllbereiche und Außenflächen sinnvoll organisiert werden.",
+    image: ASSETS.blogCleaningPlan,
+    imageAlt: "Grafik mit Besen und Checkliste für einen Reinigungsplan im Treppenhaus in Hannover",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readTime: "7 Minuten",
+    intro: [
+      "Ein Treppenhaus wird täglich genutzt und prägt den ersten Eindruck einer Wohnanlage. Wenn Eingänge, Flure oder Müllbereiche ungepflegt wirken, entstehen schnell Beschwerden und unnötiger Abstimmungsaufwand. Ein klarer Reinigungsplan schafft hier Struktur.",
+      "Für Mehrfamilienhäuser, WEGs und Hausverwaltungen in Hannover ist wichtig, dass Reinigung nicht nur gelegentlich passiert, sondern passend zum Objekt geplant wird. Der richtige Turnus, klare Aufgaben und eine verständliche Rückmeldung machen den Unterschied zwischen Einzelchaos und verlässlicher Objektpflege.",
+    ],
+    sections: [
+      {
+        title: "Was in einen guten Reinigungsplan gehört",
+        paragraphs: [
+          "Ein Reinigungsplan sollte verständlich festhalten, welche Bereiche betreut werden und wie regelmäßig die Arbeiten stattfinden. Je klarer das beschrieben ist, desto weniger Interpretationsspielraum gibt es im Alltag.",
+        ],
+        items: [
+          "Treppenhaus, Podeste, Handläufe und gemeinschaftliche Flure.",
+          "Eingangsbereich, Glasflächen im vereinbarten Umfang und Fußmattenbereiche.",
+          "Kellerzugänge, Fahrradbereiche oder Nebenflächen nach Absprache.",
+          "Müllplatz, Tonnenstellplatz und angrenzende Wege.",
+          "Saisonale Mehrbelastungen durch Laub, Nässe, Streugut oder starken Publikumsverkehr.",
+        ],
+      },
+      {
+        title: "Der passende Turnus hängt vom Objekt ab",
+        paragraphs: [
+          "Nicht jedes Haus braucht denselben Reinigungsrhythmus. Ein kleines Mehrfamilienhaus mit wenigen Parteien kann anders geplant werden als eine Wohnanlage mit mehreren Eingängen, viel Durchgangsverkehr oder Gewerbeanteil.",
+          "Wichtig ist, realistisch zu kalkulieren. Wird zu selten gereinigt, steigen Beschwerden. Wird zu viel pauschal eingeplant, entstehen unnötige Kosten. Ein guter Plan orientiert sich an Nutzung, Verschmutzung, Flächen und Erwartungen der Bewohner.",
+        ],
+      },
+      {
+        title: "Treppenhausreinigung mit Mülldienst kombinieren",
+        paragraphs: [
+          "In vielen Wohnanlagen entstehen die meisten sichtbaren Probleme nicht nur im Treppenhaus, sondern rund um den Müllplatz. Überfüllte Tonnen, herumliegende Verpackungen oder unklare Bereitstellungstermine wirken sofort ungepflegt.",
+          "Deshalb ist die Kombination aus Treppenhausreinigung, Außenreinigung und Mülldienst häufig sinnvoll. So bleiben die wichtigsten Kontaktpunkte des Objekts gemeinsam im Blick: Eingang, Wege, Tonnenstellplatz und Innenbereiche.",
+        ],
+      },
+      {
+        title: "Warum klare Zuständigkeiten Beschwerden vermeiden",
+        paragraphs: [
+          "Wenn Bewohner nicht wissen, wer zuständig ist, landen kleine Themen schnell bei Verwaltung, Beirat oder Eigentümern. Ein sauber definierter Reinigungsplan reduziert diese Unsicherheit, weil klar ist, welche Arbeiten regelmäßig stattfinden und welche Themen gesondert gemeldet werden.",
+          "Für Hausverwaltungen ist außerdem hilfreich, wenn Auffälligkeiten weitergegeben werden: defekte Leuchten, Schäden im Treppenhaus, blockierte Fluchtwege oder wiederkehrende Verschmutzungen. So wird Reinigung Teil einer besseren Objektbetreuung.",
+        ],
+      },
+      {
+        title: "Praktische Checkliste vor der Beauftragung",
+        paragraphs: [
+          "Vor einer Anfrage müssen nicht alle Details perfekt feststehen. Einige Angaben helfen aber, den Aufwand realistisch einzuschätzen.",
+        ],
+        items: [
+          "Wie viele Eingänge, Etagen und Parteien hat das Objekt?",
+          "Welche Bereiche sollen regelmäßig gereinigt werden?",
+          "Gibt es Müllplätze, Hofbereiche oder Außenwege, die mitbetreut werden sollen?",
+          "Wie stark wird das Objekt genutzt und gibt es bekannte Problemstellen?",
+          "Soll der Reinigungsplan mit Kontrollgängen oder Mülldienst kombiniert werden?",
+        ],
+      },
+      {
+        title: "Fazit: Gute Reinigung ist planbare Objektpflege",
+        paragraphs: [
+          "Ein Reinigungsplan sorgt dafür, dass Treppenhaus und Gemeinschaftsflächen nicht dem Zufall überlassen werden. Besonders für WEGs und Hausverwaltungen ist das eine praktische Entlastung, weil wiederkehrende Aufgaben klar geregelt sind.",
+          "Hausvia unterstützt Wohnanlagen in Hannover mit Treppenhausreinigung, Mülldienst, Außenreinigung und laufender Objektbetreuung aus einer Hand.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Wie oft sollte ein Treppenhaus gereinigt werden?",
+        answer:
+          "Das hängt von Parteienzahl, Nutzung und Verschmutzung ab. Häufig sind wöchentliche oder regelmäßige Reinigungsintervalle sinnvoll.",
+      },
+      {
+        question: "Kann der Müllplatz mit in den Reinigungsplan?",
+        answer:
+          "Ja. Müllplatz, Außenwege und Tonnenstellplätze können je nach Objekt mitbetreut werden.",
+      },
+      {
+        question: "Ist ein Reinigungsplan für WEGs sinnvoll?",
+        answer:
+          "Ja. Ein klarer Plan schafft transparente Zuständigkeiten und reduziert Abstimmungsaufwand für Verwaltung, Beirat und Eigentümer.",
+      },
+    ],
+    internalLinks: [
+      { label: "Treppenhausreinigung Hannover", href: "/treppenhausreinigung-hannover" },
+      { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
+      { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
+      { label: "Service zusammenstellen", href: "/angebot-anfragen" },
+    ],
+  },
+  {
+    slug: "dienstleisterzugang-hausmeisterservice-hannover",
+    category: "hausverwaltungen-weg",
+    title: "Dienstleisterzugang Hannover | Hausmeisterservice",
+    description:
+      "Dienstleisterzugang organisieren lassen: Wie Hausmeisterservice Hausverwaltungen in Hannover bei Terminen, Zugang und Rückmeldung entlastet.",
+    h1: "Dienstleisterzugang organisieren: Warum Hausmeisterservice Verwaltungen entlastet",
+    excerpt:
+      "Wenn Fachfirmen keinen Zugang bekommen, verzögern sich Arbeiten. Dieser Ratgeber zeigt, wie organisierter Dienstleisterzugang die Objektbetreuung verbessert.",
+    image: ASSETS.blogContractorAccess,
+    imageAlt: "Grafik mit Schlüssel und Kalender für Dienstleisterzugang bei Hausmeisterservice in Hannover",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readTime: "6 Minuten",
+    intro: [
+      "Viele Aufgaben rund ums Objekt scheitern nicht an der Beauftragung, sondern an der praktischen Umsetzung vor Ort. Fachfirmen brauchen Zugang zu Technikräumen, Kellerbereichen, Allgemeinflächen oder Außenanlagen. Wenn niemand verfügbar ist, verschieben sich Termine und der Verwaltungsaufwand steigt.",
+      "Ein Hausmeisterservice kann Hausverwaltungen, WEGs und Eigentümer in Hannover entlasten, indem Dienstleisterzugang nach Absprache organisiert wird. Das bedeutet nicht, dass fachliche Verantwortung übernommen wird, sondern dass Termine vor Ort praktikabler und besser nachvollziehbar werden.",
+    ],
+    sections: [
+      {
+        title: "Was mit Dienstleisterzugang gemeint ist",
+        paragraphs: [
+          "Dienstleisterzugang bedeutet, dass ein beauftragter Dienstleister nach vorheriger Abstimmung Zugang zu bestimmten Objektbereichen erhält. Das kann für Wartung, Ablesung, Reparaturprüfung, Reinigung, Gartenpflege oder andere vorab vereinbarte Termine relevant sein.",
+          "Gerade bei verwalteten Mehrfamilienhäusern ist das praktisch, weil nicht jedes Mal Eigentümer, Bewohner oder Verwaltung selbst vor Ort sein müssen. Wichtig bleibt: Zuständigkeiten, Schlüsselregelung und Ablauf müssen sauber vereinbart sein.",
+        ],
+      },
+      {
+        title: "Typische Situationen in der Objektbetreuung",
+        paragraphs: [
+          "Der Bedarf entsteht häufig bei kleinen, aber zeitraubenden Terminen. Wenn diese nicht organisiert sind, verlieren Verwaltungen viel Zeit mit Rückfragen, Terminverschiebungen und Nacharbeit.",
+        ],
+        items: [
+          "Zugang zu Heizungs- oder Technikräumen für Fachfirmen.",
+          "Begleitung von Ablese-, Prüf- oder Wartungsterminen im vereinbarten Umfang.",
+          "Öffnen von Keller-, Hof- oder Gemeinschaftsbereichen nach Absprache.",
+          "Kurze Rückmeldung, ob der Termin stattgefunden hat oder ob Auffälligkeiten bestanden.",
+          "Koordination einfacher Vor-Ort-Themen ohne Übernahme fachpflichtiger Arbeiten.",
+        ],
+      },
+      {
+        title: "Warum das Hausverwaltungen entlastet",
+        paragraphs: [
+          "Hausverwaltungen müssen viele kleine Vorgänge gleichzeitig steuern. Wenn bei jedem Termin unklar ist, wer vor Ort öffnet oder ob die Firma Zugang bekommt, entsteht unnötige Reibung.",
+          "Ein fester Ansprechpartner am Objekt macht Abläufe planbarer. Der Dienstleisterzugang kann mit Kontrollgängen, Mülldienst, Reinigung oder technischer Sichtkontrolle verbunden werden. Dadurch wird die Betreuung im Alltag deutlich runder.",
+        ],
+      },
+      {
+        title: "Klare Regeln schützen alle Beteiligten",
+        paragraphs: [
+          "Bei Zugangsthemen ist Verbindlichkeit besonders wichtig. Es sollte klar sein, für welche Bereiche Zugang ermöglicht wird, wie Termine angekündigt werden, wer die Freigabe erteilt und welche Rückmeldung danach erwartet wird.",
+          "Auch die Grenzen müssen eindeutig sein: Hausmeisterservice ersetzt keine Fachfirma, keine Bauleitung und keine technische Abnahme. Er kann aber dafür sorgen, dass vereinbarte Termine vor Ort überhaupt sauber stattfinden können.",
+        ],
+      },
+      {
+        title: "So lässt sich der Bedarf gut anfragen",
+        paragraphs: [
+          "Für eine realistische Einschätzung helfen wenige Angaben. Entscheidend ist, dass Hausvia versteht, wie häufig Zugangstermine vorkommen und welche Bereiche betroffen sind.",
+        ],
+        items: [
+          "Objektart, Standort und Anzahl der Einheiten nennen.",
+          "Beschreiben, welche Räume oder Bereiche häufig betroffen sind.",
+          "Gewünschten Umfang klären: gelegentlich, regelmäßig oder als Teil laufender Objektbetreuung.",
+          "Ansprechpartner für Freigaben und Terminabstimmung festlegen.",
+          "Kombination mit Kontrollgängen, Zählerablesung oder Kleinaufgaben prüfen.",
+        ],
+      },
+      {
+        title: "Fazit: Zugang ist ein unterschätzter Zeitfaktor",
+        paragraphs: [
+          "Organisierter Dienstleisterzugang klingt unspektakulär, spart im Alltag aber viel Abstimmung. Für Hausverwaltungen und WEGs in Hannover kann er ein wichtiger Baustein einer verlässlichen Objektbetreuung sein.",
+          "Hausvia kann Dienstleisterzugang nach Vereinbarung mit Hausmeisterservice, Objektkontrollen, Zählerablesung und weiteren Aufgaben rund um die Immobilie verbinden.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "Kann Hausvia Dienstleisterzugang organisieren?",
+        answer:
+          "Ja, nach vorheriger Abstimmung kann der Zugang zu vereinbarten Objektbereichen für Dienstleister unterstützt werden.",
+      },
+      {
+        question: "Übernimmt Hausvia dabei Facharbeiten?",
+        answer:
+          "Nein. Facharbeiten, technische Abnahmen oder größere Reparaturen bleiben Aufgabe der jeweiligen Fachbetriebe. Hausvia unterstützt den organisatorischen Ablauf vor Ort.",
+      },
+      {
+        question: "Für wen ist Dienstleisterzugang besonders sinnvoll?",
+        answer:
+          "Vor allem für Hausverwaltungen, WEGs, Eigentümer und Gewerbeobjekte, bei denen regelmäßig Termine mit Fachfirmen oder Dienstleistern stattfinden.",
+      },
+    ],
+    internalLinks: [
+      { label: "Hausverwaltungen", href: "/hausverwaltungen" },
+      { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
+      { label: "Kontrollgänge Hannover", href: "/kontrollgaenge-hannover" },
+      { label: "Angebot anfragen", href: "/angebot-anfragen" },
     ],
   },
 ];

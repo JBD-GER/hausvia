@@ -1,0 +1,28 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Schlüssel für Dienstleisterzugang</title>
+  <desc id="desc">Illustration eines Schlüssels und Kalenders für organisierten Dienstleisterzugang in Hannover</desc>
+  <rect width="1200" height="675" fill="#F7F9FC"/>
+  <rect x="82" y="78" width="1036" height="519" rx="34" fill="#FFFFFF" stroke="#DCE6F2" stroke-width="3"/>
+  <circle cx="358" cy="335" r="135" fill="#FDF7E3" stroke="#F5C542" stroke-width="5"/>
+  <circle cx="318" cy="329" r="52" fill="#082B61"/>
+  <circle cx="318" cy="329" r="23" fill="#FFFFFF"/>
+  <rect x="363" y="308" width="288" height="44" rx="22" fill="#082B61"/>
+  <rect x="594" y="301" width="52" height="88" rx="10" fill="#082B61"/>
+  <rect x="524" y="301" width="46" height="70" rx="10" fill="#082B61"/>
+  <rect x="711" y="146" width="278" height="330" rx="26" fill="#EAF1FA"/>
+  <rect x="711" y="146" width="278" height="76" rx="26" fill="#082B61"/>
+  <rect x="711" y="194" width="278" height="32" fill="#082B61"/>
+  <circle cx="774" cy="259" r="18" fill="#F5C542"/>
+  <rect x="814" y="248" width="112" height="18" rx="9" fill="#40526B"/>
+  <circle cx="774" cy="328" r="18" fill="#F5C542"/>
+  <rect x="814" y="317" width="136" height="18" rx="9" fill="#40526B"/>
+  <circle cx="774" cy="397" r="18" fill="#F5C542"/>
+  <rect x="814" y="386" width="98" height="18" rx="9" fill="#40526B"/>
+  <rect x="174" y="512" width="352" height="14" rx="7" fill="#082B61"/>
+  <rect x="589" y="512" width="408" height="14" rx="7" fill="#F5C542"/>
+  <path d="M774 183V109" stroke="#F5C542" stroke-width="15" stroke-linecap="round"/>
+  <path d="M930 183V109" stroke="#F5C542" stroke-width="15" stroke-linecap="round"/>
+  <rect x="177" y="156" width="292" height="72" rx="19" fill="#EAF1FA"/>
+  <path d="M210 193H317" stroke="#082B61" stroke-width="15" stroke-linecap="round"/>
+  <path d="M210 193H431" stroke="#DCE6F2" stroke-width="15" stroke-linecap="round"/>
+</svg>

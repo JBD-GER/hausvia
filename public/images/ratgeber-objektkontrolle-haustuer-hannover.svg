@@ -1,0 +1,26 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Objektkontrolle an einer Haustür</title>
+  <desc id="desc">Illustration einer gepflegten Haustür mit Checkliste für Objektkontrolle in Hannover</desc>
+  <rect width="1200" height="675" fill="#F7F9FC"/>
+  <rect x="80" y="72" width="1040" height="531" rx="32" fill="#FFFFFF" stroke="#DCE6F2" stroke-width="3"/>
+  <path d="M80 120C199 82 331 83 455 125C595 172 710 175 846 125C956 85 1041 87 1120 116V72H80V120Z" fill="#EAF1FA"/>
+  <rect x="158" y="171" width="311" height="381" rx="18" fill="#082B61"/>
+  <rect x="199" y="217" width="229" height="335" rx="8" fill="#123A77"/>
+  <rect x="236" y="253" width="64" height="88" rx="10" fill="#EAF1FA"/>
+  <rect x="324" y="253" width="64" height="88" rx="10" fill="#EAF1FA"/>
+  <rect x="236" y="371" width="152" height="40" rx="8" fill="#DCE6F2"/>
+  <circle cx="402" cy="433" r="13" fill="#F5C542"/>
+  <rect x="519" y="182" width="420" height="326" rx="24" fill="#FDF7E3" stroke="#F5C542" stroke-width="3"/>
+  <rect x="572" y="239" width="76" height="76" rx="18" fill="#082B61"/>
+  <path d="M593 279L607 293L632 264" stroke="#F5C542" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="680" y="238" width="199" height="18" rx="9" fill="#082B61"/>
+  <rect x="680" y="277" width="148" height="14" rx="7" fill="#40526B"/>
+  <rect x="572" y="354" width="76" height="76" rx="18" fill="#EAF1FA"/>
+  <path d="M593 394L607 408L632 379" stroke="#082B61" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="680" y="352" width="229" height="18" rx="9" fill="#082B61"/>
+  <rect x="680" y="392" width="172" height="14" rx="7" fill="#40526B"/>
+  <path d="M162 552H482" stroke="#F5C542" stroke-width="13" stroke-linecap="round"/>
+  <path d="M535 552H951" stroke="#082B61" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="996" cy="154" r="44" fill="#F5C542"/>
+  <path d="M975 154L990 169L1018 137" stroke="#082B61" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
