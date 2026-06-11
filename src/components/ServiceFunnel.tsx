@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -202,6 +202,8 @@ function NumberInput({
 }
 
 export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
+  const funnelRef = useRef<HTMLElement>(null);
+  const shouldScrollToStepRef = useRef(false);
   const [step, setStep] = useState(0);
   const [lead, setLead] = useState<LeadData>(initialLead);
   const [error, setError] = useState("");
@@ -216,6 +218,15 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
   const computedUsableArea = unitCount * averageUnitArea;
   const selectedFrequency = pricingConfig.frequencies.find((item) => item.id === lead.frequency);
   const selectedComplexity = pricingConfig.complexity.find((item) => item.id === lead.complexity);
+
+  useEffect(() => {
+    if (!shouldScrollToStepRef.current) return;
+
+    shouldScrollToStepRef.current = false;
+    window.requestAnimationFrame(() => {
+      funnelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [step]);
 
   function update<K extends keyof LeadData>(key: K, value: LeadData[K]) {
     setLead((current) => ({ ...current, [key]: value }));
@@ -281,11 +292,13 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
       setError(message);
       return;
     }
+    shouldScrollToStepRef.current = true;
     setStep((current) => Math.min(current + 1, steps.length - 1));
   }
 
   function back() {
     setError("");
+    shouldScrollToStepRef.current = true;
     setStep((current) => Math.max(current - 1, 0));
   }
 
@@ -353,8 +366,9 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
 
   return (
     <section
+      ref={funnelRef}
       id="anfrage"
-      className={`rounded-lg border border-slate-200 bg-white shadow-sm ${compact ? "p-4 sm:p-5" : "p-5 sm:p-7"}`}
+      className={`scroll-mt-24 rounded-lg border border-slate-200 bg-white shadow-sm ${compact ? "p-4 sm:p-5" : "p-5 sm:p-7"}`}
       aria-labelledby="funnel-title"
     >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -694,6 +708,35 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                   </span>
                 </label>
               </div>
+
+              {error ? (
+                <p
+                  className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
+                  aria-live="polite"
+                >
+                  {error}
+                </p>
+              ) : null}
+
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={back}
+                  disabled={submitting}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ArrowLeft aria-hidden="true" size={17} />
+                  Zurück
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
+                >
+                  {submitting ? <Loader2 aria-hidden="true" size={17} className="animate-spin" /> : null}
+                  Kosteneinschätzung anfordern
+                </button>
+              </div>
             </div>
 
             <div className="mt-5 rounded-lg border border-brand/20 bg-brand-soft p-5 sm:p-6">
@@ -748,13 +791,14 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
           </p>
         ) : null}
 
-        {error ? (
+        {error && step < steps.length - 1 ? (
           <p className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" aria-live="polite">
             {error}
           </p>
         ) : null}
 
-        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {step < steps.length - 1 ? (
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={back}
@@ -765,7 +809,6 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
             Zurück
           </button>
 
-          {step < steps.length - 1 ? (
             <button
               type="button"
               onClick={next}
@@ -774,17 +817,8 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
               {nextLabel}
               <ArrowRight aria-hidden="true" size={17} />
             </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
-            >
-              {submitting ? <Loader2 aria-hidden="true" size={17} className="animate-spin" /> : null}
-              Kosteneinschätzung anfordern
-            </button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </form>
     </section>
   );
