@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ASSETS, SITE, type FaqItem } from "@/lib/site";
+import { ASSETS, SEO_KEYWORDS, SEO_SERVICE_AREAS, SEO_SERVICES, SITE, type FaqItem } from "@/lib/site";
 
 export function absoluteUrl(path = "/") {
   if (path.startsWith("http")) {
@@ -14,20 +14,38 @@ export function metadataForPage({
   description,
   path,
   image = ASSETS.hero,
+  imageAlt,
+  keywords = [],
+  ogTitle,
+  ogDescription,
 }: {
   title: string;
   description: string;
   path: string;
   image?: string;
+  imageAlt?: string;
+  keywords?: string[];
+  ogTitle?: string;
+  ogDescription?: string;
 }): Metadata {
   const url = absoluteUrl(path);
   const imageUrl = absoluteUrl(image);
+  const pageKeywords = Array.from(new Set([...keywords, ...SEO_KEYWORDS]));
 
   return {
     title,
     description,
+    applicationName: SITE.name,
+    authors: [{ name: SITE.name, url: SITE.url }],
+    creator: SITE.name,
+    publisher: SITE.name,
+    category: "Hausmeisterservice, Objektbetreuung und Gebäudeservice",
+    keywords: pageKeywords,
     alternates: {
       canonical: url,
+      languages: {
+        "de-DE": url,
+      },
     },
     robots: {
       index: true,
@@ -41,8 +59,8 @@ export function metadataForPage({
       },
     },
     openGraph: {
-      title,
-      description,
+      title: ogTitle ?? title,
+      description: ogDescription ?? description,
       url,
       siteName: SITE.name,
       locale: "de_DE",
@@ -52,15 +70,22 @@ export function metadataForPage({
           url: imageUrl,
           width: 1200,
           height: 630,
-          alt: `${SITE.name} Hausmeisterservice in Hannover`,
+          alt: imageAlt ?? `${SITE.name} Hausmeisterservice in Hannover`,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title,
-      description,
+      title: ogTitle ?? title,
+      description: ogDescription ?? description,
       images: [imageUrl],
+    },
+    other: {
+      "geo.region": "DE-NI",
+      "geo.placename": "Hannover",
+      "business:contact_data:locality": "Hannover",
+      "business:contact_data:region": "Niedersachsen",
+      "business:contact_data:country_name": "Deutschland",
     },
   };
 }
@@ -77,12 +102,18 @@ export function localBusinessSchema() {
     "@type": ["LocalBusiness", "ProfessionalService"],
     "@id": absoluteUrl("/#localbusiness"),
     name: SITE.name,
+    legalName: SITE.legalName,
+    alternateName: "Hausvia Hausmeisterservice",
     url: SITE.url,
     logo: absoluteUrl(ASSETS.logo),
-    image: absoluteUrl(ASSETS.hero),
+    image: [absoluteUrl(ASSETS.hero), absoluteUrl(ASSETS.garden), absoluteUrl(ASSETS.repair)],
     description: SITE.tagline,
+    slogan: "Zuverlässige Objektbetreuung in Hannover und Umgebung",
     telephone: SITE.phone,
     email: SITE.email,
+    priceRange: "$$",
+    currenciesAccepted: "EUR",
+    paymentAccepted: "Überweisung",
     address: {
       "@type": "PostalAddress",
       streetAddress: SITE.streetAddress,
@@ -91,24 +122,94 @@ export function localBusinessSchema() {
       addressRegion: "Niedersachsen",
       addressCountry: "DE",
     },
-    areaServed: [
-      {
-        "@type": "City",
-        name: "Hannover",
-      },
-      {
-        "@type": "AdministrativeArea",
-        name: "Region Hannover",
-      },
-    ],
-    serviceType: ["Hausmeisterservice", "Objektbetreuung", "Gebäudeservice"],
-    openingHoursSpecification: [
-      {
-        "@type": "OpeningHoursSpecification",
-        description: SITE.openingHours,
-      },
-    ],
+    areaServed: SEO_SERVICE_AREAS.map((area) => ({
+      "@type": area === "Hannover" ? "City" : "Place",
+      name: area,
+    })),
+    serviceType: SEO_SERVICES,
+    openingHours: SITE.openingHours,
+    contactPoint: {
+      "@type": "ContactPoint",
+      telephone: SITE.phone,
+      email: SITE.email,
+      contactType: "customer service",
+      areaServed: "DE-NI",
+      availableLanguage: ["de"],
+    },
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Hausvia Leistungen",
+      itemListElement: SEO_SERVICES.map((service) => ({
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: service,
+          areaServed: SITE.areaServed,
+        },
+      })),
+    },
+    knowsAbout: SEO_SERVICES,
     sameAs: [],
+  };
+}
+
+export function websiteSchema() {
+  return {
+    "@type": "WebSite",
+    "@id": absoluteUrl("/#website"),
+    url: SITE.url,
+    name: SITE.name,
+    alternateName: "Hausvia Hausmeisterservice",
+    description: SITE.tagline,
+    inLanguage: "de-DE",
+    publisher: {
+      "@id": absoluteUrl("/#localbusiness"),
+    },
+    about: SEO_SERVICES.map((service) => ({
+      "@type": "Thing",
+      name: service,
+    })),
+  };
+}
+
+export function webPageSchema({
+  name,
+  description,
+  path,
+  image = ASSETS.hero,
+  type = "WebPage",
+}: {
+  name: string;
+  description: string;
+  path: string;
+  image?: string;
+  type?: "WebPage" | "AboutPage" | "ContactPage" | "CollectionPage" | "Article";
+}) {
+  const url = absoluteUrl(path);
+
+  return {
+    "@type": type,
+    "@id": `${url}#webpage`,
+    url,
+    name,
+    description,
+    inLanguage: "de-DE",
+    isPartOf: {
+      "@id": absoluteUrl("/#website"),
+    },
+    publisher: {
+      "@id": absoluteUrl("/#localbusiness"),
+    },
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      url: absoluteUrl(image),
+      width: 1200,
+      height: 630,
+    },
+    about: SEO_SERVICES.slice(0, 6).map((service) => ({
+      "@type": "Thing",
+      name: service,
+    })),
   };
 }
 
@@ -149,19 +250,37 @@ export function serviceSchema({
   path: string;
   serviceType: string;
 }) {
+  const url = absoluteUrl(path);
+
   return {
     "@type": "Service",
+    "@id": `${url}#service`,
     name,
     serviceType,
     description,
-    url: absoluteUrl(path),
-    areaServed: {
-      "@type": "AdministrativeArea",
-      name: SITE.areaServed,
-    },
+    url,
+    inLanguage: "de-DE",
+    areaServed: SEO_SERVICE_AREAS.map((area) => ({
+      "@type": area === "Hannover" ? "City" : "Place",
+      name: area,
+    })),
     provider: {
       "@id": absoluteUrl("/#localbusiness"),
     },
+    audience: [
+      {
+        "@type": "Audience",
+        audienceType: "Hausverwaltungen",
+      },
+      {
+        "@type": "Audience",
+        audienceType: "WEG und Eigentümer",
+      },
+      {
+        "@type": "Audience",
+        audienceType: "Gewerbeobjekte",
+      },
+    ],
   };
 }
 
@@ -180,20 +299,54 @@ export function articleSchema({
   publishedAt: string;
   updatedAt: string;
 }) {
+  const url = absoluteUrl(path);
+
   return {
     "@type": "Article",
+    "@id": `${url}#article`,
     headline: title,
     description,
-    image: absoluteUrl(image),
+    image: {
+      "@type": "ImageObject",
+      url: absoluteUrl(image),
+      width: 1400,
+      height: 788,
+    },
     datePublished: publishedAt,
     dateModified: updatedAt,
+    inLanguage: "de-DE",
     author: {
       "@type": "Organization",
       name: SITE.name,
+      url: SITE.url,
     },
     publisher: {
       "@id": absoluteUrl("/#localbusiness"),
     },
-    mainEntityOfPage: absoluteUrl(path),
+    mainEntityOfPage: {
+      "@id": `${url}#webpage`,
+    },
+  };
+}
+
+export function itemListSchema({
+  name,
+  path,
+  items,
+}: {
+  name: string;
+  path: string;
+  items: { name: string; href: string }[];
+}) {
+  return {
+    "@type": "ItemList",
+    "@id": `${absoluteUrl(path)}#itemlist`,
+    name,
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      url: absoluteUrl(item.href),
+    })),
   };
 }

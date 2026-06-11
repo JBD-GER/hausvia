@@ -7,7 +7,7 @@ import { CTASection } from "@/components/CTASection";
 import { Hero } from "@/components/Hero";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ASSETS, SITE } from "@/lib/site";
-import { breadcrumbSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
   title: "Kontakt | Hausvia Hausmeisterservice Hannover",
@@ -15,6 +15,8 @@ export const metadata: Metadata = metadataForPage({
     "Kontakt zu Hausvia aufnehmen: Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung unverbindlich anfragen.",
   path: "/kontakt",
   image: ASSETS.hero,
+  imageAlt: "Hausvia Kontakt für Hausmeisterservice in Hannover",
+  keywords: ["Hausvia Kontakt", "Hausmeisterservice Hannover Kontakt", "Objektbetreuung Hannover anfragen"],
 });
 
 export default function KontaktPage() {
@@ -101,6 +103,14 @@ export default function KontaktPage() {
       />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Hausvia Kontakt",
+            description:
+              "Kontakt zu Hausvia für Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung.",
+            path: "/kontakt",
+            image: ASSETS.hero,
+            type: "ContactPage",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Kontakt", href: "/kontakt" },

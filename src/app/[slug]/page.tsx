@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { MarketingPageView } from "@/components/MarketingPageView";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { findMarketingPage, marketingPages } from "@/lib/site";
-import { breadcrumbSchema, faqSchema, graph, metadataForPage, serviceSchema } from "@/lib/seo";
+import { breadcrumbSchema, faqSchema, graph, metadataForPage, serviceSchema, webPageSchema } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -26,6 +26,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: page.description,
     path: `/${page.slug}`,
     image: page.image,
+    imageAlt: page.imageAlt,
+    keywords: [page.eyebrow, page.serviceType ?? page.eyebrow],
+    ogTitle: page.ogTitle,
+    ogDescription: page.ogDescription,
   });
 }
 
@@ -42,6 +46,12 @@ export default async function MarketingPage({ params }: PageProps) {
       <MarketingPageView page={page} />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: page.h1,
+            description: page.description,
+            path: `/${page.slug}`,
+            image: page.image,
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: page.eyebrow, href: `/${page.slug}` },

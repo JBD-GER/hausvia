@@ -106,6 +106,63 @@ export const SITE = {
     "Rechtliche Pflichtangaben wurden übernommen und sollten vor Veröffentlichung final geprüft werden.",
 };
 
+export const SEO_SERVICES = [
+  "Hausmeisterservice",
+  "Objektbetreuung",
+  "Gebäudeservice",
+  "Treppenhausreinigung",
+  "Gartenpflege",
+  "Grünanlagenpflege",
+  "Winterdienst",
+  "Mülltonnenservice",
+  "Kontrollgänge",
+  "Kleinreparaturen",
+  "Außenanlagenpflege",
+];
+
+export const SEO_SERVICE_AREAS = [
+  "Hannover",
+  "Hannover List",
+  "Hannover Südstadt",
+  "Hannover Mitte",
+  "Hannover Linden",
+  "Hannover Ricklingen",
+  "Hannover Bothfeld",
+  "Hannover Vahrenwald",
+  "Hannover Döhren",
+  "Hannover Kleefeld",
+  "Hannover Kirchrode",
+  "Hannover Misburg",
+  "Langenhagen",
+  "Garbsen",
+  "Laatzen",
+  "Hemmingen",
+  "Ronnenberg",
+  "Seelze",
+  "Isernhagen",
+  "Lehrte",
+  "Sehnde",
+  "Burgdorf",
+  "Wedemark",
+  "Neustadt am Rübenberge",
+  "Barsinghausen",
+];
+
+export const SEO_KEYWORDS = [
+  "Hausmeisterservice Hannover",
+  "Hausmeister Hannover",
+  "Objektbetreuung Hannover",
+  "Gebäudeservice Hannover",
+  "Immobilienbetreuung Hannover",
+  "Treppenhausreinigung Hannover",
+  "Gartenpflege Hannover",
+  "Winterdienst Hannover",
+  "Mülltonnenservice Hannover",
+  "Kontrollgänge Hannover",
+  "Hausmeisterservice für Hausverwaltungen Hannover",
+  "Hausmeisterservice für WEG Hannover",
+];
+
 export const ASSETS = {
   logo: "/hausvia-logo.svg",
   mark: "/hausvia-mark.svg",
@@ -227,7 +284,7 @@ export const marketingPages: MarketingPage[] = [
   {
     slug: "hausmeisterservice-hannover",
     pageType: "service",
-    title: "Hausmeisterservice Hannover | Zuverlässige Betreuung für Immobilien",
+    title: "Hausmeisterservice Hannover | Betreuung für Immobilien",
     description:
       "Hausvia bietet Hausmeisterservice in Hannover für Wohnanlagen, WEGs, Hausverwaltungen und Eigentümer. Bedarf online zusammenstellen und kostenlos anfragen.",
     h1: "Hausmeisterservice Hannover für Wohnanlagen, WEGs und Eigentümer",
@@ -311,7 +368,7 @@ export const marketingPages: MarketingPage[] = [
   {
     slug: "objektbetreuung-hannover",
     pageType: "service",
-    title: "Objektbetreuung Hannover | Immobilien zuverlässig betreuen lassen",
+    title: "Objektbetreuung Hannover | Immobilien betreuen lassen",
     description:
       "Objektbetreuung in Hannover mit Kontrollgängen, Dokumentation, laufender Pflege und klarer Kommunikation für Hausverwaltungen, WEGs und Eigentümer.",
     h1: "Objektbetreuung in Hannover für gepflegte Immobilien",
@@ -471,7 +528,7 @@ export const marketingPages: MarketingPage[] = [
   {
     slug: "treppenhausreinigung-hannover",
     pageType: "service",
-    title: "Treppenhausreinigung Hannover | Regelmäßige Reinigung für Wohnanlagen",
+    title: "Treppenhausreinigung Hannover | Reinigung für Wohnanlagen",
     description:
       "Treppenhausreinigung in Hannover für Mehrfamilienhäuser, Wohnanlagen und Hausverwaltungen. Gepflegte Eingangsbereiche regelmäßig anfragen.",
     h1: "Treppenhausreinigung in Hannover für gepflegte Eingangsbereiche",
@@ -1025,7 +1082,7 @@ export const marketingPages: MarketingPage[] = [
   {
     slug: "weg-betreuung",
     pageType: "target",
-    title: "WEG Betreuung Hannover | Hausmeisterservice für Eigentümergemeinschaften",
+    title: "WEG Betreuung Hannover | Hausmeisterservice für WEG",
     description:
       "Hausvia betreut WEGs in Hannover mit Hausmeisterservice, Treppenhausreinigung, Gartenpflege, Kontrollgängen und klarer Kommunikation.",
     h1: "WEG Betreuung in Hannover mit verlässlichem Hausmeisterservice",
@@ -1346,7 +1403,7 @@ export const locationPages: LocationPage[] = [
   },
   {
     slug: "hausmeisterservice-hannover-suedstadt",
-    title: "Hausmeisterservice Hannover Südstadt | Objektpflege mit Hausvia",
+    title: "Hausmeisterservice Hannover Südstadt | Hausvia",
     description:
       "Hausmeisterservice in Hannover Südstadt für WEGs, Eigentümer und Hausverwaltungen. Objektpflege, Reinigung und Kontrollen zusammenstellen.",
     h1: "Hausmeisterservice in Hannover Südstadt für gepflegte Objekte",
@@ -1789,7 +1846,7 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "hausmeisterservice-kosten-hannover",
     category: "hausmeisterservice",
-    title: "Hausmeisterservice Kosten Hannover | Preisfaktoren verständlich erklärt",
+    title: "Hausmeisterservice Kosten Hannover | Preisfaktoren",
     description:
       "Was kostet Hausmeisterservice in Hannover? Hausvia erklärt die wichtigsten Preisfaktoren für Wohnanlagen, WEGs, Hausverwaltungen und Eigentümer.",
     h1: "Hausmeisterservice Kosten in Hannover: Welche Faktoren den Preis wirklich beeinflussen",
@@ -2014,7 +2071,7 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "winterdienst-mehrfamilienhaus-hannover-planung",
     category: "saisonale-services",
-    title: "Winterdienst Mehrfamilienhaus Hannover | Planung & Aufgaben",
+    title: "Winterdienst Mehrfamilienhaus Hannover | Planung",
     description:
       "Winterdienst für Mehrfamilienhäuser in Hannover planen: Aufgaben, Vorbereitung, Abstimmung und sinnvolle Kombination mit Objektbetreuung.",
     h1: "Winterdienst für Mehrfamilienhäuser in Hannover: Aufgaben, Planung und sinnvolle Vorbereitung",
@@ -2130,7 +2187,7 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "treppenhausreinigung-muelltonnenservice-kombinieren-hannover",
     category: "reinigung-ordnung",
-    title: "Treppenhausreinigung & Mülltonnenservice Hannover | Paket sinnvoll?",
+    title: "Treppenhausreinigung & Mülltonnenservice Hannover",
     description:
       "Treppenhausreinigung und Mülltonnenservice in Hannover kombinieren: Wann sich ein gemeinsames Servicepaket für Wohnanlagen und WEGs lohnt.",
     h1: "Treppenhausreinigung und Mülltonnenservice in Hannover kombinieren: Wann sich ein Paket lohnt",
@@ -2244,7 +2301,7 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "hausmeisterservice-hausverwaltung-anbieter-auswaehlen-hannover",
     category: "hausverwaltungen-weg",
-    title: "Hausmeisterservice für Hausverwaltungen Hannover | Anbieter auswählen",
+    title: "Hausmeisterservice Hausverwaltungen Hannover | Auswahl",
     description:
       "Hausmeisterservice für Hausverwaltungen in Hannover auswählen: Kriterien, Fragen, Warnsignale und praktische Entscheidungshilfe von Hausvia.",
     h1: "Hausmeisterservice für Hausverwaltungen in Hannover: Anbieter richtig auswählen",
@@ -2362,7 +2419,7 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "gartenpflege-wohnanlage-hannover-saison-planung",
     category: "aussenanlagen",
-    title: "Gartenpflege Wohnanlage Hannover | Saison, Aufgaben & Planung",
+    title: "Gartenpflege Wohnanlage Hannover | Saisonplanung",
     description:
       "Gartenpflege für Wohnanlagen in Hannover planen: saisonale Aufgaben, Grünanlagenpflege, Außenbereiche und sinnvolle Kombination mit Hausmeisterservice.",
     h1: "Gartenpflege für Wohnanlagen in Hannover: Saison, Aufgaben und Planung",

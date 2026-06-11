@@ -6,7 +6,7 @@ import { ImageSection } from "@/components/ImageSection";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ASSETS } from "@/lib/site";
-import { breadcrumbSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
   title: "Über Hausvia | Hausmeisterservice in Hannover",
@@ -14,6 +14,8 @@ export const metadata: Metadata = metadataForPage({
     "Mehr über Hausvia: lokaler Hausmeisterservice, Objektbetreuung und Gebäudeservice für Hannover und Umgebung mit klarer Kommunikation.",
   path: "/ueber-uns",
   image: ASSETS.garden,
+  imageAlt: "Hausvia Team bei der Gartenpflege in Hannover",
+  keywords: ["Über Hausvia", "Hausvia Hausmeisterservice", "Objektbetreuung Hannover Team"],
 });
 
 export default function UeberUnsPage() {
@@ -86,6 +88,14 @@ export default function UeberUnsPage() {
       />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Über Hausvia",
+            description:
+              "Mehr über Hausvia, Arbeitsweise und lokale Objektbetreuung in Hannover und Umgebung.",
+            path: "/ueber-uns",
+            image: ASSETS.garden,
+            type: "AboutPage",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Über uns", href: "/ueber-uns" },

@@ -7,7 +7,7 @@ import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ServiceFunnel } from "@/components/ServiceFunnel";
 import { TrustBar } from "@/components/TrustBar";
 import { ASSETS, trustItems, type FaqItem } from "@/lib/site";
-import { breadcrumbSchema, faqSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, faqSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
 const faqs: FaqItem[] = [
   {
@@ -38,6 +38,8 @@ export const metadata: Metadata = metadataForPage({
     "Hausmeisterservice-Kosten in Hannover online einschätzen. Objektart, Fläche und Leistungen angeben und unverbindliche Einschätzung erhalten.",
   path: "/angebot-anfragen",
   image: ASSETS.hero,
+  imageAlt: "Hausvia Hausmeisterservice in Hannover anfragen",
+  keywords: ["Hausmeisterservice Kosten Hannover", "Hausmeisterservice Angebot Hannover", "Objektbetreuung Kosten"],
 });
 
 export default function AngebotAnfragenPage() {
@@ -94,6 +96,13 @@ export default function AngebotAnfragenPage() {
 
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Hausmeisterservice-Kosten in 60 Sekunden einschätzen",
+            description:
+              "Kostencheck für Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung.",
+            path: "/angebot-anfragen",
+            image: ASSETS.hero,
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Angebot anfragen", href: "/angebot-anfragen" },

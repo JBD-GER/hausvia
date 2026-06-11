@@ -8,7 +8,7 @@ import { Hero } from "@/components/Hero";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ASSETS, blogCategories, blogPosts } from "@/lib/site";
-import { breadcrumbSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, graph, itemListSchema, metadataForPage, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
   title: "Ratgeber Hausmeisterservice Hannover | Hausvia Wissen",
@@ -16,6 +16,8 @@ export const metadata: Metadata = metadataForPage({
     "Hausvia Ratgeber für Hausmeisterservice, Objektbetreuung, WEGs und Immobilienpflege in Hannover. Praxisnahe SEO-Beiträge für Eigentümer und Hausverwaltungen.",
   path: "/ratgeber",
   image: ASSETS.blogManagement,
+  imageAlt: "Hausvia Ratgeber zur Objektbetreuung in Hannover",
+  keywords: ["Ratgeber Hausmeisterservice Hannover", "Objektbetreuung Ratgeber", "WEG Hausmeisterservice"],
 });
 
 export default function RatgeberPage() {
@@ -87,10 +89,26 @@ export default function RatgeberPage() {
       />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Ratgeber für Hausmeisterservice und Objektbetreuung in Hannover",
+            description:
+              "Praxiswissen für Hausverwaltungen, WEGs, Eigentümer und Gewerbekunden rund um Hausmeisterservice und Objektbetreuung.",
+            path: "/ratgeber",
+            image: ASSETS.blogManagement,
+            type: "CollectionPage",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Ratgeber", href: "/ratgeber" },
           ]),
+          itemListSchema({
+            name: "Hausvia Ratgeberbeiträge",
+            path: "/ratgeber",
+            items: blogPosts.map((post) => ({
+              name: post.h1,
+              href: `/ratgeber/${post.slug}`,
+            })),
+          }),
         ])}
       />
     </main>

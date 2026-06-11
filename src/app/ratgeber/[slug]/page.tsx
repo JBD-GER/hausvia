@@ -23,6 +23,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: post.description,
     path: `/ratgeber/${post.slug}`,
     image: post.image,
+    imageAlt: post.imageAlt,
+    keywords: [post.h1, post.title, "Hausvia Ratgeber"],
   });
 }
 

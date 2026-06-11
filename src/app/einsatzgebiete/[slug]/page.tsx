@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { LocationPageView } from "@/components/LocationPageView";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { findLocationPage, locationPages } from "@/lib/site";
-import { breadcrumbSchema, faqSchema, graph, metadataForPage, serviceSchema } from "@/lib/seo";
+import { breadcrumbSchema, faqSchema, graph, metadataForPage, serviceSchema, webPageSchema } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -24,6 +24,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: page.description,
     path: `/einsatzgebiete/${page.slug}`,
     image: page.image,
+    imageAlt: page.imageAlt,
+    keywords: [page.h1, "Hausmeisterservice Hannover Umgebung", "Objektbetreuung Hannover Umgebung"],
   });
 }
 
@@ -40,6 +42,12 @@ export default async function LocationPage({ params }: PageProps) {
       <LocationPageView page={page} />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: page.h1,
+            description: page.description,
+            path: `/einsatzgebiete/${page.slug}`,
+            image: page.image,
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Einsatzgebiete", href: "/einsatzgebiete" },

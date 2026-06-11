@@ -12,7 +12,7 @@ import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { TrustBar } from "@/components/TrustBar";
 import { trustItems } from "@/lib/site";
 import { findServiceLandingPage, serviceLandingPages } from "@/lib/serviceLandingPages";
-import { breadcrumbSchema, faqSchema, graph, metadataForPage, serviceSchema } from "@/lib/seo";
+import { breadcrumbSchema, faqSchema, graph, metadataForPage, serviceSchema, webPageSchema } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -33,6 +33,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: page.description,
     path: `/leistungen/${page.slug}`,
     image: page.image,
+    imageAlt: page.imageAlt,
+    keywords: [page.eyebrow, `${page.eyebrow} Hannover`, "Hausmeisterservice Hannover Leistungen"],
   });
 }
 
@@ -80,14 +82,14 @@ export default async function IndividualServicePage({ params }: PageProps) {
         image={page.image}
         imageAlt={page.imageAlt}
         primaryHref="/angebot-anfragen"
-        primaryLabel="PDF-Einschätzung anfordern"
+        primaryLabel="Kosteneinschätzung anfordern"
         secondaryHref="/kontakt"
         secondaryLabel="Klassisch anfragen"
         trustText="Einzelleistung oder im Rundum-Sorglos-Paket kombinierbar"
         bullets={[
           "Hannover und Umgebung",
           "Für WEGs, Verwaltungen und Gewerbe",
-          "Unverbindliche Einschätzung per PDF",
+          "Unverbindliche Einschätzung per E-Mail",
           "Kombinierbar mit laufender Objektbetreuung",
         ]}
       />
@@ -145,11 +147,17 @@ export default async function IndividualServicePage({ params }: PageProps) {
       <InternalLinks links={page.relatedLinks} title="Passende Seiten und nächste Schritte" />
       <CTASection
         title={`${page.eyebrow} in Hannover anfragen`}
-        text="Stellen Sie Objektart, Flächen und gewünschte Leistungen zusammen. Die unverbindliche Einschätzung wird als PDF per E-Mail vorbereitet."
+        text="Stellen Sie Objektart, Flächen und gewünschte Leistungen zusammen. Die unverbindliche Einschätzung wird per E-Mail vorbereitet."
         label="Kostencheck starten"
       />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: page.h1,
+            description: page.description,
+            path: `/leistungen/${page.slug}`,
+            image: page.image,
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Leistungen", href: "/hausmeisterservice-hannover" },

@@ -7,7 +7,7 @@ import { LocationGrid } from "@/components/LocationGrid";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ASSETS, overviewLocations, type FaqItem } from "@/lib/site";
-import { breadcrumbSchema, faqSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, faqSchema, graph, itemListSchema, metadataForPage, webPageSchema } from "@/lib/seo";
 
 const faqs: FaqItem[] = [
   {
@@ -33,6 +33,8 @@ export const metadata: Metadata = metadataForPage({
     "Hausvia betreut Immobilien in Hannover, Stadtteilen und Umgebung. Übersicht der Einsatzgebiete für Hausmeisterservice, Objektbetreuung und Gebäudeservice.",
   path: "/einsatzgebiete",
   image: ASSETS.hero,
+  imageAlt: "Hausvia Hausmeisterservice in Hannover und Umgebung",
+  keywords: ["Hausmeisterservice Hannover Umgebung", "Hausmeisterservice in der Nähe", "Objektbetreuung Region Hannover"],
 });
 
 export default function EinsatzgebietePage() {
@@ -107,10 +109,26 @@ export default function EinsatzgebietePage() {
       />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Hausmeisterservice in Hannover und Umgebung",
+            description:
+              "Übersicht der Einsatzgebiete für Hausmeisterservice, Objektbetreuung und Gebäudeservice von Hausvia.",
+            path: "/einsatzgebiete",
+            image: ASSETS.hero,
+            type: "CollectionPage",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Einsatzgebiete", href: "/einsatzgebiete" },
           ]),
+          itemListSchema({
+            name: "Hausvia Einsatzgebiete",
+            path: "/einsatzgebiete",
+            items: overviewLocations.map((location) => ({
+              name: location.label,
+              href: location.href,
+            })),
+          }),
           faqSchema(faqs),
         ])}
       />

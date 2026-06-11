@@ -20,13 +20,15 @@ import {
   targetCards,
   trustItems,
 } from "@/lib/site";
-import { faqSchema, graph, metadataForPage } from "@/lib/seo";
+import { faqSchema, graph, itemListSchema, metadataForPage, serviceSchema, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
   title: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",
   description:
     "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung. Jetzt Bedarf online zusammenstellen und kostenlos anfragen.",
   path: "/",
+  imageAlt: "Hausvia Hausmeisterservice und Objektbetreuung in Hannover",
+  keywords: ["Hausmeisterservice Hannover", "Hausmeister Hannover", "Objektbetreuung Hannover"],
 });
 
 export default function Home() {
@@ -163,7 +165,37 @@ export default function Home() {
         text="Nutzen Sie den Service-Konfigurator und stellen Sie in wenigen Schritten zusammen, welche Betreuung Ihr Objekt braucht."
         label="Kostenlose Anfrage starten"
       />
-      <SEOJsonLd data={graph([faqSchema(homeFaqs)])} />
+      <SEOJsonLd
+        data={graph([
+          webPageSchema({
+            name: "Hausmeisterservice in Hannover - Hausvia",
+            description:
+              "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung.",
+            path: "/",
+            image: ASSETS.hero,
+          }),
+          serviceSchema({
+            name: "Hausmeisterservice Hannover",
+            description:
+              "Zuverlässiger Hausmeisterservice, Objektbetreuung und laufende Immobilienpflege in Hannover und Umgebung.",
+            path: "/",
+            serviceType: "Hausmeisterservice",
+          }),
+          itemListSchema({
+            name: "Hausvia Leistungsbereiche",
+            path: "/",
+            items: [
+              { name: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
+              { name: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
+              { name: "Gebäudeservice Hannover", href: "/gebaeudeservice-hannover" },
+              { name: "Treppenhausreinigung Hannover", href: "/treppenhausreinigung-hannover" },
+              { name: "Gartenpflege Hannover", href: "/gartenpflege-hannover" },
+              { name: "Winterdienst Hannover", href: "/winterdienst-hannover" },
+            ],
+          }),
+          faqSchema(homeFaqs),
+        ])}
+      />
     </main>
   );
 }

@@ -7,7 +7,7 @@ import { FAQAccordion } from "@/components/FAQAccordion";
 import { InternalLinks } from "@/components/InternalLinks";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { blogCategories, type BlogPost } from "@/lib/site";
-import { articleSchema, breadcrumbSchema, faqSchema, graph } from "@/lib/seo";
+import { articleSchema, breadcrumbSchema, faqSchema, graph, webPageSchema } from "@/lib/seo";
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("de-DE", {
@@ -147,6 +147,13 @@ export function BlogPostView({ post }: { post: BlogPost }) {
       />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: post.h1,
+            description: post.description,
+            path: `/ratgeber/${post.slug}`,
+            image: post.image,
+            type: "WebPage",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Ratgeber", href: "/ratgeber" },

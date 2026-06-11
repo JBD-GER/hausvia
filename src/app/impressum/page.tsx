@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { SITE } from "@/lib/site";
-import { breadcrumbSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
   title: "Impressum | Hausvia",
@@ -69,6 +69,11 @@ export default function ImpressumPage() {
       </section>
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Impressum",
+            description: "Impressum von Hausvia mit Anbieterkennzeichnung und Kontaktdaten.",
+            path: "/impressum",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Impressum", href: "/impressum" },

@@ -6,7 +6,7 @@ import { CTASection } from "@/components/CTASection";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { blogCategories, findBlogCategory, postsForCategory } from "@/lib/site";
-import { breadcrumbSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, graph, itemListSchema, metadataForPage, webPageSchema } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -26,6 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${category.label} Ratgeber Hannover | Hausvia`,
     description: category.description,
     path: `/ratgeber/kategorie/${category.slug}`,
+    keywords: [`${category.label} Ratgeber`, `${category.label} Hannover`, "Hausvia Ratgeber"],
   });
 }
 
@@ -76,11 +77,25 @@ export default async function RatgeberKategoriePage({ params }: PageProps) {
       />
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: `${category.label} Ratgeber für Hannover`,
+            description: category.description,
+            path: `/ratgeber/kategorie/${category.slug}`,
+            type: "CollectionPage",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Ratgeber", href: "/ratgeber" },
             { name: category.label, href: `/ratgeber/kategorie/${category.slug}` },
           ]),
+          itemListSchema({
+            name: `${category.label} Ratgeberbeiträge`,
+            path: `/ratgeber/kategorie/${category.slug}`,
+            items: posts.map((post) => ({
+              name: post.h1,
+              href: `/ratgeber/${post.slug}`,
+            })),
+          }),
         ])}
       />
     </main>

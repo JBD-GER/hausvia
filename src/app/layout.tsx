@@ -1,15 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { CookieBanner } from "@/components/CookieBanner";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { MobileStickyCTA } from "@/components/MobileStickyCTA";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ASSETS, SITE } from "@/lib/site";
-import { absoluteUrl, graph, localBusinessSchema } from "@/lib/seo";
+import { absoluteUrl, graph, localBusinessSchema, websiteSchema } from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
+  applicationName: SITE.name,
+  authors: [{ name: SITE.name, url: SITE.url }],
+  creator: SITE.name,
+  publisher: SITE.name,
   title: {
     default: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",
     template: "%s",
@@ -18,6 +22,9 @@ export const metadata: Metadata = {
     "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung. Jetzt Bedarf online zusammenstellen und kostenlos anfragen.",
   alternates: {
     canonical: SITE.url,
+    languages: {
+      "de-DE": SITE.url,
+    },
   },
   robots: {
     index: true,
@@ -61,6 +68,11 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#0b2f68",
+  colorScheme: "light",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -74,7 +86,7 @@ export default function RootLayout({
         <Footer />
         <MobileStickyCTA />
         <CookieBanner />
-        <SEOJsonLd data={graph([localBusinessSchema()])} />
+        <SEOJsonLd data={graph([websiteSchema(), localBusinessSchema()])} />
       </body>
     </html>
   );

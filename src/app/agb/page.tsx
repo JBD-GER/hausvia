@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { SITE } from "@/lib/site";
-import { breadcrumbSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
   title: "AGB | Hausvia",
@@ -66,6 +66,12 @@ export default function AgbPage() {
       </section>
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Allgemeine Geschäftsbedingungen",
+            description:
+              "Allgemeine Geschäftsbedingungen von Hausvia als rechtlich zu prüfender Platzhalter.",
+            path: "/agb",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "AGB", href: "/agb" },

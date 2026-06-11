@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { SITE } from "@/lib/site";
-import { breadcrumbSchema, graph, metadataForPage } from "@/lib/seo";
+import { breadcrumbSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
   title: "Datenschutz | Hausvia",
@@ -44,10 +44,10 @@ export default function DatenschutzPage() {
               Objektart, gewünschte Leistungen und Ihre Nachricht gehören.
             </p>
             <p>
-              Bei Nutzung des Kostenchecks können Ihre Angaben serverseitig zu einer unverbindlichen PDF-Einschätzung
-              verarbeitet und per E-Mail versendet werden. Für den E-Mail-Versand ist eine technische Einbindung von
-              Resend vorgesehen. Anbieter, Auftragsverarbeitung, Speicherfristen und Drittlandbezug müssen vor
-              Veröffentlichung rechtlich geprüft und vollständig ergänzt werden.
+              Bei Nutzung des Kostenchecks können Ihre Angaben serverseitig zu einer unverbindlichen Einschätzung als
+              Dokument verarbeitet und per E-Mail versendet werden. Für den E-Mail-Versand ist eine technische
+              Einbindung von Resend vorgesehen. Anbieter, Auftragsverarbeitung, Speicherfristen und Drittlandbezug
+              müssen vor Veröffentlichung rechtlich geprüft und vollständig ergänzt werden.
             </p>
 
             <h2>3. Server- und Zugriffsdaten</h2>
@@ -83,6 +83,12 @@ export default function DatenschutzPage() {
       </section>
       <SEOJsonLd
         data={graph([
+          webPageSchema({
+            name: "Datenschutzerklärung",
+            description:
+              "Datenschutzhinweise von Hausvia als rechtlich zu prüfender Platzhalter.",
+            path: "/datenschutz",
+          }),
           breadcrumbSchema([
             { name: "Startseite", href: "/" },
             { name: "Datenschutz", href: "/datenschutz" },
