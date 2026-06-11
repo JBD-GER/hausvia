@@ -2,151 +2,151 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
-
-const storageKey = "hausvia-cookie-consent-v1";
-
-type Consent = {
-  necessary: true;
-  analytics: boolean;
-  marketing: boolean;
-  savedAt: string;
-};
-
-function saveConsent(consent: Omit<Consent, "necessary" | "savedAt">) {
-  const value: Consent = {
-    necessary: true,
-    analytics: consent.analytics,
-    marketing: consent.marketing,
-    savedAt: new Date().toISOString(),
-  };
-
-  window.localStorage.setItem(storageKey, JSON.stringify(value));
-  window.dispatchEvent(new Event("hausvia-cookie-consent-change"));
-}
-
-function hasStoredConsent() {
-  if (typeof window === "undefined") return true;
-  return Boolean(window.localStorage.getItem(storageKey));
-}
-
-function subscribeConsentChange(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener("hausvia-cookie-consent-change", callback);
-
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener("hausvia-cookie-consent-change", callback);
-  };
-}
+import { getCookieConsentRaw, saveCookieConsent, subscribeCookieConsentChange } from "@/lib/cookieConsent";
 
 export function CookieBanner() {
   const [showDetails, setShowDetails] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
-  const hasConsent = useSyncExternalStore(subscribeConsentChange, hasStoredConsent, () => true);
+  const rawConsent = useSyncExternalStore(subscribeCookieConsentChange, getCookieConsentRaw, () => "server");
+  const hasConsent = Boolean(rawConsent);
 
   function acceptSelection() {
-    saveConsent({ analytics, marketing });
+    saveCookieConsent({ analytics, marketing });
   }
 
   function acceptNecessaryOnly() {
-    saveConsent({ analytics: false, marketing: false });
+    saveCookieConsent({ analytics: false, marketing: false });
   }
 
   function acceptAll() {
-    saveConsent({ analytics: true, marketing: true });
+    saveCookieConsent({ analytics: true, marketing: true });
   }
 
   if (hasConsent) return null;
 
   return (
-    <section
-      aria-label="Cookie-Einstellungen"
-      className="fixed inset-x-3 bottom-20 z-50 mx-auto max-h-[calc(100svh-7rem)] max-w-5xl overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-950/20 md:bottom-4 md:p-5"
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cookie-title"
+      className="fixed inset-0 z-[100] flex items-end justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm sm:items-center sm:p-6"
     >
-      <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-brand sm:text-sm">Datenschutz-Einstellungen</p>
-          <h2 className="mt-1 text-lg font-extrabold leading-tight text-slate-950 sm:text-xl">
-            Cookies und Dienste verwalten
+      <section
+        aria-label="Cookie-Einstellungen"
+        className="max-h-[calc(100svh-1.5rem)] w-full max-w-4xl overflow-y-auto rounded-xl border border-white/20 bg-white shadow-2xl shadow-slate-950/30"
+      >
+        <div className="border-b border-slate-200 bg-brand px-5 py-4 text-white sm:px-7">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-100">Datenschutz & Conversion-Messung</p>
+          <h2 id="cookie-title" className="mt-2 text-2xl font-extrabold leading-tight sm:text-3xl">
+            Cookies und Tracking auswählen
           </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-650 sm:max-w-3xl">
-            Hausvia nutzt aktuell keine Analyse- oder Marketingdienste. Ihre Auswahl wird nur lokal im Browser
-            gespeichert.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowDetails((current) => !current)}
-            className="mt-2 text-sm font-bold text-brand underline"
-          >
-            {showDetails ? "Details ausblenden" : "Details anzeigen"}
-          </button>
+        </div>
 
-          {showDetails ? (
-            <div className="mt-4 grid gap-3 text-sm text-slate-750 sm:grid-cols-3">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="font-extrabold text-slate-950">Notwendig</p>
-                <p className="mt-1 leading-5">Erforderlich für Grundfunktionen und die Speicherung dieser Auswahl.</p>
-              </div>
-              <label className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <span className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={analytics}
-                    onChange={(event) => setAnalytics(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-                  />
-                  <span>
-                    <span className="block font-extrabold text-slate-950">Analyse</span>
-                    <span className="mt-1 block leading-5">Aktuell nicht aktiv.</span>
-                  </span>
-                </span>
-              </label>
-              <label className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <span className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={marketing}
-                    onChange={(event) => setMarketing(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-                  />
-                  <span>
-                    <span className="block font-extrabold text-slate-950">Marketing</span>
-                    <span className="mt-1 block leading-5">Aktuell nicht aktiv.</span>
-                  </span>
-                </span>
-              </label>
+        <div className="grid gap-5 p-5 sm:p-7 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+          <div>
+            <p className="text-base font-semibold leading-7 text-slate-750">
+              Hausvia nutzt notwendige Speicherungen für den Betrieb der Website. Mit Ihrer Zustimmung nutzen wir
+              außerdem Analyse- und Marketingdienste, damit Anfragen und Conversion-Quellen sauber gemessen werden
+              können.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {[
+                "Auswahl erforderlich, bevor es weitergeht",
+                "Google Ads Conversion-Messung nur mit Zustimmung",
+                "Auswahl jederzeit im Browser löschbar",
+              ].map((item) => (
+                <div key={item} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-bold leading-5 text-slate-800">
+                  {item}
+                </div>
+              ))}
             </div>
-          ) : null}
-        </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
-          <button
-            type="button"
-            onClick={acceptAll}
-            className="col-span-2 min-h-11 rounded-md bg-brand px-4 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark sm:col-span-1"
-          >
-            Alle akzeptieren
-          </button>
-          <button
-            type="button"
-            onClick={acceptSelection}
-            className="min-h-11 rounded-md border border-brand bg-white px-4 py-2.5 text-sm font-bold text-brand transition hover:bg-brand-soft"
-          >
-            Auswahl speichern
-          </button>
-          <button
-            type="button"
-            onClick={acceptNecessaryOnly}
-            className="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:border-brand hover:text-brand"
-          >
-            Nur notwendige
-          </button>
-          <Link href="/datenschutz" className="text-center text-xs font-bold text-slate-500 underline lg:text-right">
-            Datenschutz
-          </Link>
+            <button
+              type="button"
+              onClick={() => setShowDetails((current) => !current)}
+              className="mt-5 text-sm font-bold text-brand underline"
+            >
+              {showDetails ? "Details ausblenden" : "Details und Auswahl anzeigen"}
+            </button>
+
+            {showDetails ? (
+              <div className="mt-4 grid gap-3 text-sm text-slate-750">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="font-extrabold text-slate-950">Notwendig</p>
+                  <p className="mt-1 leading-6">Erforderlich für Grundfunktionen und die Speicherung dieser Auswahl.</p>
+                </div>
+                <label className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <span className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={analytics}
+                      onChange={(event) => setAnalytics(event.target.checked)}
+                      className="mt-1 h-5 w-5 rounded border-slate-300 text-brand focus:ring-brand"
+                    />
+                    <span>
+                      <span className="block font-extrabold text-slate-950">Analyse</span>
+                      <span className="mt-1 block leading-6">Hilft dabei, die Nutzung der Website besser zu verstehen.</span>
+                    </span>
+                  </span>
+                </label>
+                <label className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <span className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={marketing}
+                      onChange={(event) => setMarketing(event.target.checked)}
+                      className="mt-1 h-5 w-5 rounded border-slate-300 text-brand focus:ring-brand"
+                    />
+                    <span>
+                      <span className="block font-extrabold text-slate-950">Marketing & Google Ads</span>
+                      <span className="mt-1 block leading-6">
+                        Ermöglicht Google Ads Tag und Conversion-Messung für abgesendete Anfragen.
+                      </span>
+                    </span>
+                  </span>
+                </label>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-extrabold uppercase tracking-wide text-brand">Empfohlen</p>
+            <p className="mt-2 text-xl font-extrabold leading-tight text-slate-950">
+              Alle akzeptieren und Website nutzen
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-650">
+              Damit können wir messen, welche Anfragen entstehen und die Kampagnen sauber optimieren.
+            </p>
+            <div className="mt-5 grid gap-2">
+              <button
+                type="button"
+                onClick={acceptAll}
+                className="min-h-12 rounded-md bg-brand px-5 py-3 text-sm font-extrabold text-white transition hover:bg-brand-dark"
+              >
+                Alle akzeptieren und fortfahren
+              </button>
+              <button
+                type="button"
+                onClick={acceptSelection}
+                className="min-h-11 rounded-md border border-brand bg-white px-5 py-2.5 text-sm font-bold text-brand transition hover:bg-brand-soft"
+              >
+                Auswahl speichern
+              </button>
+              <button
+                type="button"
+                onClick={acceptNecessaryOnly}
+                className="min-h-11 rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:border-brand hover:text-brand"
+              >
+                Nur notwendige Cookies
+              </button>
+            </div>
+            <Link href="/datenschutz" className="mt-4 block text-center text-xs font-bold text-slate-500 underline">
+              Datenschutzhinweise öffnen
+            </Link>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }

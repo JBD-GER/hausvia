@@ -63,9 +63,10 @@ export default function DatenschutzPage() {
               Browserspeicher und dient nur dazu, die Auswahl beim nächsten Besuch zu berücksichtigen.
             </p>
             <p>
-              Aktuell sind keine Analyse- oder Marketingdienste eingebaut. Sollten später Dienste wie Analytics,
-              Tag-Manager, Karten, Captcha oder E-Mail-Marketing integriert werden, muss diese Erklärung angepasst und
-              die Einwilligungslogik entsprechend erweitert werden.
+              Bei Zustimmung zu Marketingdiensten kann Google Ads Conversion-Messung eingebunden werden. Dabei wird das
+              Google Tag erst nach entsprechender Auswahl geladen, um abgesendete Anfragen und Kampagnenwirkung besser
+              einordnen zu können. Die konkrete Anbieterbeschreibung, Rechtsgrundlage, Speicherdauer und mögliche
+              Drittlandübermittlung müssen vor Veröffentlichung rechtlich geprüft und vollständig ergänzt werden.
             </p>
 
             <h2>5. Rechtsgrundlagen und Rechte betroffener Personen</h2>

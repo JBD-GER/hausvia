@@ -41,3 +41,40 @@ img {
   max-width: 100%;
   height: auto;
 }
+
+@keyframes hausvia-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes hausvia-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-hausvia-float {
+  animation: hausvia-float 4.8s ease-in-out infinite;
+}
+
+.animate-hausvia-float-delayed {
+  animation: hausvia-float 5.2s ease-in-out 0.9s infinite;
+}
+
+.animate-hausvia-pop {
+  animation: hausvia-pop 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

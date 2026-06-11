@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { CookieBanner } from "@/components/CookieBanner";
 import { Footer } from "@/components/Footer";
+import { GoogleAdsTag } from "@/components/GoogleAdsTag";
 import { Header } from "@/components/Header";
 import { MobileStickyCTA } from "@/components/MobileStickyCTA";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
@@ -87,6 +88,7 @@ export default function RootLayout({
         <Footer />
         <MobileStickyCTA />
         <CookieBanner />
+        <GoogleAdsTag />
         <Analytics />
         <SEOJsonLd data={graph([websiteSchema(), localBusinessSchema()])} />
       </body>

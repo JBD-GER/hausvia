@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -25,6 +26,7 @@ import {
   type ObjectTypeId,
   type ServiceId,
 } from "@/lib/pricing";
+import { markLeadConversionPending } from "@/components/LeadConversionTracker";
 
 type LeadData = {
   objectType: ObjectTypeId | "";
@@ -202,6 +204,7 @@ function NumberInput({
 }
 
 export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
+  const router = useRouter();
   const funnelRef = useRef<HTMLElement>(null);
   const stepTopRef = useRef<HTMLDivElement>(null);
   const shouldScrollToStepRef = useRef(false);
@@ -209,7 +212,6 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
   const [lead, setLead] = useState<LeadData>(initialLead);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const selectedObjectType = pricingConfig.objectTypes.find((item) => item.id === lead.objectType);
@@ -346,27 +348,14 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
         throw new Error(result?.message || "Lead request failed");
       }
 
-      setSuccess(true);
+      markLeadConversionPending("cost-funnel");
+      router.push("/danke");
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       setError(message || "Der E-Mail-Versand konnte gerade nicht abgeschlossen werden. Bitte versuchen Sie es erneut.");
     } finally {
       setSubmitting(false);
     }
-  }
-
-  if (success) {
-    return (
-      <section className="rounded-lg border border-green-200 bg-green-50 p-6 text-green-950 shadow-sm">
-        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-green-700 text-white">
-          <Check aria-hidden="true" size={24} />
-        </div>
-        <h2 className="mt-5 text-2xl font-extrabold">Vielen Dank. Ihre Einschätzung wurde vorbereitet.</h2>
-        <p className="mt-3 text-base leading-7">
-          Die unverbindliche Einschätzung wird per E-Mail versendet. Bitte prüfen Sie bei Bedarf auch Ihren Spam-Ordner.
-        </p>
-      </section>
-    );
   }
 
   const nextLabel = step === 0 ? "Kosten jetzt einschätzen" : step === 5 ? "Angaben prüfen" : "Weiter";
