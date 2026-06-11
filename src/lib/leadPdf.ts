@@ -17,6 +17,7 @@ const muted = { r: 0.31, g: 0.36, b: 0.43 };
 const yellow = { r: 0.96, g: 0.77, b: 0.26 };
 const softYellow = { r: 1, g: 0.96, b: 0.84 };
 const softBlue = { r: 0.91, g: 0.95, b: 0.99 };
+const softSlate = { r: 0.97, g: 0.98, b: 0.99 };
 const white = { r: 1, g: 1, b: 1 };
 
 function winAnsiByte(char: string) {
@@ -86,7 +87,7 @@ function valueAsStringList(value: unknown) {
 }
 
 function formatEuro(value: number) {
-  return `${value.toLocaleString("de-DE")} €`;
+  return `${value.toLocaleString("de-DE")} EUR`;
 }
 
 function formatDate(value: string) {
@@ -109,7 +110,7 @@ function getEstimateText(lead: LeadRecord) {
   const lower = valueAsNumber((estimate as LeadRecord).lower);
   const upper = valueAsNumber((estimate as LeadRecord).upper);
   if (!lower || !upper) return "";
-  return `${formatEuro(lower)}–${formatEuro(upper)} pro Monat`;
+  return `${formatEuro(lower)} bis ${formatEuro(upper)} / Monat`;
 }
 
 function wrapText(value: string, maxChars: number) {
@@ -170,79 +171,120 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   const pages: string[][] = [];
   let commands: string[] = [];
   let y = 0;
+  let rowIndex = 0;
+  const contentWidth = pageWidth - margin * 2;
+  const valueX = margin + 190;
 
   function newPage() {
     commands = [];
     pages.push(commands);
-    commands.push(rect(0, 782, pageWidth, 60, brand));
-    commands.push(rect(0, 760, pageWidth, 22, yellow));
-    commands.push(text("Hausvia", margin, 808, 24, white, "F2"));
-    commands.push(text("HAUSMEISTERSERVICE", margin, 790, 8, white, "F2"));
-    commands.push(text("PDF-Ersteinschätzung für Objektbetreuung", margin, 767, 11, brand, "F2"));
-    commands.push(text(`Erstellt am ${formatDate(submittedAt)}`, 380, 767, 9, brand));
-    y = 730;
+    commands.push(rect(0, 768, pageWidth, 74, brand));
+    commands.push(rect(0, 744, pageWidth, 24, yellow));
+    commands.push(text("Hausvia", margin, 807, 24, white, "F2"));
+    commands.push(text("HAUSMEISTERSERVICE", margin, 787, 8, white, "F2"));
+    commands.push(text("Kosteneinschätzung für Objektbetreuung", margin, 752, 10, brand, "F2"));
+    commands.push(text(`Erstellt am ${formatDate(submittedAt)}`, 400, 752, 8, brand));
+    commands.push(line(margin, 58, pageWidth - margin, 58, softBlue));
+    commands.push(text(`${SITE.name} · ${SITE.email} · ${SITE.phone}`, margin, 38, 8, muted));
+    y = 716;
+    rowIndex = 0;
   }
 
   function ensure(space = 32) {
-    if (y - space < 58) newPage();
+    if (y - space < 78) newPage();
   }
 
-  function addSection(title: string) {
-    ensure(42);
+  function addSection(title: string, intro?: string) {
+    ensure(intro ? 70 : 50);
+    if (y < 700) y -= 8;
     commands.push(text(title, margin, y, 15, brand, "F2"));
-    y -= 9;
+    y -= 12;
     commands.push(line(margin, y, pageWidth - margin, y, yellow));
-    y -= 20;
+    y -= 18;
+    rowIndex = 0;
+
+    if (intro) {
+      addParagraph(intro, 9, muted, 84);
+      y -= 2;
+    }
   }
 
-  function addParagraph(value: string) {
-    for (const paragraphLine of wrapText(value, 92)) {
-      ensure(16);
-      commands.push(text(paragraphLine, margin, y, 10, slate));
-      y -= 15;
+  function addParagraph(value: string, size = 10, color = slate, maxChars = 92) {
+    for (const paragraphLine of wrapText(value, maxChars)) {
+      ensure(size + 10);
+      commands.push(text(paragraphLine, margin, y, size, color));
+      y -= size + 5;
     }
-    y -= 5;
+    y -= 4;
   }
 
   function addRow(label: string, value: string) {
-    const wrapped = wrapText(value || "-", 66);
-    ensure(18 + wrapped.length * 12);
-    commands.push(text(label, margin, y, 9, muted, "F2"));
-    commands.push(text(wrapped[0], 210, y, 10, slate));
-    y -= 14;
-    wrapped.slice(1).forEach((wrappedLine) => {
-      commands.push(text(wrappedLine, 210, y, 10, slate));
-      y -= 14;
+    const labelLines = wrapText(label, 25);
+    const valueLines = wrapText(value || "-", 52);
+    const lineCount = Math.max(labelLines.length, valueLines.length);
+    const rowHeight = Math.max(30, 16 + lineCount * 13);
+
+    ensure(rowHeight + 8);
+    const top = y;
+
+    const fill = rowIndex % 2 === 0 ? softSlate : white;
+    commands.push(rect(margin, top - rowHeight + 6, contentWidth, rowHeight, fill));
+
+    labelLines.forEach((labelLine, index) => {
+      commands.push(text(labelLine, margin + 14, top - 10 - index * 13, 8.5, muted, "F2"));
     });
+
+    valueLines.forEach((valueLine, index) => {
+      commands.push(text(valueLine, valueX, top - 10 - index * 13, 9.5, slate));
+    });
+
+    y -= rowHeight + 4;
+    rowIndex += 1;
+  }
+
+  function addEstimateCard(estimateText: string) {
+    const cardHeight = 92;
+    ensure(cardHeight + 18);
+    commands.push(rect(margin, y - cardHeight + 8, contentWidth, cardHeight, softYellow));
+    commands.push(rect(margin, y - cardHeight + 8, 5, cardHeight, yellow));
+    commands.push(text("Monatliche Ersteinschätzung", margin + 20, y - 16, 10, brand, "F2"));
+    commands.push(text(`ca. ${estimateText}`, margin + 20, y - 48, 22, slate, "F2"));
+    commands.push(text("Unverbindlicher Richtwert. Detailprüfung empfohlen.", margin + 20, y - 72, 9.5, muted));
+    y -= cardHeight + 24;
+  }
+
+  function addInfoCard(title: string, body: string) {
+    const bodyLines = wrapText(body, 78);
+    const cardHeight = Math.max(78, 42 + bodyLines.length * 13);
+    ensure(cardHeight + 14);
+    commands.push(rect(margin, y - cardHeight + 8, contentWidth, cardHeight, softBlue));
+    commands.push(text(title, margin + 16, y - 16, 12, brand, "F2"));
+    bodyLines.forEach((bodyLine, index) => {
+      commands.push(text(bodyLine, margin + 16, y - 38 - index * 13, 9.5, slate));
+    });
+    y -= cardHeight + 14;
   }
 
   newPage();
 
-  commands.push(text("Unverbindliche Einschätzung", margin, y, 26, slate, "F2"));
-  y -= 22;
+  commands.push(text("Unverbindliche Einschätzung", margin, y, 25, slate, "F2"));
+  y -= 26;
   commands.push(
     text(
       "Hausmeisterservice, Objektbetreuung und Gebäudeservices in Hannover und Umgebung",
       margin,
       y,
-      11,
+      10.5,
       muted,
     ),
   );
-  y -= 32;
+  y -= 30;
 
   const estimateText = getEstimateText(lead);
   if (estimateText) {
-    commands.push(rect(margin, y - 74, pageWidth - margin * 2, 86, softYellow));
-    commands.push(text("Monatliche Ersteinschätzung", margin + 18, y - 10, 10, brand, "F2"));
-    commands.push(text(`ca. ${estimateText}`, margin + 18, y - 40, 24, slate, "F2"));
-    commands.push(text("Kein verbindliches Angebot. Detailprüfung empfohlen.", margin + 18, y - 62, 10, muted));
-    y -= 108;
+    addEstimateCard(estimateText);
   } else {
-    commands.push(rect(margin, y - 56, pageWidth - margin * 2, 68, softBlue));
-    commands.push(text("Klassische Anfrage", margin + 18, y - 12, 12, brand, "F2"));
-    commands.push(text("Diese Anfrage enthält noch keine automatisierte Kostenspanne.", margin + 18, y - 36, 11, slate));
-    y -= 90;
+    addInfoCard("Klassische Anfrage", "Diese Anfrage enthält noch keine automatisierte Kostenspanne.");
   }
 
   addSection("Kontaktdaten");
@@ -252,7 +294,7 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   addRow("Telefon", valueAsString(lead.phone));
   addRow("Adresse / Ort des Objekts", valueAsString(lead.objectAddress));
 
-  addSection("Objektdaten");
+  addSection("Objektdaten", "Grundlage der Einschätzung sind Objektart, Standort, Flächen, Häufigkeit und Komplexität.");
   addRow("Anfragequelle", source === "cost-funnel" ? "Kostencheck / Service-Funnel" : "Kontaktformular");
   addRow("Objektart", valueAsString(lead.objectTypeLabel ?? lead.objectType));
   addRow("Standort", valueAsString(lead.location));
@@ -284,11 +326,10 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     "Die Anfrage wurde mit Zustimmung zu Datenschutz und AGB übermittelt. Rechtliche Pflichttexte sind vor Veröffentlichung final zu prüfen.",
   );
 
-  ensure(70);
-  commands.push(rect(margin, y - 48, pageWidth - margin * 2, 58, softBlue));
-  commands.push(text(SITE.name, margin + 16, y - 8, 13, brand, "F2"));
-  commands.push(text(`${SITE.legalName} · ${SITE.address}`, margin + 16, y - 26, 9, slate));
-  commands.push(text(`Telefon: ${SITE.phone} · E-Mail: ${SITE.email}`, margin + 16, y - 42, 9, slate));
+  addInfoCard(
+    SITE.name,
+    `${SITE.legalName} · ${SITE.address} · Telefon: ${SITE.phone} · E-Mail: ${SITE.email}`,
+  );
 
   return createPdf(pages);
 }

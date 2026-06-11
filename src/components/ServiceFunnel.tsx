@@ -203,6 +203,7 @@ function NumberInput({
 
 export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
   const funnelRef = useRef<HTMLElement>(null);
+  const stepTopRef = useRef<HTMLDivElement>(null);
   const shouldScrollToStepRef = useRef(false);
   const [step, setStep] = useState(0);
   const [lead, setLead] = useState<LeadData>(initialLead);
@@ -223,9 +224,16 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
     if (!shouldScrollToStepRef.current) return;
 
     shouldScrollToStepRef.current = false;
-    window.requestAnimationFrame(() => {
-      funnelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    const timeoutId = window.setTimeout(() => {
+      const target = stepTopRef.current ?? funnelRef.current;
+      if (!target) return;
+
+      const offset = window.matchMedia("(max-width: 767px)").matches ? 78 : 96;
+      const top = target.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    }, 40);
+
+    return () => window.clearTimeout(timeoutId);
   }, [step]);
 
   function update<K extends keyof LeadData>(key: K, value: LeadData[K]) {
@@ -355,8 +363,7 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
         </div>
         <h2 className="mt-5 text-2xl font-extrabold">Vielen Dank. Ihre Einschätzung wurde vorbereitet.</h2>
         <p className="mt-3 text-base leading-7">
-          Die unverbindliche Einschätzung wird per E-Mail versendet. Hausvia erhält zusätzlich eine interne Kopie mit
-          allen Angaben zur Anfrage.
+          Die unverbindliche Einschätzung wird per E-Mail versendet. Bitte prüfen Sie bei Bedarf auch Ihren Spam-Ordner.
         </p>
       </section>
     );
@@ -398,7 +405,8 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
         <p className="mt-2 text-xs font-semibold text-slate-500">{steps[step]}</p>
       </div>
 
-      <form onSubmit={submit} className="mt-7">
+      <div ref={stepTopRef} className="mt-7 scroll-mt-24" />
+      <form onSubmit={submit}>
         {step === 0 ? (
           <div>
             <h3 className="text-xl font-extrabold text-slate-950">Welche Objektart soll kalkuliert werden?</h3>
