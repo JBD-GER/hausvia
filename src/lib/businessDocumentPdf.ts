@@ -162,15 +162,19 @@ export function createBusinessDocumentPdf(input: BusinessDocumentInput) {
   function newPage() {
     commands = [];
     pages.push(commands);
-    commands.push(rect(0, 768, pageWidth, 74, brand));
-    commands.push(rect(0, 744, pageWidth, 24, yellow));
-    commands.push(text("Hausvia", margin, 807, 24, white, "F2"));
+    commands.push(rect(0, 762, pageWidth, 80, brand));
+    commands.push(rect(0, 736, pageWidth, 26, yellow));
+    commands.push(text("Hausvia", margin, 807, 25, white, "F2"));
     commands.push(text("HAUSMEISTERSERVICE", margin, 787, 8, white, "F2"));
-    commands.push(text(documentLabel, margin, 752, 11, brand, "F2"));
-    commands.push(text(input.number, 410, 752, 9, brand, "F2"));
-    commands.push(line(margin, 58, pageWidth - margin, 58, softBlue));
-    commands.push(text(`${SITE.name} · ${SITE.email} · ${SITE.phone}`, margin, 38, 8, muted));
-    y = 710;
+    commands.push(text(documentLabel, margin, 745, 12, brand, "F2"));
+    commands.push(text(input.number, 348, 745, 9.5, brand, "F2"));
+    commands.push(text(`Erstellt am ${dateText(input.createdAt)}`, 348, 730, 8, muted));
+    commands.push(line(margin, 68, pageWidth - margin, 68, softBlue));
+    commands.push(text(SITE.legalName, margin, 52, 7.5, slate, "F2"));
+    commands.push(text(SITE.address, margin, 41, 7, muted));
+    commands.push(text(`E-Mail: ${SITE.email} · Telefon: ${SITE.phone}`, 238, 52, 7, muted));
+    commands.push(text(`${SITE.register} · USt-IdNr.: ${SITE.vatId}`, 238, 41, 7, muted));
+    y = 700;
   }
 
   function ensure(space = 40) {
@@ -202,20 +206,22 @@ export function createBusinessDocumentPdf(input: BusinessDocumentInput) {
   }
 
   function addMetaBox() {
-    const boxHeight = 96;
+    const boxHeight = 114;
     ensure(boxHeight);
     commands.push(rect(margin, y - boxHeight + 8, contentWidth, boxHeight, softSlate));
-    addInfoPair("Kunde", clean(input.customer.companyName || input.customer.contactName), margin + 16, y - 16);
-    addInfoPair("Kontakt", clean(input.customer.email), margin + 190, y - 16);
-    addInfoPair("Datum", dateText(input.createdAt), margin + 370, y - 16);
+    commands.push(text("Empfänger und Objekt", margin + 16, y - 16, 10, brand, "F2"));
+    commands.push(text("Dokument", margin + 370, y - 16, 10, brand, "F2"));
+    addInfoPair("Kunde", clean(input.customer.companyName || input.customer.contactName), margin + 16, y - 38);
+    addInfoPair("Kontakt", clean(input.customer.email), margin + 190, y - 38);
+    addInfoPair("Datum", dateText(input.createdAt), margin + 370, y - 38);
     if (input.customer.address) {
-      addInfoPair("Objekt / Adresse", clean(input.customer.address), margin + 16, y - 58);
+      addInfoPair("Objekt / Adresse", clean(input.customer.address), margin + 16, y - 80);
     }
     if (input.project?.name || input.project?.objectAddress) {
-      addInfoPair("Projekt", clean(input.project.name || input.project.objectAddress), margin + 190, y - 58);
+      addInfoPair("Projekt", clean(input.project.name || input.project.objectAddress), margin + 190, y - 80);
     }
     if (input.dueDate) {
-      addInfoPair("Fällig", dateText(input.dueDate), margin + 370, y - 58);
+      addInfoPair("Fällig", dateText(input.dueDate), margin + 370, y - 80);
     }
     y -= boxHeight + 18;
   }
@@ -265,8 +271,13 @@ export function createBusinessDocumentPdf(input: BusinessDocumentInput) {
   }
 
   function addNotes() {
+    if (input.kind === "offer" && input.billingNote) {
+      addSection("Abrechnung");
+      addParagraph(input.billingNote, 9.5, slate);
+    }
+
     if (input.kind === "offer" && input.closingText) {
-      addSection("Abschließende Passage");
+      addSection("Nächster Schritt");
       addParagraph(input.closingText, 9.5, slate);
     }
 
@@ -298,10 +309,10 @@ export function createBusinessDocumentPdf(input: BusinessDocumentInput) {
   }
 
   newPage();
-  commands.push(text(input.title, margin, y, 26, slate, "F2"));
-  y -= 26;
-  commands.push(text(`${documentLabel} ${input.number}`, margin, y, 10, muted));
+  commands.push(text(input.title, margin, y, 24, slate, "F2"));
   y -= 24;
+  commands.push(text(`${documentLabel} ${input.number}`, margin, y, 10, muted));
+  y -= 28;
   if (input.intro) {
     addParagraph(input.intro, 10, muted, 86);
     y -= 12;

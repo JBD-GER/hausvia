@@ -25,3 +25,27 @@ export function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
 }
+
+export function offerStatusLabel(status: unknown) {
+  const labels: Record<string, string> = {
+    draft: "In Vorbereitung",
+    released: "An Kunde gesendet",
+    accepted: "Angenommen",
+    rejected: "Abgelehnt",
+    expired: "Abgelaufen",
+    archived: "Archiviert",
+  };
+
+  return labels[String(status ?? "")] ?? asText(status);
+}
+
+export function leadStatusLabel(status: unknown) {
+  const labels: Record<string, string> = {
+    new: "Neu",
+    qualified: "Angebot in Vorbereitung",
+    converted: "Kunde aktiv",
+    archived: "Archiviert",
+  };
+
+  return labels[String(status ?? "")] ?? asText(status);
+}

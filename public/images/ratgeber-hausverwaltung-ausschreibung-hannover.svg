@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 788" role="img" aria-labelledby="title desc">
+  <title id="title">Hausvia Ratgeber Grafik zu Hausverwaltung und Ausschreibung</title>
+  <desc id="desc">Illustration mit Wohnhaus, Checkliste und Stift fuer Hausmeisterservice Ausschreibung in Hannover.</desc>
+  <rect width="1400" height="788" fill="#f6f8fb"/>
+  <rect x="0" y="0" width="1400" height="118" fill="#082b61"/>
+  <rect x="0" y="118" width="1400" height="18" fill="#f5c542"/>
+  <g transform="translate(112 190)">
+    <rect x="0" y="118" width="352" height="296" rx="10" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <path d="M-18 132 176 0 370 132" fill="none" stroke="#082b61" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="76" y="196" width="54" height="80" rx="6" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="152" y="196" width="54" height="80" rx="6" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="228" y="196" width="54" height="80" rx="6" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="76" y="302" width="54" height="80" rx="6" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="152" y="302" width="54" height="80" rx="6" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="228" y="302" width="54" height="80" rx="6" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <path d="M40 414h272" stroke="#c4cfdd" stroke-width="18" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(560 160)">
+    <rect x="0" y="0" width="650" height="468" rx="24" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <rect x="0" y="0" width="650" height="84" rx="24" fill="#082b61"/>
+    <rect x="46" y="122" width="70" height="70" rx="14" fill="#eaf1fb"/>
+    <path d="m66 158 16 16 34-40" fill="none" stroke="#079455" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="146" y="127" width="394" height="18" rx="9" fill="#082b61"/>
+    <rect x="146" y="160" width="300" height="14" rx="7" fill="#9aa9bd"/>
+    <rect x="46" y="220" width="70" height="70" rx="14" fill="#eaf1fb"/>
+    <path d="m66 256 16 16 34-40" fill="none" stroke="#079455" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="146" y="225" width="342" height="18" rx="9" fill="#082b61"/>
+    <rect x="146" y="258" width="362" height="14" rx="7" fill="#9aa9bd"/>
+    <rect x="46" y="318" width="70" height="70" rx="14" fill="#fff4ce"/>
+    <path d="m66 354 16 16 34-40" fill="none" stroke="#b88700" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="146" y="323" width="416" height="18" rx="9" fill="#082b61"/>
+    <rect x="146" y="356" width="280" height="14" rx="7" fill="#9aa9bd"/>
+    <path d="M494 418 592 320" stroke="#f5c542" stroke-width="20" stroke-linecap="round"/>
+    <path d="M612 300 640 328" stroke="#082b61" stroke-width="20" stroke-linecap="round"/>
+  </g>
+  <text x="112" y="89" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">Hausmeisterservice sauber ausschreiben</text>
+  <text x="112" y="710" fill="#082b61" font-family="Arial, sans-serif" font-size="32" font-weight="700">Leistungsverzeichnis, Vergleich und klare Betreuung fuer Hausverwaltungen</text>
+</svg>

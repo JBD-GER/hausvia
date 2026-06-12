@@ -2,7 +2,7 @@ import Link from "next/link";
 import { saveOfferAction } from "@/app/actions/admin";
 import { DocumentEditor } from "@/components/portal/DocumentEditor";
 import { EmptyState, PageHeader, Panel, StatusPill, buttonClass } from "@/components/portal/PortalUI";
-import { asText, formatEuro } from "@/lib/portal/format";
+import { asText, formatEuro, offerStatusLabel } from "@/lib/portal/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function AdminOffersPage() {
@@ -27,22 +27,29 @@ export default async function AdminOffersPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Angebote" title="Angebote erstellen, bearbeiten und senden" text="Funnel-Angebote starten als Entwurf. Positionen können angepasst, ergänzt und anschließend als PDF an den Kunden gesendet werden." />
+      <PageHeader
+        eyebrow="Angebote"
+        title="Angebote erstellen, bearbeiten und senden"
+        text="Funnel-Anfragen werden als vollständige Angebote vorbereitet. Positionen, Mengen und Preise können geprüft, angepasst und anschließend als PDF an den Kunden gesendet werden."
+      />
       <div className="grid gap-5">
-        <Panel title="Neues Angebot erstellen">
+        <Panel title="Neues Angebot vorbereiten">
           <DocumentEditor
             kind="offer"
             action={saveOfferAction}
             customers={customerOptions}
             projects={projectOptions}
-            submitLabel="Angebot als Entwurf speichern"
+            submitLabel="Angebot speichern"
             initial={{
-              title: "Hausvia Objektbetreuung",
-              intro: "Vielen Dank für Ihre Anfrage. Auf Grundlage der bekannten Objekt- und Leistungsdaten erhalten Sie folgendes Angebot.",
+              title: "Angebot für Hausmeisterservice und Objektbetreuung",
+              intro:
+                "Vielen Dank für Ihre Anfrage. Auf Grundlage der bekannten Objekt- und Leistungsdaten erhalten Sie folgendes Angebot für die laufende Betreuung.",
               billingMode: "monthly",
               billingIntervalLabel: "monatlich nach Vereinbarung",
               billingInAdvance: true,
               paymentDueDaysBeforeMonthEnd: 15,
+              closingText:
+                "Nach Annahme des Angebots stimmen wir Leistungsbeginn, Objektzugang und feste Ansprechpartner gemeinsam ab.",
               items: [
                 {
                   title: "Objektbetreuung",
@@ -67,7 +74,7 @@ export default async function AdminOffersPage() {
                         {asText(offer.offer_number)} · {formatEuro(offer.gross_total)} brutto
                       </p>
                     </div>
-                    <StatusPill>{offer.status}</StatusPill>
+                    <StatusPill>{offerStatusLabel(offer.status)}</StatusPill>
                   </div>
                   <Link href={`/admin/offers/${offer.id}`} className={`${buttonClass} mt-3`}>
                     Angebot öffnen

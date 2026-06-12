@@ -1,6 +1,6 @@
 import { PageHeader, MetricCard, Panel, StatusPill, EmptyState } from "@/components/portal/PortalUI";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { formatDateTime, asText } from "@/lib/portal/format";
+import { formatDateTime, asText, leadStatusLabel } from "@/lib/portal/format";
 
 export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServerClient();
@@ -13,7 +13,7 @@ export default async function AdminDashboardPage() {
     materials,
     invoices,
   ] = await Promise.all([
-    supabase.from("leads").select("id,status,contact_name,email,created_at").order("created_at", { ascending: false }).limit(6),
+    supabase.from("leads").select("id,status,contact_name,email,created_at").neq("status", "converted").order("created_at", { ascending: false }).limit(6),
     supabase.from("customers").select("id,status").eq("status", "active"),
     supabase.from("projects").select("id,status,primary_employee_id,name").order("created_at", { ascending: false }).limit(8),
     supabase.from("offers").select("id,status,title,created_at").order("created_at", { ascending: false }).limit(6),
@@ -51,7 +51,7 @@ export default async function AdminDashboardPage() {
                       <p className="font-extrabold text-slate-950">{asText(lead.contact_name || lead.email)}</p>
                       <p className="mt-1 text-sm text-slate-650">{formatDateTime(lead.created_at)}</p>
                     </div>
-                    <StatusPill>{lead.status}</StatusPill>
+                    <StatusPill>{leadStatusLabel(lead.status)}</StatusPill>
                   </div>
                 </article>
               ))}

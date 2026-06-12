@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  acceptOfferByAdminAction,
   createInvoiceCycleAction,
   createInvoiceFromCycleAction,
   createInvoiceFromOfferAction,
@@ -10,7 +11,7 @@ import {
 import { DocumentEditor } from "@/components/portal/DocumentEditor";
 import { EmptyState, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { billingModeLabels } from "@/lib/commerce";
-import { asText, formatDate, formatEuro } from "@/lib/portal/format";
+import { asText, formatDate, formatEuro, offerStatusLabel } from "@/lib/portal/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type OfferItemRow = {
@@ -70,7 +71,7 @@ export default async function AdminOfferDetailPage({
       <PageHeader
         eyebrow="Angebot"
         title={offer.title}
-        text="Angebot prüfen, Positionen bearbeiten, PDF herunterladen oder direkt an den Kunden senden."
+        text="Angebot prüfen, Positionen bearbeiten, PDF herunterladen, an den Kunden senden oder eine Annahme dokumentieren."
       />
 
       {query.status === "saved" ? (
@@ -83,6 +84,16 @@ export default async function AdminOfferDetailPage({
           Angebot wurde per E-Mail gesendet und im Kundenportal freigegeben.
         </p>
       ) : null}
+      {query.status === "from-lead" ? (
+        <p className="mb-5 rounded-md border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-800">
+          Angebot wurde aus der Funnel-Anfrage vorbereitet. Bitte Positionen, Preise und Texte final prüfen.
+        </p>
+      ) : null}
+      {query.status === "accepted" ? (
+        <p className="mb-5 rounded-md border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-800">
+          Angebot wurde als angenommen markiert. Der Lead wurde zum aktiven Kunden und ein Projekt wurde erstellt oder aktiviert.
+        </p>
+      ) : null}
       {query.error ? (
         <p className="mb-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
           Aktion konnte nicht abgeschlossen werden. Bitte Daten und E-Mail-Konfiguration prüfen.
@@ -90,13 +101,13 @@ export default async function AdminOfferDetailPage({
       ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
-        <Panel title="Angebot bearbeiten">
+        <Panel title="Angebot final bearbeiten">
           <DocumentEditor
             kind="offer"
             action={saveOfferAction}
             customers={customerOptions}
             projects={projectOptions}
-            submitLabel="Änderungen speichern"
+            submitLabel="Angebot speichern"
             initial={{
               id: offer.id,
               number: offer.offer_number,
@@ -126,7 +137,7 @@ export default async function AdminOfferDetailPage({
             <div className="grid gap-3">
               <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <span className="text-sm font-bold text-slate-700">Status</span>
-                <StatusPill>{offer.status}</StatusPill>
+                <StatusPill>{offerStatusLabel(offer.status)}</StatusPill>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Gesamt brutto</p>
@@ -143,6 +154,40 @@ export default async function AdminOfferDetailPage({
                 Beim Senden wird das Angebot im Kundenportal sichtbar und zusätzlich als PDF per E-Mail verschickt.
               </p>
             </div>
+          </Panel>
+
+          <Panel title="Annahme dokumentieren">
+            {offer.status === "accepted" ? (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-semibold leading-6 text-green-900">
+                Dieses Angebot ist angenommen. Der zugehörige Lead wird nicht mehr in der offenen Lead-Liste angezeigt.
+              </div>
+            ) : (
+              <form action={acceptOfferByAdminAction} className="grid gap-3">
+                <input type="hidden" name="offerId" value={offer.id} />
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-800">Bestätigt durch</span>
+                  <input
+                    name="acceptanceName"
+                    required
+                    className={inputClass}
+                    placeholder="z. B. Name des Kunden / Ansprechpartner"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-800">Interne Bestätigung</span>
+                  <textarea
+                    name="acceptanceSignature"
+                    rows={3}
+                    className={inputClass}
+                    placeholder="z. B. Annahme per Telefon/E-Mail am heutigen Tag bestätigt."
+                  />
+                </label>
+                <button className={buttonClass}>Angebot als angenommen markieren</button>
+                <p className="text-xs leading-5 text-slate-500">
+                  Danach wird der Lead automatisch zum aktiven Kunden. Falls noch kein Projekt existiert, wird ein Projekt aus den Angebotspositionen erstellt.
+                </p>
+              </form>
+            )}
           </Panel>
 
           <Panel title="Rechnung aus Angebot">

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 788" role="img" aria-labelledby="title desc">
+  <title id="title">Hausvia Ratgeber Grafik zu WEG Kosten</title>
+  <desc id="desc">Illustration mit Kostenaufstellung, Wohnanlage und Hinweisen zur Trennung von Pflege und Reparatur.</desc>
+  <rect width="1400" height="788" fill="#f7f9fc"/>
+  <rect x="0" y="0" width="1400" height="118" fill="#082b61"/>
+  <rect x="0" y="118" width="1400" height="18" fill="#f5c542"/>
+  <text x="112" y="89" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">WEG-Hausmeisterkosten realistisch einordnen</text>
+  <g transform="translate(116 188)">
+    <rect x="0" y="52" width="426" height="360" rx="18" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <path d="M52 82 214 0 376 82" fill="none" stroke="#082b61" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="72" y="150" width="76" height="90" rx="10" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="176" y="150" width="76" height="90" rx="10" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="280" y="150" width="76" height="90" rx="10" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="72" y="268" width="76" height="90" rx="10" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="176" y="268" width="76" height="90" rx="10" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="280" y="268" width="76" height="90" rx="10" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+  </g>
+  <g transform="translate(618 164)">
+    <rect x="0" y="0" width="586" height="500" rx="24" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <rect x="48" y="56" width="214" height="42" rx="8" fill="#082b61"/>
+    <rect x="48" y="124" width="490" height="2" fill="#d8e1ee"/>
+    <rect x="48" y="158" width="74" height="74" rx="14" fill="#ecfdf3"/>
+    <path d="m70 195 17 17 32-42" fill="none" stroke="#079455" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="150" y="166" width="260" height="18" rx="9" fill="#082b61"/>
+    <rect x="150" y="202" width="350" height="14" rx="7" fill="#9aa9bd"/>
+    <rect x="48" y="264" width="74" height="74" rx="14" fill="#fff4ce"/>
+    <path d="M70 301h34M87 284v34" stroke="#b88700" stroke-width="9" stroke-linecap="round"/>
+    <rect x="150" y="272" width="308" height="18" rx="9" fill="#082b61"/>
+    <rect x="150" y="308" width="288" height="14" rx="7" fill="#9aa9bd"/>
+    <rect x="48" y="370" width="74" height="74" rx="14" fill="#fef3f2"/>
+    <path d="M72 394 108 430M108 394 72 430" stroke="#d92d20" stroke-width="9" stroke-linecap="round"/>
+    <rect x="150" y="378" width="332" height="18" rx="9" fill="#082b61"/>
+    <rect x="150" y="414" width="246" height="14" rx="7" fill="#9aa9bd"/>
+  </g>
+  <g transform="translate(150 650)">
+    <rect width="1100" height="70" rx="14" fill="#fff4ce" stroke="#f5c542" stroke-width="3"/>
+    <text x="34" y="45" fill="#082b61" font-family="Arial, sans-serif" font-size="28" font-weight="700">Pflege, Kontrolle und Bedienung klar von Reparatur und Instandsetzung trennen</text>
+  </g>
+</svg>

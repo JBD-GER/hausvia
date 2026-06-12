@@ -1,49 +1,144 @@
-import { promoteLeadToCustomerAction } from "@/app/actions/admin";
+import Link from "next/link";
+import { createOfferFromLeadAction } from "@/app/actions/admin";
 import { EmptyState, PageHeader, Panel, StatusPill, buttonClass } from "@/components/portal/PortalUI";
-import { asText, formatDateTime } from "@/lib/portal/format";
+import { asText, formatDateTime, formatEuro, leadStatusLabel, offerStatusLabel } from "@/lib/portal/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+type LeadRow = {
+  id: string;
+  status: string;
+  company_name: string | null;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  object_address: string | null;
+  object_type: string | null;
+  requested_services: string[] | null;
+  frequency: string | null;
+  message: string | null;
+  created_at: string;
+  customer_id: string | null;
+  desired_start_date: string | null;
+  preferred_callback_time: string | null;
+  estimate: Record<string, unknown> | null;
+};
+
+type OfferRow = {
+  id: string;
+  customer_id: string;
+  title: string;
+  status: string;
+  gross_total: number | null;
+  created_at: string;
+};
+
+function estimateText(estimate: Record<string, unknown> | null) {
+  if (!estimate) return "-";
+  const lower = typeof estimate.lower === "number" ? estimate.lower : Number(estimate.lower ?? 0);
+  const upper = typeof estimate.upper === "number" ? estimate.upper : Number(estimate.upper ?? 0);
+  if (lower > 0 && upper > 0) return `${formatEuro(lower)} bis ${formatEuro(upper)} / Monat`;
+  return "-";
+}
 
 export default async function AdminLeadsPage() {
   const supabase = await createSupabaseServerClient();
   const { data: leads } = await supabase
     .from("leads")
-    .select("id,status,company_name,contact_name,email,phone,object_address,object_type,requested_services,frequency,message,created_at,customer_id")
+    .select("id,status,company_name,contact_name,email,phone,object_address,object_type,requested_services,frequency,message,created_at,customer_id,desired_start_date,preferred_callback_time,estimate")
+    .neq("status", "converted")
     .order("created_at", { ascending: false });
+
+  const customerIds = [...new Set(((leads ?? []) as LeadRow[]).map((lead) => lead.customer_id).filter(Boolean))] as string[];
+  const { data: offers } = customerIds.length
+    ? await supabase
+        .from("offers")
+        .select("id,customer_id,title,status,gross_total,created_at")
+        .in("customer_id", customerIds)
+        .order("created_at", { ascending: false })
+    : { data: [] };
+
+  const offerByCustomer = new Map<string, OfferRow>();
+  ((offers ?? []) as OfferRow[]).forEach((offer) => {
+    if (!offerByCustomer.has(offer.customer_id)) offerByCustomer.set(offer.customer_id, offer);
+  });
 
   return (
     <>
-      <PageHeader eyebrow="Leads" title="Funnel-Anfragen" text="Alle eingehenden Anfragen aus Website und Kostencheck." />
+      <PageHeader
+        eyebrow="Leads"
+        title="Funnel-Anfragen und Angebotsstart"
+        text="Neue Anfragen bleiben hier sichtbar, bis ein Angebot angenommen wurde. Danach wird der Lead automatisch zum aktiven Kunden mit Projekt."
+      />
       <Panel title="Neue und laufende Leads">
         {leads?.length ? (
           <div className="grid gap-4">
-            {leads.map((lead) => (
+            {((leads ?? []) as LeadRow[]).map((lead) => {
+              const offer = lead.customer_id ? offerByCustomer.get(lead.customer_id) : null;
+
+              return (
               <article key={lead.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-lg font-extrabold text-slate-950">{asText(lead.company_name || lead.contact_name || lead.email)}</p>
                     <p className="mt-1 text-sm text-slate-650">{asText(lead.object_address)} · {asText(lead.object_type)}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {asText(lead.email)} · {asText(lead.phone)}
+                    </p>
                     <p className="mt-2 text-sm leading-6 text-slate-700">{asText(lead.message)}</p>
                     <p className="mt-2 text-xs font-bold text-slate-500">{formatDateTime(lead.created_at)}</p>
                   </div>
-                  <StatusPill>{lead.status}</StatusPill>
+                  <StatusPill>{leadStatusLabel(lead.status)}</StatusPill>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-650">
                   {(lead.requested_services ?? []).map((service: string) => (
                     <span key={service} className="rounded-full bg-white px-2.5 py-1">{service}</span>
                   ))}
                 </div>
-                {lead.customer_id ? (
-                  <form action={promoteLeadToCustomerAction} className="mt-4">
+
+                <details className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer text-sm font-extrabold text-brand">Details zur Anfrage anzeigen</summary>
+                  <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+                    <div className="rounded-md bg-slate-50 p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Objekt</p>
+                      <p className="mt-1 font-semibold text-slate-900">{asText(lead.object_type)}</p>
+                      <p className="mt-1 text-slate-650">{asText(lead.object_address)}</p>
+                    </div>
+                    <div className="rounded-md bg-slate-50 p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Kostenspanne</p>
+                      <p className="mt-1 font-semibold text-slate-900">{estimateText(lead.estimate)}</p>
+                      <p className="mt-1 text-slate-650">{asText(lead.frequency)}</p>
+                    </div>
+                    <div className="rounded-md bg-slate-50 p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Start / Rückruf</p>
+                      <p className="mt-1 font-semibold text-slate-900">{asText(lead.desired_start_date)}</p>
+                      <p className="mt-1 text-slate-650">{asText(lead.preferred_callback_time)}</p>
+                    </div>
+                    <div className="rounded-md bg-slate-50 p-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Angebotsstatus</p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {offer ? offerStatusLabel(offer.status) : "Noch kein Angebot geöffnet"}
+                      </p>
+                      {offer ? <p className="mt-1 text-slate-650">{formatEuro(offer.gross_total ?? 0)} brutto</p> : null}
+                    </div>
+                  </div>
+                </details>
+
+                {offer ? (
+                  <Link href={`/admin/offers/${offer.id}`} className={`${buttonClass} mt-4`}>
+                    Angebot öffnen
+                  </Link>
+                ) : (
+                  <form action={createOfferFromLeadAction} className="mt-4">
                     <input type="hidden" name="leadId" value={lead.id} />
-                    <input type="hidden" name="customerId" value={lead.customer_id} />
-                    <button className={buttonClass}>Lead zu aktivem Kunden machen</button>
+                    <button className={buttonClass}>Angebot erstellen</button>
                   </form>
-                ) : null}
+                )}
               </article>
-            ))}
+            );
+            })}
           </div>
         ) : (
-          <EmptyState title="Keine Leads vorhanden" text="Neue Funnel-Anfragen werden automatisch gespeichert." />
+          <EmptyState title="Keine offenen Leads" text="Neue Funnel-Anfragen erscheinen hier. Angenommene Angebote werden automatisch zu aktiven Kunden und verschwinden aus dieser Liste." />
         )}
       </Panel>
     </>

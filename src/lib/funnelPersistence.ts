@@ -114,9 +114,11 @@ export async function persistFunnelLead({ source = "website", submittedAt, lead 
       project_id: null,
       status: "draft",
       offer_number: createDocumentNumber("ANG", leadRow?.id),
-      title: "Admin-Entwurf aus Funnel-Anfrage",
-      intro: "Automatisch vorbereiteter Entwurf. Vor Freigabe bitte Leistungen, Preis und Umfang prüfen.",
-      closing_text: "Nach Angebotsannahme richten wir das Projekt ein und stimmen Leistungsbeginn, Objektzugang und zuständige Ansprechpartner ab.",
+      title: `Angebot für ${objectType || "Hausmeisterservice und Objektbetreuung"}`,
+      intro:
+        "Vielen Dank für Ihre Anfrage. Auf Grundlage der übermittelten Objekt- und Leistungsdaten haben wir folgendes Angebot für die Betreuung vorbereitet.",
+      closing_text:
+        "Nach Annahme des Angebots stimmen wir Objektzugang, Leistungsbeginn, feste Ansprechpartner und die operative Übergabe gemeinsam ab.",
       net_total: netTotal,
       tax_rate: 19,
       tax_total: taxTotal,
@@ -125,7 +127,8 @@ export async function persistFunnelLead({ source = "website", submittedAt, lead 
       billing_interval_label: frequency || "nach Vereinbarung",
       billing_in_advance: billingModeForFrequency(frequency) !== "one_time",
       payment_due_days_before_month_end: 15,
-      admin_notes: "Nicht automatisch an den Kunden senden. Erst prüfen und freigeben. Projekt wird nach Angebotsannahme aktiviert oder erstellt.",
+      admin_notes:
+        "Aus Funnel-Anfrage vorbereitet. Vor Versand bitte Positionen, Preis, Leistungsumfang und Abrechnung final prüfen.",
     })
     .select("id")
     .single();
@@ -139,7 +142,9 @@ export async function persistFunnelLead({ source = "website", submittedAt, lead 
       servicesForOffer.map((service, index) => ({
         offer_id: offer.id,
         title: service,
-        description: `${frequency || "nach Vereinbarung"} · automatisch aus Funnel-Auswahl vorbereitet`,
+        description: `${frequency || "nach Vereinbarung"} · aus Funnel-Auswahl vorbereitet · Objekt: ${
+          objectAddress || "Adresse prüfen"
+        }`,
         quantity: 1,
         unit,
         unit_net: unitNet,

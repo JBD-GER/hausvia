@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 788" role="img" aria-labelledby="title desc">
+  <title id="title">Hausvia Ratgeber Grafik Reinigung und Hausmeisterservice</title>
+  <desc id="desc">Illustration mit Besen, Gebaeude und verbundenen Servicekarten fuer Reinigung und Objektbetreuung.</desc>
+  <rect width="1400" height="788" fill="#f6f8fb"/>
+  <rect x="0" y="0" width="1400" height="118" fill="#082b61"/>
+  <rect x="0" y="118" width="1400" height="18" fill="#f5c542"/>
+  <text x="112" y="89" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">Reinigung und Hausmeisterservice kombinieren</text>
+  <g transform="translate(116 188)">
+    <rect x="0" y="120" width="360" height="320" rx="18" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <path d="M-12 132 180 0 372 132" fill="none" stroke="#082b61" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="72" y="188" width="72" height="84" rx="8" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="168" y="188" width="72" height="84" rx="8" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="72" y="300" width="72" height="84" rx="8" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="168" y="300" width="72" height="84" rx="8" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="266" y="298" width="46" height="138" rx="8" fill="#082b61"/>
+  </g>
+  <g transform="translate(510 188)">
+    <rect x="0" y="0" width="260" height="182" rx="20" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <circle cx="54" cy="58" r="24" fill="#eaf1fb"/>
+    <path d="M42 58h24M54 46v24" stroke="#082b61" stroke-width="8" stroke-linecap="round"/>
+    <rect x="96" y="44" width="116" height="18" rx="9" fill="#082b61"/>
+    <rect x="96" y="80" width="132" height="14" rx="7" fill="#9aa9bd"/>
+    <text x="36" y="142" fill="#334155" font-family="Arial, sans-serif" font-size="22" font-weight="700">Treppenhaus</text>
+  </g>
+  <g transform="translate(826 188)">
+    <rect x="0" y="0" width="260" height="182" rx="20" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <circle cx="54" cy="58" r="24" fill="#fff4ce"/>
+    <path d="M38 68c36 12 58-10 78-36" fill="none" stroke="#b88700" stroke-width="8" stroke-linecap="round"/>
+    <rect x="96" y="44" width="116" height="18" rx="9" fill="#082b61"/>
+    <rect x="96" y="80" width="132" height="14" rx="7" fill="#9aa9bd"/>
+    <text x="36" y="142" fill="#334155" font-family="Arial, sans-serif" font-size="22" font-weight="700">Aussenanlage</text>
+  </g>
+  <g transform="translate(510 430)">
+    <rect x="0" y="0" width="260" height="182" rx="20" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <circle cx="54" cy="58" r="24" fill="#ecfdf3"/>
+    <path d="M40 62h28v34H40zM72 48h22v48H72z" fill="#079455"/>
+    <rect x="106" y="44" width="94" height="18" rx="9" fill="#082b61"/>
+    <rect x="106" y="80" width="120" height="14" rx="7" fill="#9aa9bd"/>
+    <text x="36" y="142" fill="#334155" font-family="Arial, sans-serif" font-size="22" font-weight="700">Muelldienst</text>
+  </g>
+  <g transform="translate(826 430)">
+    <rect x="0" y="0" width="260" height="182" rx="20" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <circle cx="54" cy="58" r="24" fill="#eaf1fb"/>
+    <path d="M42 76 80 38M80 76 42 38" stroke="#082b61" stroke-width="8" stroke-linecap="round"/>
+    <rect x="106" y="44" width="116" height="18" rx="9" fill="#082b61"/>
+    <rect x="106" y="80" width="120" height="14" rx="7" fill="#9aa9bd"/>
+    <text x="36" y="142" fill="#334155" font-family="Arial, sans-serif" font-size="22" font-weight="700">Kontrollgang</text>
+  </g>
+  <path d="M460 352h68M770 280h56M770 520h56M644 372v58M956 372v58" stroke="#f5c542" stroke-width="14" stroke-linecap="round"/>
+  <g transform="translate(1110 278) rotate(16)">
+    <rect x="0" y="0" width="34" height="300" rx="16" fill="#082b61"/>
+    <path d="M-64 280h162l-20 70H-44z" fill="#f5c542" stroke="#b88700" stroke-width="4"/>
+  </g>
+</svg>

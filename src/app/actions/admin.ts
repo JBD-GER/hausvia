@@ -17,6 +17,7 @@ import {
   parseDecimal,
 } from "@/lib/commerce";
 import { sendPortalDocumentEmail } from "@/lib/mail";
+import { acceptOfferAndActivateCustomer } from "@/lib/offerAcceptance";
 import { getInvoiceDocument, getOfferDocument } from "@/lib/portalDocuments";
 import type { AppRole, MaterialRequestStatus, ProjectStatus, ShiftStatus } from "@/lib/supabase/types";
 
@@ -54,6 +55,41 @@ function lineItemsFromForm(formData: FormData) {
       sortOrder: index,
     })),
   );
+}
+
+function valueAsNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") return parseDecimal(value);
+  return 0;
+}
+
+function valueAsStringList(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => String(item ?? "").trim()).filter(Boolean) : [];
+}
+
+function billingModeForLeadFrequency(frequency: string) {
+  const normalized = frequency.toLowerCase();
+  if (normalized.includes("einmal")) return "one_time";
+  if (normalized.includes("quartal")) return "quarterly";
+  if (normalized.includes("jahr")) return "yearly";
+  if (
+    normalized.includes("monat") ||
+    normalized.includes("woche") ||
+    normalized.includes("täglich") ||
+    normalized.includes("werktäglich")
+  ) {
+    return "monthly";
+  }
+  return "custom";
+}
+
+function estimateGrossFromLead(estimate: unknown) {
+  if (!estimate || typeof estimate !== "object") return 0;
+  const record = estimate as Record<string, unknown>;
+  const lower = valueAsNumber(record.lower);
+  const upper = valueAsNumber(record.upper);
+  if (lower > 0 && upper > 0) return (lower + upper) / 2;
+  return lower || upper || valueAsNumber(record.estimatedMonthlyPrice);
 }
 
 async function invitePortalUser({
@@ -268,6 +304,122 @@ export async function promoteLeadToCustomerAction(formData: FormData) {
   revalidatePath("/admin/customers");
 }
 
+export async function createOfferFromLeadAction(formData: FormData) {
+  await requireProfile(["admin"]);
+  const leadId = required(text(formData, "leadId"), "/admin/leads?error=lead");
+  const admin = createSupabaseAdminClient();
+
+  const { data: lead } = await admin
+    .from("leads")
+    .select(
+      "id,customer_id,company_name,contact_name,email,phone,object_address,object_type,requested_services,frequency,message,estimate,payload,desired_start_date,preferred_callback_time",
+    )
+    .eq("id", leadId)
+    .single();
+
+  if (!lead) redirect("/admin/leads?error=lead");
+
+  let customerId = lead.customer_id as string | null;
+
+  if (!customerId) {
+    const { data: customer } = await admin
+      .from("customers")
+      .insert({
+        status: "lead",
+        company_name: lead.company_name,
+        contact_name: lead.contact_name || lead.email || "Ansprechpartner prüfen",
+        email: lead.email || "",
+        phone: lead.phone,
+        billing_address: lead.object_address,
+        notes: "Aus bestehendem Lead für Angebotsworkflow erstellt.",
+      })
+      .select("id")
+      .single();
+    customerId = customer?.id ?? null;
+    if (customerId) {
+      await admin.from("leads").update({ customer_id: customerId }).eq("id", lead.id);
+    }
+  }
+
+  if (!customerId) redirect("/admin/leads?error=customer");
+
+  const { data: existingOffers } = await admin
+    .from("offers")
+    .select("id,status,created_at")
+    .eq("customer_id", customerId)
+    .in("status", ["draft", "released", "accepted"])
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (existingOffers?.[0]?.id) {
+    redirect(`/admin/offers/${existingOffers[0].id}`);
+  }
+
+  const requestedServices = valueAsStringList(lead.requested_services).length
+    ? valueAsStringList(lead.requested_services)
+    : valueAsStringList((lead.payload as Record<string, unknown> | null)?.selectedServiceLabels);
+  const services = requestedServices.length ? requestedServices : ["Hausmeisterservice / Objektbetreuung"];
+  const frequency = String(lead.frequency || "nach Vereinbarung");
+  const billingMode = billingModeForLeadFrequency(frequency);
+  const grossTotal = estimateGrossFromLead(lead.estimate);
+  const netTotal = grossTotal ? grossTotal / 1.19 : 0;
+  const taxTotal = grossTotal - netTotal;
+  const unitNet = services.length ? netTotal / services.length : netTotal;
+  const unit = billingMode === "one_time" ? "Pauschale" : "Monat";
+
+  const { data: offer } = await admin
+    .from("offers")
+    .insert({
+      customer_id: customerId,
+      project_id: null,
+      status: "draft",
+      offer_number: createDocumentNumber("ANG", lead.id),
+      title: `Angebot für ${lead.object_type || "Hausmeisterservice und Objektbetreuung"}`,
+      intro:
+        "Vielen Dank für Ihre Anfrage. Auf Grundlage der übermittelten Objekt- und Leistungsdaten haben wir folgendes Angebot für die Betreuung vorbereitet.",
+      closing_text:
+        "Nach Annahme des Angebots stimmen wir Objektzugang, Starttermin, feste Ansprechpartner und die operative Übergabe gemeinsam ab.",
+      net_total: netTotal,
+      tax_rate: 19,
+      tax_total: taxTotal,
+      gross_total: grossTotal,
+      billing_mode: billingMode,
+      billing_interval_label: frequency,
+      billing_in_advance: billingMode !== "one_time",
+      payment_due_days_before_month_end: 15,
+      admin_notes: [
+        "Aus Lead/Funnel-Anfrage erstellt.",
+        lead.message ? `Kundennachricht: ${lead.message}` : "",
+        lead.desired_start_date ? `Gewünschter Start: ${lead.desired_start_date}` : "",
+        lead.preferred_callback_time ? `Rückrufzeit: ${lead.preferred_callback_time}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    })
+    .select("id")
+    .single();
+
+  if (offer?.id) {
+    await admin.from("offer_items").insert(
+      services.map((service, index) => ({
+        offer_id: offer.id,
+        title: service,
+        description: `${frequency} · aus Funnel-Anfrage vorbereitet · Objekt: ${lead.object_address || "Adresse prüfen"}`,
+        quantity: 1,
+        unit,
+        unit_net: unitNet,
+        total_net: unitNet,
+        sort_order: index,
+      })),
+    );
+    await admin.from("leads").update({ status: "qualified" }).eq("id", lead.id);
+  }
+
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/offers");
+  redirect(offer?.id ? `/admin/offers/${offer.id}?status=from-lead` : "/admin/leads?error=offer");
+}
+
 export async function createOfferAction(formData: FormData) {
   await requireProfile(["admin"]);
   const customerId = required(text(formData, "customerId"), "/admin/offers?error=customer");
@@ -419,6 +571,32 @@ export async function sendOfferAction(formData: FormData) {
 
 export async function releaseOfferAction(formData: FormData) {
   await sendOfferAction(formData);
+}
+
+export async function acceptOfferByAdminAction(formData: FormData) {
+  const profile = await requireProfile(["admin"]);
+  const offerId = required(text(formData, "offerId"));
+  const acceptanceName = text(formData, "acceptanceName") || "Manuell durch Hausvia bestätigt";
+  const acceptanceSignature =
+    text(formData, "acceptanceSignature") ||
+    "Der Kunde hat die Annahme außerhalb des Portals bestätigt. Die Bestätigung wurde im Adminbereich dokumentiert.";
+  const admin = createSupabaseAdminClient();
+
+  await acceptOfferAndActivateCustomer({
+    admin,
+    offerId,
+    acceptedBy: profile.id,
+    acceptanceName,
+    acceptanceSignature,
+    requireReleased: false,
+  });
+
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin/projects");
+  revalidatePath("/admin/offers");
+  revalidatePath(`/admin/offers/${offerId}`);
+  redirect(`/admin/offers/${offerId}?status=accepted`);
 }
 
 export async function createInvoiceAction(formData: FormData) {
