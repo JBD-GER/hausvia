@@ -5,6 +5,8 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { getCookieConsentRaw, parseCookieConsent, subscribeCookieConsentChange } from "@/lib/cookieConsent";
 
 const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "AW-18131829931";
+const leadConversionLabel =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL || "p6rgCLT7yr0cEKuJ98VD";
 
 declare global {
   interface Window {
@@ -49,6 +51,6 @@ export function GoogleAdsTag() {
 export function getGoogleAdsConfig() {
   return {
     googleAdsId,
-    leadConversionLabel: process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL || "",
+    leadConversionLabel,
   };
 }

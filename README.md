@@ -20,5 +20,5 @@ npm run build
 - Impressum, Datenschutz, AGB und Pflichtangaben müssen vor Veröffentlichung final rechtlich geprüft werden.
 - `/api/lead` nimmt Funnel- und Kontaktanfragen entgegen, erstellt ein PDF und versendet es per Resend an den Kunden sowie intern an Hausvia.
 - Für den Mailversand werden `RESEND_API_KEY`, `RESEND_FROM_EMAIL` und `HAUSVIA_INTERNAL_LEAD_EMAIL` benötigt. Siehe `.env.example`.
-- Google Ads wird nach Marketing-Consent über `NEXT_PUBLIC_GOOGLE_ADS_ID` geladen. Für echte Lead-Conversions zusätzlich das Conversion-Label in `NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL` hinterlegen.
+- Google Ads wird nach Marketing-Consent über `NEXT_PUBLIC_GOOGLE_ADS_ID` geladen. Die Conversion „Angebot anfordern“ nutzt `NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL`.
 - Sitemap und Robots werden über `src/app/sitemap.ts` und `src/app/robots.ts` erzeugt.

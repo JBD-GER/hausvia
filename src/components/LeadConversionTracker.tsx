@@ -37,6 +37,8 @@ export function LeadConversionTracker() {
     if (leadConversionLabel) {
       window.gtag?.("event", "conversion", {
         send_to: `${googleAdsId}/${leadConversionLabel}`,
+        event_category: "lead",
+        event_label: "Angebot anfordern",
       });
     }
 
