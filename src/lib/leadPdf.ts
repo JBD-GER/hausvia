@@ -110,7 +110,12 @@ function getEstimateText(lead: LeadRecord) {
   const lower = valueAsNumber((estimate as LeadRecord).lower);
   const upper = valueAsNumber((estimate as LeadRecord).upper);
   if (!lower || !upper) return "";
-  return `${formatEuro(lower)} bis ${formatEuro(upper)} / Monat`;
+  const billingPeriodLabel =
+    estimate && typeof estimate === "object" && "billingPeriodLabel" in estimate
+      ? valueAsString((estimate as Record<string, unknown>).billingPeriodLabel, "pro Monat")
+      : "pro Monat";
+
+  return `${formatEuro(lower)} bis ${formatEuro(upper)} ${billingPeriodLabel}`;
 }
 
 function wrapText(value: string, maxChars: number) {
@@ -247,7 +252,11 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     ensure(cardHeight + 18);
     commands.push(rect(margin, y - cardHeight + 8, contentWidth, cardHeight, softYellow));
     commands.push(rect(margin, y - cardHeight + 8, 5, cardHeight, yellow));
-    commands.push(text("Monatliche Ersteinschätzung", margin + 20, y - 16, 10, brand, "F2"));
+    const estimateLabel =
+      lead.estimate && typeof lead.estimate === "object" && "estimateLabel" in lead.estimate
+        ? valueAsString((lead.estimate as Record<string, unknown>).estimateLabel, "Unverbindliche Ersteinschätzung")
+        : "Unverbindliche Ersteinschätzung";
+    commands.push(text(estimateLabel, margin + 20, y - 16, 10, brand, "F2"));
     commands.push(text(`ca. ${estimateText}`, margin + 20, y - 48, 22, slate, "F2"));
     commands.push(text("Unverbindlicher Richtwert. Detailprüfung empfohlen.", margin + 20, y - 72, 9.5, muted));
     y -= cardHeight + 24;
@@ -293,6 +302,8 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   addRow("E-Mail", valueAsString(lead.email));
   addRow("Telefon", valueAsString(lead.phone));
   addRow("Adresse / Ort des Objekts", valueAsString(lead.objectAddress));
+  addRow("Gewünschter Starttermin", valueAsString(lead.desiredStartDate));
+  addRow("Gewünschte Rückrufzeit", valueAsString(lead.preferredCallbackTime));
 
   addSection("Objektdaten", "Grundlage der Einschätzung sind Objektart, Standort, Flächen, Häufigkeit und Komplexität.");
   addRow("Anfragequelle", source === "cost-funnel" ? "Kostencheck / Service-Funnel" : "Kontaktformular");

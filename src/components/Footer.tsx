@@ -39,6 +39,17 @@ export function Footer() {
           >
             Kostenlose Anfrage starten
           </Link>
+          <div className="mt-4">
+            <Link
+              href="/login"
+              className="inline-flex text-sm font-extrabold text-white underline decoration-accent decoration-2 underline-offset-4 transition hover:text-accent"
+            >
+              Zum Kundenportal / Login
+            </Link>
+            <p className="mt-2 max-w-sm text-xs leading-5 text-slate-400">
+              Angebote, Betreuung und Rechnungen im Hausvia Portal einsehen.
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-8 sm:grid-cols-3">

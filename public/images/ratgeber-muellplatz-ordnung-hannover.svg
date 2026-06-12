@@ -1,0 +1,25 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Müllplatz Ordnung in Hannover</title>
+  <desc id="desc">Grafik mit Mülltonnen, Checkliste und Hofbereich für gepflegte Müllplätze</desc>
+  <rect width="1200" height="675" fill="#F7F9FC"/>
+  <rect x="88" y="70" width="1024" height="535" rx="36" fill="#FFFFFF" stroke="#DCE6F2" stroke-width="3"/>
+  <rect x="154" y="420" width="892" height="82" rx="24" fill="#EAF1FA"/>
+  <rect x="226" y="232" width="156" height="248" rx="22" fill="#082B61"/>
+  <rect x="210" y="198" width="188" height="46" rx="18" fill="#F5C542"/>
+  <rect x="259" y="284" width="90" height="24" rx="12" fill="#EAF1FA"/>
+  <circle cx="266" cy="492" r="18" fill="#40526B"/>
+  <circle cx="342" cy="492" r="18" fill="#40526B"/>
+  <rect x="450" y="262" width="148" height="218" rx="22" fill="#40526B"/>
+  <rect x="435" y="228" width="178" height="42" rx="17" fill="#F5C542"/>
+  <rect x="485" y="309" width="78" height="22" rx="11" fill="#EAF1FA"/>
+  <circle cx="486" cy="492" r="18" fill="#40526B"/>
+  <circle cx="562" cy="492" r="18" fill="#40526B"/>
+  <rect x="698" y="168" width="268" height="326" rx="26" fill="#FDF7E3" stroke="#F5C542" stroke-width="4"/>
+  <rect x="746" y="224" width="62" height="62" rx="14" fill="#082B61"/>
+  <path d="M761 255L775 269L795 243" stroke="#F5C542" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="837" y="237" width="84" height="16" rx="8" fill="#082B61"/>
+  <rect x="746" y="324" width="62" height="62" rx="14" fill="#082B61"/>
+  <path d="M761 355L775 369L795 343" stroke="#F5C542" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="837" y="337" width="88" height="16" rx="8" fill="#082B61"/>
+  <path d="M190 536H1010" stroke="#082B61" stroke-width="14" stroke-linecap="round"/>
+</svg>

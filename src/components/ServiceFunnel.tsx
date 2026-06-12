@@ -40,10 +40,13 @@ type LeadData = {
   frequency: FrequencyId | "";
   complexity: ComplexityId | "";
   name: string;
+  company: string;
   email: string;
   phone: string;
   objectAddress: string;
   message: string;
+  desiredStartDate: string;
+  preferredCallbackTime: string;
   privacyAccepted: boolean;
   termsAccepted: boolean;
 };
@@ -60,10 +63,13 @@ const initialLead: LeadData = {
   frequency: "",
   complexity: "",
   name: "",
+  company: "",
   email: "",
   phone: "",
   objectAddress: "",
   message: "",
+  desiredStartDate: "",
+  preferredCallbackTime: "",
   privacyAccepted: false,
   termsAccepted: false,
 };
@@ -636,6 +642,15 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                   />
                 </label>
                 <label className="block">
+                  <span className="text-sm font-bold text-slate-800">Firma / Verwaltung optional</span>
+                  <input
+                    value={lead.company}
+                    onChange={(event) => update("company", event.target.value)}
+                    className="mt-2 min-h-12 w-full rounded-md border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    autoComplete="organization"
+                  />
+                </label>
+                <label className="block">
                   <span className="text-sm font-bold text-slate-800">E-Mail</span>
                   <input
                     value={lead.email}
@@ -662,6 +677,24 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                     placeholder={lead.location || "z. B. Hannover List"}
                     className="mt-2 min-h-12 w-full rounded-md border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                     autoComplete="street-address"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-800">Gewünschter Starttermin optional</span>
+                  <input
+                    type="date"
+                    value={lead.desiredStartDate}
+                    onChange={(event) => update("desiredStartDate", event.target.value)}
+                    className="mt-2 min-h-12 w-full rounded-md border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-800">Gewünschte Rückrufzeit optional</span>
+                  <input
+                    value={lead.preferredCallbackTime}
+                    onChange={(event) => update("preferredCallbackTime", event.target.value)}
+                    placeholder="z. B. werktags 10–14 Uhr"
+                    className="mt-2 min-h-12 w-full rounded-md border border-slate-300 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                   />
                 </label>
                 <label className="block sm:col-span-2">

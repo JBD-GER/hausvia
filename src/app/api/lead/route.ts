@@ -10,6 +10,7 @@ import {
   type ServiceId,
 } from "@/lib/pricing";
 import { SITE } from "@/lib/site";
+import { persistFunnelLead } from "@/lib/funnelPersistence";
 
 export const runtime = "nodejs";
 
@@ -81,7 +82,7 @@ function enrichCostFunnelLead(lead: Record<string, unknown>) {
     pricingConfig.complexity.find((item) => item.id === lead.complexity)?.label ?? asString(lead.complexity);
   const estimateText = `${estimate.lower.toLocaleString("de-DE")} €–${estimate.upper.toLocaleString(
     "de-DE",
-  )} € pro Monat`;
+  )} € ${estimate.billingPeriodLabel}`;
 
   return {
     ...lead,
@@ -206,6 +207,12 @@ export async function POST(request: Request) {
   };
 
   console.info("Hausvia lead received", JSON.stringify(structuredLead, null, 2));
+
+  try {
+    await persistFunnelLead(structuredLead);
+  } catch (error) {
+    console.error("Hausvia Supabase lead persistence failed", error);
+  }
 
   const pdf = createLeadPdf(structuredLead);
   const documentNumber = submittedAt.replace(/\D/g, "").slice(0, 12) || Date.now().toString();

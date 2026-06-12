@@ -54,7 +54,7 @@ export default function AngebotAnfragenPage() {
       <Hero
         eyebrow="Service-Konfigurator"
         title="Hausmeisterservice-Kosten in 60 Sekunden einschätzen"
-        text="Beantworten Sie wenige Fragen zu Objektart, Fläche und gewünschten Leistungen. Hausvia bereitet daraus eine realistische monatliche Kostenspanne für Ihre Objektbetreuung vor."
+        text="Beantworten Sie wenige Fragen zu Objektart, Fläche und gewünschten Leistungen. Hausvia bereitet daraus eine realistische Kostenspanne für Ihre Objektbetreuung oder einen einmaligen Einsatz vor."
         image={ASSETS.hero}
         imageAlt="Hausvia Hausmeisterservice in Hannover anfragen"
         primaryHref="#anfrage"

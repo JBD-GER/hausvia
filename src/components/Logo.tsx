@@ -2,10 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ASSETS } from "@/lib/site";
 
-export function Logo({ compact = false }: { compact?: boolean }) {
+export function Logo({ compact = false, href = "/" }: { compact?: boolean; href?: string }) {
   if (compact) {
     return (
-      <Link href="/" className="inline-flex items-center gap-3" aria-label="Hausvia Startseite">
+      <Link href={href} className="inline-flex items-center gap-3" aria-label="Hausvia Startseite">
         <Image
           src={ASSETS.mark}
           alt="Hausvia Bildmarke"
@@ -19,7 +19,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <Link href="/" className="inline-flex items-center gap-2.5" aria-label="Hausvia Startseite">
+    <Link href={href} className="inline-flex items-center gap-2.5" aria-label="Hausvia Startseite">
       <Image
         src={ASSETS.mark}
         alt="Hausvia Bildmarke"

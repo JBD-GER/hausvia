@@ -34,7 +34,7 @@ const nextSteps = [
   },
   {
     title: "Dokument bereithalten",
-    text: "Im PDF stehen Ihre Objektangaben, Leistungen und die vorbereitete monatliche Kostenspanne zusammengefasst.",
+    text: "Im PDF stehen Ihre Objektangaben, Leistungen und die vorbereitete Kosten-Einschätzung zusammengefasst.",
     icon: ShieldCheck,
   },
 ];

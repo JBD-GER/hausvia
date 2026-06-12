@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
-import { CookieBanner } from "@/components/CookieBanner";
-import { Footer } from "@/components/Footer";
 import { GoogleAdsTag } from "@/components/GoogleAdsTag";
-import { Header } from "@/components/Header";
-import { MobileStickyCTA } from "@/components/MobileStickyCTA";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
+import { SiteChrome } from "@/components/SiteChrome";
 import { ASSETS, SITE } from "@/lib/site";
 import { absoluteUrl, graph, localBusinessSchema, websiteSchema } from "@/lib/seo";
 import "./globals.css";
@@ -82,12 +79,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" className="h-full scroll-smooth">
-      <body className="flex min-h-full flex-col bg-slate-50 pb-16 text-slate-900 antialiased md:pb-0">
-        <Header />
-        <div className="flex-1">{children}</div>
-        <Footer />
-        <MobileStickyCTA />
-        <CookieBanner />
+      <body className="flex min-h-full flex-col bg-slate-50 text-slate-900 antialiased">
+        <SiteChrome>{children}</SiteChrome>
         <GoogleAdsTag />
         <Analytics />
         <SEOJsonLd data={graph([websiteSchema(), localBusinessSchema()])} />

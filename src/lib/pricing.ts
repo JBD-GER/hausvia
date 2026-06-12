@@ -1,5 +1,5 @@
 export type ObjectTypeId = "weg" | "private" | "commercial" | "other";
-export type FrequencyId = "monthly" | "weekly" | "multiWeekly" | "daily" | "customHigh";
+export type FrequencyId = "oneTime" | "monthly" | "weekly" | "multiWeekly" | "daily" | "customHigh";
 export type ComplexityId = "simple" | "normal" | "elevated" | "complex";
 export type ServiceId =
   | "caretaker"
@@ -31,6 +31,9 @@ export type EstimateResult = {
   lower: number;
   upper: number;
   estimatedMonthlyPrice: number;
+  estimateLabel: string;
+  billingPeriodLabel: string;
+  isOneTime: boolean;
   basePrice: number;
   objectTypeLabel: string;
   frequencyLabel: string;
@@ -48,6 +51,7 @@ export const pricingConfig = {
     simpleOutdoorPerSqm: 0.35,
   },
   roundingStep: 10,
+  oneTimeSurchargeMultiplier: 1.35,
   objectTypes: [
     {
       id: "weg",
@@ -83,6 +87,7 @@ export const pricingConfig = {
     },
   ],
   frequencies: [
+    { id: "oneTime", label: "einmalig", factor: 1 },
     { id: "monthly", label: "monatlich / selten", factor: 0.75 },
     { id: "weekly", label: "1x pro Woche", factor: 0.9 },
     { id: "multiWeekly", label: "2–3x pro Woche", factor: 1.1 },
@@ -282,11 +287,15 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
 
   const basePrice = usableArea * pricingConfig.areaRates.usableAreaPerSqm + outdoorArea * outdoorRate;
   const serviceFactor = 1 + selectedServices.reduce((sum, service) => sum + service.surcharge, 0);
-  const rawEstimate = basePrice * objectType.factor * frequency.factor * serviceFactor * complexity.factor;
-  const minimumAdjustedEstimate = Math.max(rawEstimate, objectType.minimumMonthly);
+  const recurringEstimate = basePrice * objectType.factor * frequency.factor * serviceFactor * complexity.factor;
+  const isOneTime = input.frequency === "oneTime";
+  const oneTimeMultiplier = isOneTime ? pricingConfig.oneTimeSurchargeMultiplier : 1;
+  const minimumPrice = objectType.minimumMonthly * oneTimeMultiplier;
+  const rawEstimate = recurringEstimate * oneTimeMultiplier;
+  const minimumAdjustedEstimate = Math.max(rawEstimate, minimumPrice);
 
-  let lower = Math.max(objectType.minimumMonthly, minimumAdjustedEstimate * 0.85);
-  let upper = Math.max(objectType.minimumMonthly, minimumAdjustedEstimate * 1.25);
+  let lower = Math.max(minimumPrice, minimumAdjustedEstimate * 0.85);
+  let upper = Math.max(minimumPrice, minimumAdjustedEstimate * 1.25);
   let gardenNote: string | undefined;
 
   if (hasGardenCare) {
@@ -300,6 +309,9 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
     lower: roundDown(lower, pricingConfig.roundingStep),
     upper: roundUp(upper, pricingConfig.roundingStep),
     estimatedMonthlyPrice: Math.round(minimumAdjustedEstimate),
+    estimateLabel: isOneTime ? "Einmalige Ersteinschätzung" : "Monatliche Ersteinschätzung",
+    billingPeriodLabel: isOneTime ? "einmalig" : "pro Monat",
+    isOneTime,
     basePrice,
     objectTypeLabel: objectType.label,
     frequencyLabel: frequency.label,

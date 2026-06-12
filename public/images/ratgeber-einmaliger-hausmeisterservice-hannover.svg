@@ -1,0 +1,23 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Einmaliger Hausmeisterservice in Hannover</title>
+  <desc id="desc">Grafik mit Kalender, Werkzeug und Haus für einmaligen Hausmeisterservice</desc>
+  <rect width="1200" height="675" fill="#F7F9FC"/>
+  <rect x="82" y="76" width="1036" height="523" rx="34" fill="#FFFFFF" stroke="#DCE6F2" stroke-width="3"/>
+  <rect x="162" y="170" width="314" height="318" rx="28" fill="#EAF1FA"/>
+  <rect x="162" y="170" width="314" height="84" rx="28" fill="#082B61"/>
+  <rect x="162" y="226" width="314" height="28" fill="#082B61"/>
+  <path d="M226 210V128" stroke="#F5C542" stroke-width="16" stroke-linecap="round"/>
+  <path d="M412 210V128" stroke="#F5C542" stroke-width="16" stroke-linecap="round"/>
+  <rect x="220" y="304" width="68" height="58" rx="14" fill="#FFFFFF"/>
+  <path d="M238 334L251 347L273 319" stroke="#082B61" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="320" y="304" width="68" height="58" rx="14" fill="#FFFFFF"/>
+  <rect x="220" y="394" width="168" height="22" rx="11" fill="#40526B"/>
+  <path d="M708 184L894 326H854V500H562V326H522L708 184Z" fill="#082B61"/>
+  <rect x="639" y="366" width="72" height="134" rx="12" fill="#F5C542"/>
+  <rect x="738" y="370" width="64" height="64" rx="12" fill="#EAF1FA"/>
+  <path d="M876 463L997 342" stroke="#F5C542" stroke-width="27" stroke-linecap="round"/>
+  <path d="M960 334L1018 392" stroke="#082B61" stroke-width="27" stroke-linecap="round"/>
+  <circle cx="922" cy="416" r="30" fill="#FFFFFF" stroke="#082B61" stroke-width="10"/>
+  <path d="M142 544H1058" stroke="#DCE6F2" stroke-width="14" stroke-linecap="round"/>
+  <path d="M142 544H526" stroke="#F5C542" stroke-width="14" stroke-linecap="round"/>
+</svg>
