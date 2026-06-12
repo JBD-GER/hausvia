@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { getCookieConsentRaw, parseCookieConsent, subscribeCookieConsentChange } from "@/lib/cookieConsent";
 import { getGoogleAdsConfig, initializeGtag } from "@/components/GoogleAdsTag";
 
 const pendingConversionKey = "hausvia-pending-lead-conversion";
-const firedConversionKey = "hausvia-fired-lead-conversion";
 
 export function markLeadConversionPending(source: string) {
   if (typeof window === "undefined") return;
@@ -15,34 +14,35 @@ export function markLeadConversionPending(source: string) {
 export function LeadConversionTracker() {
   const rawConsent = useSyncExternalStore(subscribeCookieConsentChange, getCookieConsentRaw, () => "");
   const consent = useMemo(() => parseCookieConsent(rawConsent), [rawConsent]);
+  const firedRef = useRef(false);
 
   useEffect(() => {
+    if (firedRef.current) return;
     if (consent?.marketing !== true) return;
 
-    const source = window.sessionStorage.getItem(pendingConversionKey);
-    const alreadyFired = window.sessionStorage.getItem(firedConversionKey);
-    if (!source || alreadyFired === source) return;
+    const source = window.sessionStorage.getItem(pendingConversionKey) || "danke-page";
 
     const { googleAdsId, leadConversionLabel } = getGoogleAdsConfig();
-    if (!googleAdsId) return;
+    if (!googleAdsId || !leadConversionLabel) return;
 
     initializeGtag();
+    window.gtag?.("config", googleAdsId);
 
-    window.gtag?.("event", "generate_lead", {
+    window.gtag?.("event", "conversion", {
+      send_to: `${googleAdsId}/${leadConversionLabel}`,
       event_category: "lead",
-      event_label: source,
-      send_to: googleAdsId,
+      event_label: "Angebot anfordern",
+      conversion_name: "Angebot anfordern",
     });
 
-    if (leadConversionLabel) {
-      window.gtag?.("event", "conversion", {
-        send_to: `${googleAdsId}/${leadConversionLabel}`,
-        event_category: "lead",
-        event_label: "Angebot anfordern",
-      });
-    }
+    window.gtag?.("event", "generate_lead", {
+      send_to: googleAdsId,
+      event_category: "lead",
+      event_label: source,
+      lead_source: source,
+    });
 
-    window.sessionStorage.setItem(firedConversionKey, source);
+    firedRef.current = true;
     window.sessionStorage.removeItem(pendingConversionKey);
   }, [consent]);
 
