@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 788" role="img" aria-labelledby="title desc">
+  <title id="title">Hausvia Ratgeber Grafik zur Suche nach Hausmeister Hannover</title>
+  <desc id="desc">Illustration mit Lupe, Hannover-Karte und Auswahlkriterien fuer einen Hausmeisterservice.</desc>
+  <rect width="1400" height="788" fill="#f7f9fc"/>
+  <rect width="1400" height="118" fill="#082b61"/>
+  <rect y="118" width="1400" height="18" fill="#f5c542"/>
+  <text x="112" y="78" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">Hausmeister Hannover finden</text>
+  <g transform="translate(112 188)">
+    <rect width="510" height="464" rx="28" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <path d="M80 342c34-124 94-210 180-258 66 66 118 102 168 118-28 116-96 196-214 240-38-34-82-64-134-100Z" fill="#eaf1fb" stroke="#b9c8da" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M156 314c50-14 104-44 162-90M214 402c26-94 68-172 126-234" stroke="#9aa9bd" stroke-width="12" stroke-linecap="round"/>
+    <path d="M296 98c-48 0-86 38-86 86 0 70 86 166 86 166s86-96 86-166c0-48-38-86-86-86Z" fill="#f5c542" stroke="#082b61" stroke-width="12"/>
+    <circle cx="296" cy="184" r="30" fill="#ffffff" stroke="#082b61" stroke-width="9"/>
+    <text x="148" y="64" fill="#082b61" font-family="Arial, sans-serif" font-size="28" font-weight="700">Lokaler Fokus</text>
+  </g>
+  <g transform="translate(548 210)">
+    <circle cx="176" cy="176" r="132" fill="#ffffff" stroke="#082b61" stroke-width="30"/>
+    <circle cx="176" cy="176" r="74" fill="#eaf1fb" stroke="#d8e1ee" stroke-width="5"/>
+    <path d="M276 276 394 394" stroke="#f5c542" stroke-width="36" stroke-linecap="round"/>
+    <path d="M374 374 432 432" stroke="#082b61" stroke-width="36" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(920 168)">
+    <rect width="356" height="500" rx="24" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <rect width="356" height="82" rx="24" fill="#082b61"/>
+    <rect y="58" width="356" height="24" fill="#082b61"/>
+    <text x="34" y="52" fill="#ffffff" font-family="Arial, sans-serif" font-size="28" font-weight="700">Kriterien</text>
+    <g transform="translate(34 126)">
+      <rect width="58" height="58" rx="13" fill="#ecfdf3"/>
+      <path d="m17 31 12 12 26-32" fill="none" stroke="#079455" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="82" y="8" width="198" height="16" rx="8" fill="#082b61"/>
+      <rect x="82" y="38" width="226" height="12" rx="6" fill="#9aa9bd"/>
+    </g>
+    <g transform="translate(34 220)">
+      <rect width="58" height="58" rx="13" fill="#fff4ce"/>
+      <path d="m17 31 12 12 26-32" fill="none" stroke="#b88700" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="82" y="8" width="218" height="16" rx="8" fill="#082b61"/>
+      <rect x="82" y="38" width="184" height="12" rx="6" fill="#9aa9bd"/>
+    </g>
+    <g transform="translate(34 314)">
+      <rect width="58" height="58" rx="13" fill="#eaf1fb"/>
+      <path d="m17 31 12 12 26-32" fill="none" stroke="#082b61" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="82" y="8" width="180" height="16" rx="8" fill="#082b61"/>
+      <rect x="82" y="38" width="214" height="12" rx="6" fill="#9aa9bd"/>
+    </g>
+    <g transform="translate(34 408)">
+      <rect width="58" height="58" rx="13" fill="#fef3f2"/>
+      <path d="M18 18 46 46M46 18 18 46" stroke="#d92d20" stroke-width="8" stroke-linecap="round"/>
+      <rect x="82" y="8" width="194" height="16" rx="8" fill="#082b61"/>
+      <rect x="82" y="38" width="156" height="12" rx="6" fill="#9aa9bd"/>
+    </g>
+  </g>
+  <g transform="translate(150 682)">
+    <rect width="1100" height="62" rx="14" fill="#fff4ce" stroke="#f5c542" stroke-width="3"/>
+    <text x="34" y="40" fill="#082b61" font-family="Arial, sans-serif" font-size="26" font-weight="700">Anbieter nach Leistung, Kommunikation, Objektkenntnis und klaren Grenzen vergleichen</text>
+  </g>
+</svg>

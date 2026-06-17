@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 788" role="img" aria-labelledby="title desc">
+  <title id="title">Hausvia Ratgeber Grafik zum Wechsel des Hausmeisterservice</title>
+  <desc id="desc">Illustration mit Wohnanlage, Wechselpfeilen, Schluessel und Checkliste fuer Dienstleisterwechsel in Hannover.</desc>
+  <rect width="1400" height="788" fill="#f7f9fc"/>
+  <rect width="1400" height="118" fill="#082b61"/>
+  <rect y="118" width="1400" height="18" fill="#f5c542"/>
+  <text x="112" y="78" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="700">Hausmeisterservice sauber wechseln</text>
+  <g transform="translate(104 194)">
+    <rect x="0" y="112" width="338" height="306" rx="18" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <path d="M-16 126 169 0 354 126" fill="none" stroke="#9aa9bd" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="68" y="188" width="54" height="72" rx="8" fill="#eef2f7" stroke="#c4cfdd" stroke-width="4"/>
+    <rect x="142" y="188" width="54" height="72" rx="8" fill="#eef2f7" stroke="#c4cfdd" stroke-width="4"/>
+    <rect x="216" y="188" width="54" height="72" rx="8" fill="#eef2f7" stroke="#c4cfdd" stroke-width="4"/>
+    <rect x="142" y="294" width="54" height="124" rx="8" fill="#c4cfdd"/>
+    <text x="86" y="470" fill="#667085" font-family="Arial, sans-serif" font-size="26" font-weight="700">Alt</text>
+  </g>
+  <g transform="translate(958 194)">
+    <rect x="0" y="112" width="338" height="306" rx="18" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <path d="M-16 126 169 0 354 126" fill="none" stroke="#082b61" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="68" y="188" width="54" height="72" rx="8" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="142" y="188" width="54" height="72" rx="8" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="216" y="188" width="54" height="72" rx="8" fill="#eaf1fb" stroke="#b9c8da" stroke-width="4"/>
+    <rect x="142" y="294" width="54" height="124" rx="8" fill="#f5c542" stroke="#b88700" stroke-width="4"/>
+    <text x="80" y="470" fill="#082b61" font-family="Arial, sans-serif" font-size="26" font-weight="700">Neu</text>
+  </g>
+  <g transform="translate(484 210)">
+    <path d="M0 122h276" stroke="#f5c542" stroke-width="24" stroke-linecap="round"/>
+    <path d="m232 72 72 50-72 50" fill="none" stroke="#082b61" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M304 258H28" stroke="#d8e1ee" stroke-width="20" stroke-linecap="round"/>
+    <path d="m72 218-56 40 56 40" fill="none" stroke="#9aa9bd" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g transform="translate(510 388)">
+    <rect width="380" height="244" rx="24" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+    <rect width="380" height="70" rx="24" fill="#082b61"/>
+    <rect y="50" width="380" height="20" fill="#082b61"/>
+    <text x="32" y="46" fill="#ffffff" font-family="Arial, sans-serif" font-size="26" font-weight="700">Wechsel-Check</text>
+    <rect x="32" y="104" width="54" height="54" rx="12" fill="#ecfdf3"/>
+    <path d="m48 132 12 12 25-32" fill="none" stroke="#079455" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="112" y="112" width="202" height="16" rx="8" fill="#082b61"/>
+    <rect x="112" y="144" width="228" height="12" rx="6" fill="#9aa9bd"/>
+    <rect x="32" y="174" width="54" height="54" rx="12" fill="#fff4ce"/>
+    <path d="M50 202h22M61 191v22" stroke="#b88700" stroke-width="8" stroke-linecap="round"/>
+    <rect x="112" y="182" width="176" height="16" rx="8" fill="#082b61"/>
+    <rect x="112" y="214" width="206" height="12" rx="6" fill="#9aa9bd"/>
+  </g>
+  <g transform="translate(150 690)">
+    <rect width="1100" height="58" rx="14" fill="#fff4ce" stroke="#f5c542" stroke-width="3"/>
+    <text x="34" y="38" fill="#082b61" font-family="Arial, sans-serif" font-size="25" font-weight="700">Probleme dokumentieren, Leistungen schaerfen, Uebergabe sauber planen</text>
+  </g>
+</svg>

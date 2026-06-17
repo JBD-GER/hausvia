@@ -3,7 +3,7 @@ import { allSeoPaths, blogCategories, blogPosts, locationPages, marketingPages }
 import { serviceLandingPages } from "@/lib/serviceLandingPages";
 import { absoluteUrl } from "@/lib/seo";
 
-const siteUpdatedAt = new Date("2026-06-11");
+const siteUpdatedAt = new Date("2026-06-17");
 
 function changeFrequencyFor(path: string): MetadataRoute.Sitemap[number]["changeFrequency"] {
   if (path === "/" || path === "/ratgeber") return "weekly";
@@ -39,13 +39,26 @@ function lastModifiedFor(path: string) {
   return siteUpdatedAt;
 }
 
+function imagesFor(path: string) {
+  const blogPost = blogPosts.find((post) => path === `/ratgeber/${post.slug}`);
+
+  if (!blogPost) return undefined;
+
+  return [absoluteUrl(blogPost.image)];
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const paths = [...allSeoPaths, ...serviceLandingPages.map((page) => `/leistungen/${page.slug}`)];
 
-  return paths.map((path) => ({
-    url: absoluteUrl(path),
-    lastModified: lastModifiedFor(path),
-    changeFrequency: changeFrequencyFor(path),
-    priority: priorityFor(path),
-  }));
+  return paths.map((path) => {
+    const images = imagesFor(path);
+
+    return {
+      url: absoluteUrl(path),
+      lastModified: lastModifiedFor(path),
+      changeFrequency: changeFrequencyFor(path),
+      priority: priorityFor(path),
+      ...(images ? { images } : {}),
+    };
+  });
 }
