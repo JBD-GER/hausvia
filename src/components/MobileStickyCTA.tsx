@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export function MobileStickyCTA() {
   const pathname = usePathname();
 
-  if (pathname === "/angebot-anfragen" || pathname === "/kontakt") {
+  if (pathname === "/angebot-anfragen" || pathname === "/kosten-einschaetzen" || pathname === "/kontakt") {
     return null;
   }
 

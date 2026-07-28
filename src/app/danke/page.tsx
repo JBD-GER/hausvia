@@ -7,7 +7,7 @@ import { absoluteUrl } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "Vielen Dank | Hausvia",
   description:
-    "Vielen Dank für Ihre Hausvia Anfrage. Das PDF-Dokument zur unverbindlichen Einschätzung wurde per E-Mail versendet.",
+    "Vielen Dank für Ihre Hausvia Anfrage. Die Bestätigung wurde per E-Mail versendet.",
   alternates: {
     canonical: absoluteUrl("/danke"),
   },
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-const nextSteps = [
+const estimateNextSteps = [
   {
     title: "Postfach prüfen",
     text: "Das Hausvia PDF mit Ihrer unverbindlichen Einschätzung wurde an die angegebene E-Mail-Adresse gesendet.",
@@ -39,7 +39,33 @@ const nextSteps = [
   },
 ];
 
-export default function DankePage() {
+const requestNextSteps = [
+  {
+    title: "Postfach prüfen",
+    text: "Die Bestätigung Ihrer Angebotsanfrage wurde an die angegebene E-Mail-Adresse gesendet.",
+    icon: MailCheck,
+  },
+  {
+    title: "Spam-Ordner ansehen",
+    text: "Falls die E-Mail nicht direkt sichtbar ist, prüfen Sie bitte auch Spam, Werbung oder Junk-Mail.",
+    icon: SearchCheck,
+  },
+  {
+    title: "Rückmeldung erhalten",
+    text: "Hausvia meldet sich persönlich bei Ihnen, um Objekt, Leistungen und die nächsten Schritte abzustimmen.",
+    icon: ShieldCheck,
+  },
+];
+
+export default async function DankePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ art?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const isOfferRequest = params.art === "anfrage";
+  const nextSteps = isOfferRequest ? requestNextSteps : estimateNextSteps;
+
   return (
     <main className="overflow-hidden bg-white">
       <GoogleAdsLeadConversion />
@@ -49,11 +75,14 @@ export default function DankePage() {
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-brand">Anfrage erfolgreich versendet</p>
             <h1 className="mt-4 max-w-3xl text-[2.35rem] font-extrabold leading-[1.05] text-slate-950 sm:text-[3.15rem] lg:text-[3.55rem]">
-              Vielen Dank, Ihre Hausvia Einschätzung ist unterwegs.
+              {isOfferRequest
+                ? "Vielen Dank, Ihre Angebotsanfrage ist bei uns."
+                : "Vielen Dank, Ihre Hausvia Einschätzung ist unterwegs."}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
-              Das offizielle PDF-Dokument wurde per E-Mail verschickt. Bitte prüfen Sie Ihr Postfach und schauen Sie
-              vorsichtshalber auch im Spam- oder Junk-Ordner nach.
+              {isOfferRequest
+                ? "Wir haben Ihre Kontaktdaten erhalten und eine Bestätigung per E-Mail verschickt. Hausvia meldet sich persönlich bei Ihnen, um alles Weitere zu klären."
+                : "Das offizielle PDF-Dokument wurde per E-Mail verschickt. Bitte prüfen Sie Ihr Postfach und schauen Sie vorsichtshalber auch im Spam- oder Junk-Ordner nach."}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -91,16 +120,22 @@ export default function DankePage() {
                     <MailCheck aria-hidden="true" className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-extrabold uppercase tracking-wide text-brand">PDF per E-Mail</p>
-                    <p className="mt-1 text-xl font-extrabold leading-tight text-slate-950">Einschätzung liegt im Postfach</p>
+                    <p className="text-sm font-extrabold uppercase tracking-wide text-brand">
+                      {isOfferRequest ? "Anfrage bestätigt" : "PDF per E-Mail"}
+                    </p>
+                    <p className="mt-1 text-xl font-extrabold leading-tight text-slate-950">
+                      {isOfferRequest ? "Hausvia meldet sich persönlich" : "Einschätzung liegt im Postfach"}
+                    </p>
                     <p className="mt-2 text-sm leading-6 text-slate-650">
-                      Der Versand kann je nach Mailanbieter einen Moment dauern. Bitte auch Spam/Junk prüfen.
+                      {isOfferRequest
+                        ? "Die Bestätigungs-E-Mail kann je nach Mailanbieter einen Moment dauern."
+                        : "Der Versand kann je nach Mailanbieter einen Moment dauern. Bitte auch Spam/Junk prüfen."}
                     </p>
                   </div>
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-bold text-slate-650">
-                <span className="rounded-md bg-slate-50 px-2 py-3">PDF</span>
+                <span className="rounded-md bg-slate-50 px-2 py-3">{isOfferRequest ? "Anfrage" : "PDF"}</span>
                 <span className="rounded-md bg-slate-50 px-2 py-3">E-Mail</span>
                 <span className="rounded-md bg-slate-50 px-2 py-3">Hausvia</span>
               </div>

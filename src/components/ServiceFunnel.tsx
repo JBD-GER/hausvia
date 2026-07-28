@@ -714,12 +714,11 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                     className="mt-1 h-5 w-5 rounded border-slate-300 text-brand focus:ring-brand"
                   />
                   <span>
-                    Ich habe den{" "}
+                    Ich habe die{" "}
                     <Link href="/datenschutz" className="font-bold text-brand underline">
-                      Datenschutz-Hinweis
+                      Datenschutzerklärung
                     </Link>{" "}
                     gelesen und bin einverstanden, dass Hausvia meine Angaben zur Bearbeitung der Anfrage nutzt.
-                    Rechtliche Datenschutztexte sind vor Veröffentlichung zu prüfen.
                   </span>
                 </label>
                 <label className="flex gap-3 rounded-md bg-white p-4 text-sm leading-6 text-slate-700 sm:col-span-2">
@@ -734,7 +733,7 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                     <Link href="/agb" className="font-bold text-brand underline">
                       AGB
                     </Link>{" "}
-                    von Hausvia. Die finalen AGB sind vor Veröffentlichung rechtlich zu prüfen.
+                    von Hausvia.
                   </span>
                 </label>
               </div>

@@ -81,7 +81,7 @@ export default async function IndividualServicePage({ params }: PageProps) {
         text={page.intro}
         image={page.image}
         imageAlt={page.imageAlt}
-        primaryHref="/angebot-anfragen"
+        primaryHref="/kosten-einschaetzen"
         primaryLabel="Kosteneinschätzung anfordern"
         secondaryHref="/kontakt"
         secondaryLabel="Klassisch anfragen"
@@ -148,6 +148,7 @@ export default async function IndividualServicePage({ params }: PageProps) {
       <CTASection
         title={`${page.eyebrow} in Hannover anfragen`}
         text="Stellen Sie Objektart, Flächen und gewünschte Leistungen zusammen. Die unverbindliche Einschätzung wird per E-Mail vorbereitet."
+        href="/kosten-einschaetzen"
         label="Kostencheck starten"
       />
       <SEOJsonLd

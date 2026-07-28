@@ -37,7 +37,7 @@ export default function RatgeberPage() {
         imageAlt="Hausvia Ratgeber zur Objektbetreuung in Hannover"
         primaryLabel="Beiträge ansehen"
         primaryHref="#beitraege"
-        secondaryHref="/angebot-anfragen"
+        secondaryHref="/kosten-einschaetzen"
         secondaryLabel="Bedarf ermitteln"
       />
 
@@ -85,6 +85,7 @@ export default function RatgeberPage() {
       <CTASection
         title="Vom Ratgeber zur konkreten Objektbetreuung"
         text="Wenn Sie schon wissen, welche Themen relevant sind, können Sie den Bedarf direkt im Service-Konfigurator zusammenstellen."
+        href="/kosten-einschaetzen"
         label="Service konfigurieren"
       />
       <SEOJsonLd

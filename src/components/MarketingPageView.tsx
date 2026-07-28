@@ -128,6 +128,7 @@ export function MarketingPageView({ page }: { page: MarketingPage }) {
       <CTASection
         title={`${page.eyebrow} unverbindlich anfragen`}
         text="Starten Sie die Anfrage online und stellen Sie die passenden Leistungen für Ihr Objekt zusammen."
+        href="/kosten-einschaetzen"
         label="Service zusammenstellen"
       />
     </main>

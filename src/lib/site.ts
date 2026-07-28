@@ -458,7 +458,7 @@ export const marketingPages: MarketingPage[] = [
       { label: "Mülltonnenservice", href: "/muelltonnenservice-hannover" },
       { label: "Kleinreparaturen", href: "/kleinreparaturen-hannover" },
       { label: "Einsatzgebiete", href: "/einsatzgebiete" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -696,7 +696,7 @@ export const marketingPages: MarketingPage[] = [
       { label: "Objektbetreuung", href: "/objektbetreuung-hannover" },
       { label: "Winterdienst", href: "/winterdienst-hannover" },
       { label: "WEG Betreuung", href: "/weg-betreuung" },
-      { label: "Service zusammenstellen", href: "/angebot-anfragen" },
+      { label: "Service zusammenstellen", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -934,7 +934,7 @@ export const marketingPages: MarketingPage[] = [
       { label: "Objektbetreuung", href: "/objektbetreuung-hannover" },
       { label: "Treppenhausreinigung", href: "/treppenhausreinigung-hannover" },
       { label: "WEG Betreuung", href: "/weg-betreuung" },
-      { label: "Jetzt Bedarf ermitteln", href: "/angebot-anfragen" },
+      { label: "Jetzt Bedarf ermitteln", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -1171,7 +1171,7 @@ export const marketingPages: MarketingPage[] = [
       { label: "Treppenhausreinigung", href: "/treppenhausreinigung-hannover" },
       { label: "Gartenpflege", href: "/gartenpflege-hannover" },
       { label: "Mülltonnenservice", href: "/muelltonnenservice-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -1564,7 +1564,7 @@ export const locationPages: LocationPage[] = [
     internalLinks: [
       { label: "Gewerbeobjekte", href: "/gewerbeobjekte" },
       { label: "Winterdienst", href: "/winterdienst-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -1664,7 +1664,7 @@ export const locationPages: LocationPage[] = [
     internalLinks: [
       { label: "Gebäudeservice", href: "/gebaeudeservice-hannover" },
       { label: "Gewerbeobjekte", href: "/gewerbeobjekte" },
-      { label: "Jetzt Bedarf ermitteln", href: "/angebot-anfragen" },
+      { label: "Jetzt Bedarf ermitteln", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -1764,7 +1764,7 @@ export const locationPages: LocationPage[] = [
     internalLinks: [
       { label: "Kleinreparaturen", href: "/kleinreparaturen-hannover" },
       { label: "Treppenhausreinigung", href: "/treppenhausreinigung-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -2474,7 +2474,7 @@ const seoGrowthBlogPosts: BlogPost[] = [
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Treppenhausreinigung Hannover", href: "/treppenhausreinigung-hannover" },
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
-      { label: "Kostencheck starten", href: "/angebot-anfragen" },
+      { label: "Kostencheck starten", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -2778,7 +2778,7 @@ const seoGrowthBlogPosts: BlogPost[] = [
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
       { label: "Treppenhausreinigung Hannover", href: "/treppenhausreinigung-hannover" },
       { label: "Gartenpflege Hannover", href: "/gartenpflege-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
 ];
@@ -2928,7 +2928,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Kontrollgänge Hannover", href: "/kontrollgaenge-hannover" },
-      { label: "Kostencheck starten", href: "/angebot-anfragen" },
+      { label: "Kostencheck starten", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -3065,7 +3065,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
       { label: "Gartenpflege Hannover", href: "/gartenpflege-hannover" },
-      { label: "Kosten einschätzen", href: "/angebot-anfragen" },
+      { label: "Kosten einschätzen", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -3206,7 +3206,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Treppenhausreinigung Hannover", href: "/treppenhausreinigung-hannover" },
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -3468,7 +3468,7 @@ export const blogPosts: BlogPost[] = [
     internalLinks: [
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
       { label: "Einsatzgebiete", href: "/einsatzgebiete" },
     ],
   },
@@ -3699,7 +3699,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Winterdienst Hannover", href: "/winterdienst-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -3931,7 +3931,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Hausverwaltungen", href: "/hausverwaltungen" },
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -4047,7 +4047,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Gartenpflege Hannover", href: "/gartenpflege-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -4273,7 +4273,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Kontrollgänge Hannover", href: "/kontrollgaenge-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
-      { label: "Service konfigurieren", href: "/angebot-anfragen" },
+      { label: "Service konfigurieren", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -4372,7 +4372,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Kontrollgänge Hannover", href: "/kontrollgaenge-hannover" },
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
-      { label: "Kostencheck starten", href: "/angebot-anfragen" },
+      { label: "Kostencheck starten", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -4470,7 +4470,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Treppenhausreinigung Hannover", href: "/treppenhausreinigung-hannover" },
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
-      { label: "Service zusammenstellen", href: "/angebot-anfragen" },
+      { label: "Service zusammenstellen", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -4659,7 +4659,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
-      { label: "Kostencheck starten", href: "/angebot-anfragen" },
+      { label: "Kostencheck starten", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -4744,7 +4744,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Mülltonnenservice Hannover", href: "/muelltonnenservice-hannover" },
       { label: "Treppenhausreinigung Hannover", href: "/treppenhausreinigung-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
-      { label: "Service zusammenstellen", href: "/angebot-anfragen" },
+      { label: "Service zusammenstellen", href: "/kosten-einschaetzen" },
     ],
   },
   {
@@ -4829,7 +4829,7 @@ export const blogPosts: BlogPost[] = [
       { label: "Gartenpflege Hannover", href: "/gartenpflege-hannover" },
       { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
       { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
-      { label: "Kostencheck starten", href: "/angebot-anfragen" },
+      { label: "Kostencheck starten", href: "/kosten-einschaetzen" },
     ],
   },
 ];
@@ -4845,6 +4845,7 @@ export const allSeoPaths = [
   "/ueber-uns",
   "/kontakt",
   "/angebot-anfragen",
+  "/kosten-einschaetzen",
   "/agb",
   "/datenschutz",
   "/impressum",

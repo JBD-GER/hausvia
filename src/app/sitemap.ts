@@ -3,7 +3,7 @@ import { allSeoPaths, blogCategories, blogPosts, locationPages, marketingPages }
 import { serviceLandingPages } from "@/lib/serviceLandingPages";
 import { absoluteUrl } from "@/lib/seo";
 
-const siteUpdatedAt = new Date("2026-06-17");
+const siteUpdatedAt = new Date("2026-07-28");
 
 function changeFrequencyFor(path: string): MetadataRoute.Sitemap[number]["changeFrequency"] {
   if (path === "/" || path === "/ratgeber") return "weekly";
@@ -19,6 +19,7 @@ function priorityFor(path: string) {
 
   if (path === "/") return 1;
   if (path === "/angebot-anfragen") return 0.94;
+  if (path === "/kosten-einschaetzen") return 0.9;
   if (coreServiceSlugs.has(path)) return 0.92;
   if (path === "/einsatzgebiete" || path === "/kontakt") return 0.86;
   if (path.startsWith("/leistungen/")) return 0.82;

@@ -93,6 +93,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/kosten-einschaetzen" className="hover:text-white">
+                  Kosten einschätzen
+                </Link>
+              </li>
+              <li>
                 <Link href="/ueber-uns" className="hover:text-white">
                   Über Hausvia
                 </Link>

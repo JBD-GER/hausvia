@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { AllInOneSection } from "@/components/AllInOneSection";
 import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
@@ -10,7 +12,6 @@ import { ReviewSection } from "@/components/ReviewSection";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ServiceCard } from "@/components/ServiceCard";
-import { ServiceFunnel } from "@/components/ServiceFunnel";
 import { TrustBar } from "@/components/TrustBar";
 import {
   ASSETS,
@@ -40,6 +41,7 @@ export default function Home() {
         text="Hausvia unterstützt Hausverwaltungen, Eigentümer und Gewerbekunden bei der laufenden Pflege, Kontrolle und Betreuung von Immobilien in Hannover und Umgebung."
         image={ASSETS.hero}
         imageAlt="Hausvia Team für Hausmeisterservice in Hannover bei der Treppenhausreinigung"
+        primaryHref="/kosten-einschaetzen"
         primaryLabel="Kosten jetzt einschätzen"
         secondaryHref="/hausmeisterservice-hannover"
         secondaryLabel="Leistungen ansehen"
@@ -74,7 +76,25 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-8">
-            <ServiceFunnel compact />
+            <div className="rounded-xl border border-brand/15 bg-brand-soft p-6 sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wide text-brand">Separater Kostencheck</p>
+                <h3 className="mt-2 text-2xl font-extrabold text-slate-950">
+                  Kosteneinschätzung Schritt für Schritt starten
+                </h3>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-650">
+                  Der ausführliche Konfigurator öffnet sich auf einer eigenen Seite. Ihre Angaben bleiben übersichtlich
+                  und Sie können sich ganz auf die einzelnen Schritte konzentrieren.
+                </p>
+              </div>
+              <Link
+                href="/kosten-einschaetzen"
+                className="mt-5 inline-flex min-h-12 flex-none items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-dark sm:mt-0"
+              >
+                Kosten einschätzen
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -162,7 +182,7 @@ export default function Home() {
 
       <CTASection
         title="Hausmeisterservice in Hannover jetzt anfragen"
-        text="Nutzen Sie den Service-Konfigurator und stellen Sie in wenigen Schritten zusammen, welche Betreuung Ihr Objekt braucht."
+        text="Vier Kontaktdaten genügen. Hausvia meldet sich persönlich bei Ihnen und klärt den Bedarf gemeinsam mit Ihnen."
         label="Kostenlose Anfrage starten"
       />
       <SEOJsonLd

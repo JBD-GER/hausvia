@@ -140,7 +140,7 @@ export function ServiceOverview({
             </p>
           </div>
           <Link
-            href="/angebot-anfragen"
+            href="/kosten-einschaetzen"
             className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white sm:mt-0"
           >
             Service konfigurieren

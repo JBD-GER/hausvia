@@ -176,6 +176,18 @@ export async function POST(request: Request) {
   const phone = lead.phone;
   const privacyAccepted = lead.privacyAccepted;
   const termsAccepted = lead.termsAccepted;
+  const source = typeof payload.source === "string" ? payload.source : "unknown";
+  const submittedAt = typeof payload.submittedAt === "string" ? payload.submittedAt : new Date().toISOString();
+
+  if (source === "offer-request") {
+    if (!asString(lead.firstName)) {
+      return NextResponse.json({ ok: false, message: "Vorname ist erforderlich." }, { status: 400 });
+    }
+
+    if (!asString(lead.lastName)) {
+      return NextResponse.json({ ok: false, message: "Nachname ist erforderlich." }, { status: 400 });
+    }
+  }
 
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ ok: false, message: "Name is required" }, { status: 400 });
@@ -197,8 +209,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Terms consent is required" }, { status: 400 });
   }
 
-  const source = payload.source ?? "unknown";
-  const submittedAt = payload.submittedAt ?? new Date().toISOString();
   const enrichedLead = source === "cost-funnel" ? enrichCostFunnelLead(lead) : lead;
   const structuredLead = {
     source,

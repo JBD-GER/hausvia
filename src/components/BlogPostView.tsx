@@ -119,7 +119,7 @@ export function BlogPostView({ post }: { post: BlogPost }) {
                 einer passenden Einschätzung für Ihre Immobilie in Hannover und Umgebung.
               </p>
               <Link
-                href="/angebot-anfragen"
+                href="/kosten-einschaetzen"
                 className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white"
               >
                 Kostenlose Anfrage starten
@@ -143,6 +143,7 @@ export function BlogPostView({ post }: { post: BlogPost }) {
       <CTASection
         title="Ratgeber gelesen? Jetzt Bedarf konkret machen"
         text="Der Service-Konfigurator übersetzt Ihre Anforderungen in eine strukturierte Anfrage für Hausvia."
+        href="/kosten-einschaetzen"
         label="Service zusammenstellen"
       />
       <SEOJsonLd

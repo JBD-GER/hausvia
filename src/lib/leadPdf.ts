@@ -306,7 +306,14 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   addRow("Gewünschte Rückrufzeit", valueAsString(lead.preferredCallbackTime));
 
   addSection("Objektdaten", "Grundlage der Einschätzung sind Objektart, Standort, Flächen, Häufigkeit und Komplexität.");
-  addRow("Anfragequelle", source === "cost-funnel" ? "Kostencheck / Service-Funnel" : "Kontaktformular");
+  addRow(
+    "Anfragequelle",
+    source === "cost-funnel"
+      ? "Kostencheck / Service-Funnel"
+      : source === "offer-request"
+        ? "Kurze Angebotsanfrage"
+        : "Kontaktformular",
+  );
   addRow("Objektart", valueAsString(lead.objectTypeLabel ?? lead.objectType));
   addRow("Standort", valueAsString(lead.location));
   addRow("Außerhalb Standard-Einsatzgebiet", valueAsString(lead.outsideArea));

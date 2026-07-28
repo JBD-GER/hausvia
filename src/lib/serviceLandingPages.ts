@@ -22,7 +22,7 @@ export type ServiceLandingPage = {
 const commonRelatedLinks: LinkItem[] = [
   { label: "Hausmeisterservice Hannover", href: "/hausmeisterservice-hannover" },
   { label: "Objektbetreuung Hannover", href: "/objektbetreuung-hannover" },
-  { label: "Kostencheck starten", href: "/angebot-anfragen" },
+  { label: "Kostencheck starten", href: "/kosten-einschaetzen" },
 ];
 
 export const serviceLandingPages: ServiceLandingPage[] = [

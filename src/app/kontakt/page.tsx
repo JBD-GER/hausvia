@@ -36,7 +36,7 @@ export default function KontaktPage() {
         imageAlt="Hausvia Kontakt für Hausmeisterservice in Hannover"
         primaryHref="#kontaktformular"
         primaryLabel="Klassische Anfrage senden"
-        secondaryHref="/angebot-anfragen"
+        secondaryHref="/kosten-einschaetzen"
         secondaryLabel="Kostencheck nutzen"
       />
 
@@ -73,7 +73,7 @@ export default function KontaktPage() {
               Langenhagen, Garbsen, Laatzen, Isernhagen, Lehrte und Seelze.
             </div>
             <Link
-              href="/angebot-anfragen"
+              href="/kosten-einschaetzen"
               className="mt-6 inline-flex min-h-11 items-center rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white"
             >
               Jetzt Bedarf ermitteln
