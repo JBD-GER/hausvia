@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   calculateWinterPrice,
+  deriveWinterSurfaceProfile,
   parseWinterArea,
   parseWinterPricingInput,
   winterSeasonTotal,
@@ -91,6 +92,22 @@ test("bleibt an allen Flächenstaffelgrenzen monoton", () => {
   );
 
   for (let index = 1; index < estimates.length; index += 1) {
+    assert.ok(estimates[index].deploymentGross >= estimates[index - 1].deploymentGross);
+  }
+});
+
+test("bleibt auch bei automatisch wechselnder Bearbeitungsart monoton", () => {
+  const estimates = Array.from({ length: 991 }, (_, index) => index + 10).map((area) =>
+    calculateWinterPrice({
+      objectType: "residential",
+      area,
+      surfaceProfile: deriveWinterSurfaceProfile(area, "standard"),
+      access: "standard",
+    }),
+  );
+
+  for (let index = 1; index < estimates.length; index += 1) {
+    assert.ok(estimates[index].monthlyBaseGross >= estimates[index - 1].monthlyBaseGross);
     assert.ok(estimates[index].deploymentGross >= estimates[index - 1].deploymentGross);
   }
 });

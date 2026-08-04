@@ -12,7 +12,14 @@ import {
 import { SITE } from "@/lib/site";
 import { persistFunnelLead } from "@/lib/funnelPersistence";
 import {
+  calculateWinterPolygonArea,
+  isSimpleWinterPolygon,
+  sanitizeWinterMapPoints,
+  sanitizeWinterObjectAddress,
+} from "@/lib/winterMap";
+import {
   calculateWinterPrice,
+  deriveWinterSurfaceProfile,
   parseWinterPricingInput,
   winterPricingLabels,
   type WinterPricingInput,
@@ -28,6 +35,7 @@ type LeadPayload = {
 
 const allowedLeadSources = ["offer-request", "contact-form", "cost-funnel"] as const;
 type LeadSource = (typeof allowedLeadSources)[number];
+const maximumLeadPayloadLength = 100_000;
 
 const internalLeadEmail = process.env.HAUSVIA_INTERNAL_LEAD_EMAIL ?? "c.pfad@flaaq.com";
 const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? `Hausvia <${SITE.email}>`;
@@ -51,6 +59,19 @@ function asNumber(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+    return entities[character];
+  });
 }
 
 function isLeadSource(value: unknown): value is LeadSource {
@@ -127,6 +148,31 @@ function withoutClientEstimate(lead: Record<string, unknown>) {
   return sanitizedLead;
 }
 
+function sanitizeWinterLeadDetails(lead: Record<string, unknown>) {
+  const sanitizedLead = withoutClientEstimate(lead);
+  delete sanitizedLead.objectAddress;
+  delete sanitizedLead.winterAreaSource;
+  delete sanitizedLead.winterMapArea;
+  delete sanitizedLead.winterPolygonPoints;
+
+  const objectAddress = sanitizeWinterObjectAddress(lead.objectAddress);
+  const polygonPoints = sanitizeWinterMapPoints(lead.winterPolygonPoints);
+  const polygonIsValid = isSimpleWinterPolygon(polygonPoints);
+  const mapArea = polygonIsValid ? Math.round(calculateWinterPolygonArea(polygonPoints)) : 0;
+  const areaSource = lead.winterAreaSource === "map" && polygonIsValid && mapArea > 0 ? "map" : "manual";
+
+  return {
+    ...sanitizedLead,
+    services: ["Winterdienst"],
+    selectedServiceLabels: ["Winterdienst"],
+    ...(objectAddress ? { objectAddress } : {}),
+    winterAreaSource: areaSource,
+    winterAreaSourceLabel:
+      areaSource === "map" ? "Auf der Satellitenkarte markiert" : "Manuell in m² eingegeben",
+    ...(areaSource === "map" ? { winterMapArea: mapArea, winterPolygonPoints: polygonPoints } : {}),
+  };
+}
+
 function enrichWinterServiceLead(lead: Record<string, unknown>, input: WinterPricingInput) {
   const estimate = calculateWinterPrice(input);
   const labels = winterPricingLabels(input);
@@ -139,6 +185,8 @@ function enrichWinterServiceLead(lead: Record<string, unknown>, input: WinterPri
     objectTypeLabel: labels.objectType,
     winterPricingInput: input,
     winterArea: input.area,
+    winterAreaSourceLabel:
+      lead.winterAreaSource === "map" ? "Auf der Satellitenkarte markiert" : "Manuell in m² eingegeben",
     winterSurfaceProfileLabel: labels.surfaceProfile,
     winterAccessLabel: labels.access,
     frequency: "weather-dependent",
@@ -203,6 +251,10 @@ async function sendResendEmail({
 }
 
 function emailHtml({ headline, intro, note }: { headline: string; intro: string; note: string }) {
+  const safeHeadline = escapeHtml(headline);
+  const safeIntro = escapeHtml(intro);
+  const safeNote = escapeHtml(note);
+
   return `
     <div style="font-family:Arial,sans-serif;background:#f7f9fc;padding:24px;color:#172033">
       <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dfe7f2;border-radius:10px;overflow:hidden">
@@ -211,10 +263,10 @@ function emailHtml({ headline, intro, note }: { headline: string; intro: string;
           <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#d8e4f5">Hausmeisterservice</div>
         </div>
         <div style="border-top:6px solid #f5c542;padding:26px">
-          <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px">${headline}</h1>
-          <p style="font-size:15px;line-height:1.65;margin:0 0 18px">${intro}</p>
+          <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px">${safeHeadline}</h1>
+          <p style="font-size:15px;line-height:1.65;margin:0 0 18px">${safeIntro}</p>
           <p style="font-size:14px;line-height:1.6;margin:0;color:#526071">
-            ${note}
+            ${safeNote}
           </p>
         </div>
       </div>
@@ -226,12 +278,21 @@ export async function POST(request: Request) {
   let payload: LeadPayload;
 
   try {
-    payload = (await request.json()) as LeadPayload;
+    const rawPayload = await request.text();
+    if (rawPayload.length > maximumLeadPayloadLength) {
+      return NextResponse.json({ ok: false, message: "Payload too large" }, { status: 413 });
+    }
+
+    const parsedPayload: unknown = JSON.parse(rawPayload);
+    if (!isRecord(parsedPayload) || !isRecord(parsedPayload.lead)) {
+      return NextResponse.json({ ok: false, message: "Invalid lead payload" }, { status: 400 });
+    }
+    payload = parsedPayload as LeadPayload;
   } catch {
     return NextResponse.json({ ok: false, message: "Invalid JSON" }, { status: 400 });
   }
 
-  const lead = payload.lead ?? {};
+  const lead = payload.lead as Record<string, unknown>;
   const name = lead.name;
   const email = lead.email;
   const phone = lead.phone;
@@ -242,27 +303,28 @@ export async function POST(request: Request) {
   }
 
   const source = payload.source;
-  const submittedAt = typeof payload.submittedAt === "string" ? payload.submittedAt : new Date().toISOString();
+  const submittedDate = typeof payload.submittedAt === "string" ? new Date(payload.submittedAt) : new Date();
+  const submittedAt = Number.isNaN(submittedDate.getTime()) ? new Date().toISOString() : submittedDate.toISOString();
 
   if (source === "offer-request") {
-    if (!asString(lead.firstName)) {
+    if (!asString(lead.firstName) || asString(lead.firstName).length > 80) {
       return NextResponse.json({ ok: false, message: "Vorname ist erforderlich." }, { status: 400 });
     }
 
-    if (!asString(lead.lastName)) {
+    if (!asString(lead.lastName) || asString(lead.lastName).length > 80) {
       return NextResponse.json({ ok: false, message: "Nachname ist erforderlich." }, { status: 400 });
     }
   }
 
-  if (typeof name !== "string" || !name.trim()) {
+  if (typeof name !== "string" || !name.trim() || name.trim().length > 160) {
     return NextResponse.json({ ok: false, message: "Name is required" }, { status: 400 });
   }
 
-  if (!isValidEmail(email)) {
+  if (!isValidEmail(email) || asString(email).length > 180) {
     return NextResponse.json({ ok: false, message: "Valid email is required" }, { status: 400 });
   }
 
-  if (typeof phone !== "string" || !phone.trim()) {
+  if (typeof phone !== "string" || !phone.trim() || phone.trim().length > 40) {
     return NextResponse.json({ ok: false, message: "Phone is required" }, { status: 400 });
   }
 
@@ -274,11 +336,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Terms consent is required" }, { status: 400 });
   }
 
+  const hasWinterPricingInput = Object.prototype.hasOwnProperty.call(lead, "winterPricingInput");
+  const requestsWinterService =
+    source === "offer-request" &&
+    (hasWinterPricingInput ||
+      (Array.isArray(lead.services) && lead.services.some((service) => service === "Winterdienst")));
+  const sanitizedWinterLead = requestsWinterService ? sanitizeWinterLeadDetails(lead) : null;
   let enrichedLead: Record<string, unknown>;
 
   if (source === "cost-funnel") {
     enrichedLead = enrichCostFunnelLead(lead);
-  } else if (source === "offer-request" && Object.prototype.hasOwnProperty.call(lead, "winterPricingInput")) {
+  } else if (source === "offer-request" && hasWinterPricingInput && sanitizedWinterLead) {
     if (!isRecord(lead.winterPricingInput)) {
       return NextResponse.json(
         { ok: false, message: "Die übernommenen Winterdienstangaben sind ungültig." },
@@ -286,35 +354,66 @@ export async function POST(request: Request) {
       );
     }
 
-    const winterInput = parseWinterPricingInput({
+    const submittedWinterInput = parseWinterPricingInput({
       ...lead.winterPricingInput,
       area:
         typeof lead.winterPricingInput.area === "number"
           ? String(lead.winterPricingInput.area)
           : lead.winterPricingInput.area,
     });
-    if (!winterInput) {
+    if (!submittedWinterInput) {
       return NextResponse.json(
         { ok: false, message: "Die übernommenen Winterdienstangaben sind ungültig. Bitte berechnen Sie den Preis erneut." },
         { status: 400 },
       );
     }
 
-    enrichedLead = enrichWinterServiceLead(lead, winterInput);
+    if (lead.winterAreaSource === "map" && sanitizedWinterLead.winterAreaSource !== "map") {
+      return NextResponse.json(
+        { ok: false, message: "Die markierte Winterdienstfläche ist ungültig. Bitte zeichnen Sie die Fläche erneut." },
+        { status: 400 },
+      );
+    }
+
+    const verifiedArea =
+      sanitizedWinterLead.winterAreaSource === "map"
+        ? asNumber(sanitizedWinterLead.winterMapArea)
+        : submittedWinterInput.area;
+    const verifiedWinterInput = parseWinterPricingInput({
+      ...submittedWinterInput,
+      area: String(verifiedArea),
+      surfaceProfile: deriveWinterSurfaceProfile(verifiedArea, submittedWinterInput.access),
+    });
+
+    if (!verifiedWinterInput) {
+      return NextResponse.json(
+        { ok: false, message: "Die markierte Winterdienstfläche liegt außerhalb des online kalkulierbaren Bereichs." },
+        { status: 400 },
+      );
+    }
+
+    enrichedLead = enrichWinterServiceLead(sanitizedWinterLead, verifiedWinterInput);
+  } else if (sanitizedWinterLead) {
+    enrichedLead = sanitizedWinterLead;
   } else {
     enrichedLead = withoutClientEstimate(lead);
   }
 
-  const isWinterServiceRequest =
+  const hasWinterEstimate =
     isRecord(enrichedLead.estimate) &&
     enrichedLead.estimate.pricingModel === "winter-season-plus-deployment";
+  const isWinterServiceRequest = requestsWinterService || hasWinterEstimate;
   const structuredLead = {
     source,
     submittedAt,
     lead: enrichedLead,
   };
 
-  console.info("Hausvia lead received", JSON.stringify(structuredLead, null, 2));
+  console.info("Hausvia lead received", {
+    source,
+    submittedAt,
+    requestType: isWinterServiceRequest ? "winter-service" : "general-service",
+  });
 
   try {
     await persistFunnelLead(structuredLead);
@@ -335,7 +434,7 @@ export async function POST(request: Request) {
     content: pdf.toString("base64"),
   };
   const customerEmail = asString(email);
-  const customerName = asString(name);
+  const customerName = asString(name).replace(/[\r\n]+/g, " ").slice(0, 160);
   const replyTo = customerEmail;
 
   try {
@@ -359,21 +458,27 @@ export async function POST(request: Request) {
             source === "cost-funnel"
               ? "Vielen Dank für Ihre Angaben. Ihre unverbindliche Ersteinschätzung wurde als PDF vorbereitet und ist dieser E-Mail beigefügt."
               : isWinterServiceRequest
-                ? "Vielen Dank für Ihre Winterdienst-Anfrage. Grundbetrag, Einsatzpreis und Ihre Objektangaben wurden serverseitig geprüft und im beigefügten PDF zusammengefasst."
+                ? hasWinterEstimate
+                  ? "Vielen Dank für Ihre Winterdienst-Anfrage. Grundbetrag, Einsatzpreis und Ihre Objektangaben wurden serverseitig geprüft und im beigefügten PDF zusammengefasst."
+                  : "Vielen Dank für Ihre Winterdienst-Anfrage. Ihre Angaben wurden geprüft und im beigefügten PDF zusammengefasst."
               : "Vielen Dank für Ihre Anfrage. Die übermittelten Angaben wurden als PDF zusammengefasst und sind dieser E-Mail beigefügt.",
           note:
             source === "cost-funnel"
               ? "Das PDF enthält die Anfrage, die angegebenen Objekt- und Leistungsdaten sowie die unverbindliche Einschätzung."
               : isWinterServiceRequest
-                ? "Das PDF enthält den festen Saison-Grundbetrag und den getrennten Preis je tatsächlichem Winterdiensteinsatz."
+                ? hasWinterEstimate
+                  ? "Das PDF enthält den festen Saison-Grundbetrag und den getrennten Preis je tatsächlichem Winterdiensteinsatz."
+                  : "Das PDF enthält die übermittelten Objekt- und Kontaktdaten für die persönliche Angebotserstellung."
               : "Das PDF enthält die Anfrage sowie die angegebenen Kontakt-, Objekt- und Leistungsdaten.",
         }),
         text:
           source === "cost-funnel"
             ? "Vielen Dank für Ihre Angaben. Ihre unverbindliche Hausvia Einschätzung befindet sich als PDF im Anhang."
             : isWinterServiceRequest
-              ? "Vielen Dank für Ihre Winterdienst-Anfrage. Die serverseitig geprüfte Einschätzung mit Saison-Grundbetrag und Einsatzpreis befindet sich als PDF im Anhang."
-            : "Vielen Dank für Ihre Anfrage. Ihre Angaben befinden sich als PDF im Anhang.",
+              ? hasWinterEstimate
+                ? "Vielen Dank für Ihre Winterdienst-Anfrage. Die serverseitig geprüfte Einschätzung mit Saison-Grundbetrag und Einsatzpreis befindet sich als PDF im Anhang."
+                : "Vielen Dank für Ihre Winterdienst-Anfrage. Ihre Angaben befinden sich als PDF im Anhang."
+              : "Vielen Dank für Ihre Anfrage. Ihre Angaben befinden sich als PDF im Anhang.",
         attachment,
         replyTo: SITE.email,
       }),
@@ -386,7 +491,9 @@ export async function POST(request: Request) {
             source === "cost-funnel"
               ? `Es ist eine neue Kostencheck-Anfrage von ${customerName || "unbekannt"} eingegangen. Das PDF mit allen Angaben und der serverseitigen Einschätzung ist beigefügt.`
               : isWinterServiceRequest
-                ? `Es ist eine neue Winterdienst-Anfrage von ${customerName || "unbekannt"} eingegangen. Saison-Grundbetrag und Einsatzpreis wurden aus den übernommenen Rohdaten serverseitig neu berechnet.`
+                ? hasWinterEstimate
+                  ? `Es ist eine neue Winterdienst-Anfrage von ${customerName || "unbekannt"} eingegangen. Saison-Grundbetrag und Einsatzpreis wurden aus den übernommenen Rohdaten serverseitig neu berechnet.`
+                  : `Es ist eine neue Winterdienst-Anfrage von ${customerName || "unbekannt"} eingegangen. Die übermittelten Objektangaben befinden sich im PDF.`
               : `Es ist eine neue Kontaktanfrage von ${customerName || "unbekannt"} eingegangen. Das PDF mit allen Angaben ist beigefügt.`,
           note: "Die interne Kopie enthält alle übermittelten Daten und, falls vorhanden, die berechnete Ersteinschätzung.",
         }),

@@ -68,6 +68,18 @@ export default function DatenschutzPage() {
               einordnen zu können. Die konkrete Anbieterbeschreibung, Rechtsgrundlage, Speicherdauer und mögliche
               Drittlandübermittlung müssen vor Veröffentlichung rechtlich geprüft und vollständig ergänzt werden.
             </p>
+            <p>
+              Im Winterdienst-Rechner können Sie den Google-Adressfinder und eine Google-Karte zur Flächenmessung
+              ausdrücklich aktivieren. Erst nach diesem Klick werden Google Maps Platform und Places geladen und eine
+              technische Verbindung zu Google hergestellt. Suchangaben und Karteninteraktionen können dabei durch
+              Google verarbeitet werden. Die ausgewählte Objektadresse und markierten Eckpunkte werden von Hausvia erst
+              übernommen, wenn Sie daraus eine Anfrage starten. Weitere Informationen finden Sie in den{" "}
+              <a href="https://policies.google.com/privacy" rel="noreferrer" target="_blank">
+                Datenschutzhinweisen von Google
+              </a>
+              . Anbieterbezeichnung, Rechtsgrundlage, Speicherdauer und mögliche Drittlandübermittlung müssen vor
+              Veröffentlichung rechtlich geprüft und vollständig ergänzt werden.
+            </p>
 
             <h2>5. Rechtsgrundlagen und Rechte betroffener Personen</h2>
             <p>

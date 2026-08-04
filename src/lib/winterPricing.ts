@@ -25,6 +25,7 @@ export const winterPricingConfig = {
   minimumArea: 10,
   maximumArea: 1_000,
   minimumMachineArea: 150,
+  automaticMachineArea: 400,
   seasonMonths: 5,
   vatRate: 0.19,
   objectTypes: [
@@ -123,6 +124,12 @@ export function isWinterAccess(value: unknown): value is WinterAccess {
   return winterPricingConfig.accessOptions.some((item) => item.id === value);
 }
 
+export function deriveWinterSurfaceProfile(area: number, access: WinterAccess): WinterSurfaceProfile {
+  if (access === "difficult" || area < winterPricingConfig.minimumMachineArea) return "manual";
+  if (area >= winterPricingConfig.automaticMachineArea) return "machine";
+  return "mixed";
+}
+
 function singleString(value: unknown) {
   if (typeof value === "string") return value;
   if (Array.isArray(value) && typeof value[0] === "string") return value[0];
@@ -207,6 +214,8 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
   if (!objectType || !surfaceProfile || !access) {
     throw new TypeError("Die Winterdienstangaben sind ungültig.");
   }
+  const selectedObjectType = objectType;
+  const selectedAccess = access;
 
   const normalizedInput = { ...input, area };
   if (!isAllowedWinterCombination(normalizedInput)) {
@@ -215,21 +224,56 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
     );
   }
 
-  const monthlyBaseGross = roundUpToFive(
-    Math.max(
-      objectType.minimumMonthlyBase,
-      (49 + area * 0.18) * objectType.factor * surfaceProfile.baseFactor * access.baseFactor,
-    ),
-  );
-  const deploymentGross = roundUpToFive(
-    Math.max(
-      objectType.minimumDeployment,
-      (29 + areaPrice(area)) *
-        objectType.factor *
-        surfaceProfile.deploymentFactor *
-        access.deploymentFactor,
-    ),
-  );
+  function grossForProfile(
+    profile: (typeof winterPricingConfig.surfaceProfiles)[number],
+    profileArea: number,
+  ) {
+    return {
+      monthlyBaseGross: roundUpToFive(
+        Math.max(
+          selectedObjectType.minimumMonthlyBase,
+          (49 + profileArea * 0.18) * selectedObjectType.factor * profile.baseFactor * selectedAccess.baseFactor,
+        ),
+      ),
+      deploymentGross: roundUpToFive(
+        Math.max(
+          selectedObjectType.minimumDeployment,
+          (29 + areaPrice(profileArea)) *
+            selectedObjectType.factor *
+            profile.deploymentFactor *
+            selectedAccess.deploymentFactor,
+        ),
+      ),
+    };
+  }
+
+  const gross = grossForProfile(surfaceProfile, area);
+  let monthlyBaseGross = gross.monthlyBaseGross;
+  let deploymentGross = gross.deploymentGross;
+
+  const previousProfileFloor =
+    input.surfaceProfile === "mixed" && area >= winterPricingConfig.minimumMachineArea
+      ? {
+          profileId: "manual",
+          area: winterPricingConfig.minimumMachineArea - 1,
+        }
+      : input.surfaceProfile === "machine" && area >= winterPricingConfig.automaticMachineArea
+        ? {
+            profileId: "mixed",
+            area: winterPricingConfig.automaticMachineArea - 1,
+          }
+        : null;
+
+  if (previousProfileFloor) {
+    const previousProfile = winterPricingConfig.surfaceProfiles.find(
+      (profile) => profile.id === previousProfileFloor.profileId,
+    );
+    if (previousProfile) {
+      const floor = grossForProfile(previousProfile, previousProfileFloor.area);
+      monthlyBaseGross = Math.max(monthlyBaseGross, floor.monthlyBaseGross);
+      deploymentGross = Math.max(deploymentGross, floor.deploymentGross);
+    }
+  }
   const seasonBaseGross = monthlyBaseGross * winterPricingConfig.seasonMonths;
   const monthlyBaseNet = grossToNet(monthlyBaseGross);
 

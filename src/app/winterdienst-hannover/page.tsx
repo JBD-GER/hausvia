@@ -46,6 +46,20 @@ const heroSnowflakes = [
   { id: "snow-10", left: "91%", delay: "-13s", duration: "19s", size: "h-4 w-4" },
   { id: "snow-11", left: "26%", delay: "-16s", duration: "22s", size: "hidden h-6 w-6 sm:block" },
   { id: "snow-12", left: "78%", delay: "-18s", duration: "23s", size: "hidden h-6 w-6 sm:block" },
+  { id: "snow-13", left: "7%", delay: "-11s", duration: "21s", size: "h-4 w-4" },
+  { id: "snow-14", left: "17%", delay: "-15s", duration: "18s", size: "h-3 w-3" },
+  { id: "snow-15", left: "24%", delay: "-7s", duration: "20s", size: "h-5 w-5" },
+  { id: "snow-16", left: "36%", delay: "-19s", duration: "24s", size: "hidden h-4 w-4 sm:block" },
+  { id: "snow-17", left: "47%", delay: "-9s", duration: "22s", size: "h-3 w-3" },
+  { id: "snow-18", left: "58%", delay: "-21s", duration: "25s", size: "hidden h-6 w-6 sm:block" },
+  { id: "snow-19", left: "68%", delay: "-17s", duration: "21s", size: "h-4 w-4" },
+  { id: "snow-20", left: "76%", delay: "-1s", duration: "17s", size: "h-3 w-3" },
+  { id: "snow-21", left: "87%", delay: "-16s", duration: "22s", size: "h-5 w-5" },
+  { id: "snow-22", left: "96%", delay: "-9s", duration: "19s", size: "hidden h-4 w-4 sm:block" },
+  { id: "snow-23", left: "14%", delay: "-23s", duration: "27s", size: "hidden h-6 w-6 sm:block" },
+  { id: "snow-24", left: "39%", delay: "-13s", duration: "23s", size: "h-4 w-4" },
+  { id: "snow-25", left: "61%", delay: "-25s", duration: "28s", size: "hidden h-5 w-5 sm:block" },
+  { id: "snow-26", left: "89%", delay: "-4s", duration: "20s", size: "h-3 w-3" },
 ] as const;
 
 const faqs: FaqItem[] = [
@@ -125,10 +139,10 @@ const services = [
   },
 ];
 
-const process = [
+const planningSteps = [
   {
     title: "Preis sofort berechnen",
-    text: "Objektart, Winterdienstfläche, Bearbeitungsart und Zugänglichkeit online angeben.",
+    text: "Adresse, Winterdienstfläche, Objektart und mögliche Erschwernisse online angeben.",
   },
   {
     title: "Einschätzung anfragen",
@@ -296,7 +310,7 @@ export default function WinterdienstHannoverPage() {
               Vier Angaben genügen. Grundbetrag, Einsatzpreis und Saisonbeispiele erscheinen direkt im Browser – ohne E-Mail-Adresse und ohne versteckte Freischaltung.
             </p>
           </div>
-          <WinterdienstCalculator />
+          <WinterdienstCalculator googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""} />
         </div>
       </section>
 
@@ -414,7 +428,7 @@ export default function WinterdienstHannoverPage() {
           </div>
 
           <ol className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {process.map((step, index) => (
+            {planningSteps.map((step, index) => (
               <li key={step.title} className="relative rounded-2xl border border-white/10 bg-white/5 p-6">
                 <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-sm font-extrabold text-brand-dark">
                   {index + 1}

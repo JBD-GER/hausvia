@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import { ArrowRight, Loader2, ShieldCheck, Snowflake } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { ArrowRight, Loader2, MapPin, ShieldCheck, Snowflake } from "lucide-react";
 import { markLeadConversionPending } from "@/components/LeadConversionTracker";
+import {
+  clearWinterCalculatorDraft,
+  readWinterCalculatorDraft,
+  type WinterCalculatorDraft,
+} from "@/lib/winterCalculatorDraft";
 import type { WinterPricingEstimate, WinterPricingInput } from "@/lib/winterPricing";
 
 export type WinterOfferRequestContext = {
@@ -37,11 +42,26 @@ function formatCurrency(value: number) {
   return currencyFormatter.format(value);
 }
 
-export function OfferRequestForm({ requestContext }: { requestContext?: WinterOfferRequestContext }) {
+export function OfferRequestForm({
+  requestContext,
+  winterDraftId = "",
+}: {
+  requestContext?: WinterOfferRequestContext;
+  winterDraftId?: string;
+}) {
   const router = useRouter();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [winterDraft, setWinterDraft] = useState<WinterCalculatorDraft | null>(null);
+  const isWinterRequest = requestContext?.service === "winterdienst";
+
+  useEffect(() => {
+    if (!isWinterRequest || !winterDraftId) return;
+
+    const timeoutId = window.setTimeout(() => setWinterDraft(readWinterCalculatorDraft(winterDraftId)), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [isWinterRequest, winterDraftId]);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -84,8 +104,6 @@ export function OfferRequestForm({ requestContext }: { requestContext?: WinterOf
     setSubmitting(true);
     setError("");
 
-    const isWinterRequest = requestContext?.service === "winterdienst";
-
     try {
       const response = await fetch("/api/lead", {
         method: "POST",
@@ -100,6 +118,13 @@ export function OfferRequestForm({ requestContext }: { requestContext?: WinterOf
             phone,
             email,
             services: isWinterRequest ? ["Winterdienst"] : ["Angebotsanfrage"],
+            ...(isWinterRequest && winterDraft
+              ? {
+                  objectAddress: winterDraft.objectAddress,
+                  winterAreaSource: winterDraft.areaSource,
+                  winterPolygonPoints: winterDraft.polygonPoints,
+                }
+              : {}),
             ...(requestContext?.input
               ? {
                   winterPricingInput: {
@@ -121,6 +146,7 @@ export function OfferRequestForm({ requestContext }: { requestContext?: WinterOf
         throw new Error(result?.message || "Die Anfrage konnte gerade nicht gesendet werden.");
       }
 
+      if (isWinterRequest) clearWinterCalculatorDraft();
       markLeadConversionPending(isWinterRequest ? "winter-service-request" : "offer-request");
       router.push("/danke?art=anfrage");
     } catch (caughtError) {
@@ -174,6 +200,12 @@ export function OfferRequestForm({ requestContext }: { requestContext?: WinterOf
                   ? `${requestContext.input.area.toLocaleString("de-DE")} m² · ${requestContext.labels.objectType} · ${requestContext.labels.surfaceProfile} · ${requestContext.labels.access}`
                   : "Ihre Anfrage wird direkt dem Winterdienst zugeordnet."}
               </p>
+              {winterDraft?.objectAddress ? (
+                <p className="mt-2 flex items-start gap-2 text-xs font-bold leading-5 text-slate-650">
+                  <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-brand" />
+                  {winterDraft.objectAddress}
+                </p>
+              ) : null}
             </div>
           </div>
 

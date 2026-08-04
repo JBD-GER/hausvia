@@ -99,6 +99,22 @@ function valueAsRecord(value: unknown): LeadRecord | null {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as LeadRecord) : null;
 }
 
+function formatPolygonPoints(value: unknown) {
+  if (!Array.isArray(value)) return "";
+
+  return value
+    .map((item, index) => {
+      const point = valueAsRecord(item);
+      if (!point) return "";
+      const lat = valueAsNumber(point.lat);
+      const lng = valueAsNumber(point.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+      return `${index + 1}: ${lat.toFixed(8)}, ${lng.toFixed(8)}`;
+    })
+    .filter(Boolean)
+    .join(" | ");
+}
+
 function formatEuro(value: number) {
   return `${value.toLocaleString("de-DE")} EUR`;
 }
@@ -213,6 +229,11 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   const valueX = margin + 190;
   const winterEstimate = getWinterEstimate(lead);
   const winterPricingInput = valueAsRecord(lead.winterPricingInput);
+  const leadServices = valueAsStringList(lead.selectedServiceLabels).length
+    ? valueAsStringList(lead.selectedServiceLabels)
+    : valueAsStringList(lead.services);
+  const isWinterRequest =
+    Boolean(winterEstimate) || (source === "offer-request" && leadServices.includes("Winterdienst"));
 
   function newPage() {
     commands = [];
@@ -223,7 +244,7 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     commands.push(text("HAUSMEISTERSERVICE", margin, 787, 8, white, "F2"));
     commands.push(
       text(
-        winterEstimate ? "Winterdienst-Preiseinschätzung" : "Kosteneinschätzung für Objektbetreuung",
+        isWinterRequest ? "Winterdienst-Anfrage" : "Kosteneinschätzung für Objektbetreuung",
         margin,
         752,
         10,
@@ -368,10 +389,10 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
 
   commands.push(
     text(
-      winterEstimate ? "Unverbindliche Winterdienst-Einschätzung" : "Unverbindliche Einschätzung",
+      isWinterRequest ? "Unverbindliche Winterdienst-Anfrage" : "Unverbindliche Einschätzung",
       margin,
       y,
-      winterEstimate ? 22 : 25,
+      isWinterRequest ? 22 : 25,
       slate,
       "F2",
     ),
@@ -406,21 +427,26 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   addRow("Gewünschter Starttermin", valueAsString(lead.desiredStartDate));
   addRow("Gewünschte Rückrufzeit", valueAsString(lead.preferredCallbackTime));
 
-  if (winterEstimate) {
+  if (isWinterRequest) {
     addSection(
       "Winterdienst-Objektdaten",
-      "Die Preisbestandteile wurden serverseitig aus den übernommenen Rechnerangaben neu berechnet.",
+      winterEstimate
+        ? "Die Preisbestandteile wurden serverseitig aus den übernommenen Rechnerangaben neu berechnet."
+        : "Die Angaben werden zur persönlichen Angebotserstellung geprüft.",
     );
     addRow("Anfragequelle", "Winterdienst-Rechner / Angebotsanfrage");
     addRow("Objektart", valueAsString(lead.objectTypeLabel ?? lead.objectType));
-    addRow(
-      "Winterdienstfläche",
-      `${valueAsNumber(winterPricingInput?.area ?? lead.winterArea).toLocaleString("de-DE")} m²`,
-    );
-    addRow("Bearbeitung der Fläche", valueAsString(lead.winterSurfaceProfileLabel));
-    addRow("Zugänglichkeit", valueAsString(lead.winterAccessLabel));
-    addRow("Vertragslaufzeit", winterEstimate.contractPeriod);
-    addRow("Abrechnung", "Fester Saison-Grundbetrag plus Preis je tatsächlichem Einsatz");
+    const winterArea = valueAsNumber(winterPricingInput?.area ?? lead.winterArea ?? lead.winterMapArea);
+    if (winterArea > 0) addRow("Winterdienstfläche", `${winterArea.toLocaleString("de-DE")} m²`);
+    addRow("Flächenermittlung", valueAsString(lead.winterAreaSourceLabel));
+    const polygonPoints = formatPolygonPoints(lead.winterPolygonPoints);
+    if (polygonPoints) addRow("Markierte Eckpunkte", polygonPoints);
+    if (winterEstimate) {
+      addRow("Bearbeitung der Fläche", valueAsString(lead.winterSurfaceProfileLabel));
+      addRow("Zugänglichkeit", valueAsString(lead.winterAccessLabel));
+      addRow("Vertragslaufzeit", winterEstimate.contractPeriod);
+      addRow("Abrechnung", "Fester Saison-Grundbetrag plus Preis je tatsächlichem Einsatz");
+    }
   } else {
     addSection("Objektdaten", "Grundlage der Einschätzung sind Objektart, Standort, Flächen, Häufigkeit und Komplexität.");
     addRow(
@@ -442,13 +468,9 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     addRow("Komplexität", valueAsString(lead.complexityLabel ?? lead.complexity));
   }
 
-  const services = valueAsStringList(lead.selectedServiceLabels).length
-    ? valueAsStringList(lead.selectedServiceLabels)
-    : valueAsStringList(lead.services);
-
   addSection("Anforderungen und Leistungen");
-  if (!winterEstimate) addRow("Rundum-Sorglos-Paket", valueAsString(lead.servicePackage));
-  addRow("Gewünschte Leistungen", services.join(", ") || valueAsString(lead.serviceInterest));
+  if (!isWinterRequest) addRow("Rundum-Sorglos-Paket", valueAsString(lead.servicePackage));
+  addRow("Gewünschte Leistungen", leadServices.join(", ") || valueAsString(lead.serviceInterest));
   addRow("Nachricht", valueAsString(lead.message));
 
   addSection("Wichtige Hinweise");
@@ -458,6 +480,10 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     );
     addParagraph(
       "Die Einschätzung setzt zutreffende Flächen- und Zugänglichkeitsangaben voraus. Adresse, Leistungsflächen, Prioritäten und verfügbare Kapazitäten werden vor Vertragsschluss geprüft.",
+    );
+  } else if (isWinterRequest) {
+    addParagraph(
+      "Diese Winterdienst-Anfrage enthält noch keine automatisierte Preiseinschätzung. Fläche, Zugänglichkeit, Leistungsumfang und Tourenkapazität werden vor einem Angebot persönlich geprüft.",
     );
   } else {
     addParagraph(

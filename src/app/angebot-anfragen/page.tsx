@@ -10,7 +10,12 @@ import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { TrustBar } from "@/components/TrustBar";
 import { ASSETS, trustItems, type FaqItem } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
-import { calculateWinterPrice, parseWinterPricingInput, winterPricingLabels } from "@/lib/winterPricing";
+import {
+  calculateWinterPrice,
+  deriveWinterSurfaceProfile,
+  parseWinterPricingInput,
+  winterPricingLabels,
+} from "@/lib/winterPricing";
 
 type PageSearchParams = Record<string, string | string[] | undefined>;
 
@@ -58,7 +63,14 @@ export default async function AngebotAnfragenPage({
 }) {
   const params = await searchParams;
   const isWinterRequest = firstSearchParam(params.leistung).toLowerCase() === "winterdienst";
-  const winterInput = isWinterRequest ? parseWinterPricingInput(params) : null;
+  const winterDraftId = firstSearchParam(params.entwurf).slice(0, 100);
+  const parsedWinterInput = isWinterRequest ? parseWinterPricingInput(params) : null;
+  const winterInput = parsedWinterInput
+    ? {
+        ...parsedWinterInput,
+        surfaceProfile: deriveWinterSurfaceProfile(parsedWinterInput.area, parsedWinterInput.access),
+      }
+    : null;
   const winterRequestContext: WinterOfferRequestContext | undefined = isWinterRequest
     ? {
         service: "winterdienst",
@@ -99,7 +111,7 @@ export default async function AngebotAnfragenPage({
               ]
             : []
         }
-        aside={<OfferRequestForm requestContext={winterRequestContext} />}
+        aside={<OfferRequestForm requestContext={winterRequestContext} winterDraftId={winterDraftId} />}
         showActions={false}
       />
       <TrustBar items={trustItems} />

@@ -90,6 +90,46 @@ img {
   }
 }
 
+@keyframes hausvia-map-guide-pointer {
+  0%,
+  12% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  22%,
+  32% {
+    transform: translate3d(94px, -18px, 0) scale(0.86);
+  }
+  42%,
+  52% {
+    transform: translate3d(196px, 0, 0) scale(1);
+  }
+  62%,
+  72% {
+    transform: translate3d(30px, 30px, 0) scale(0.86);
+  }
+  82%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes hausvia-map-guide-dot {
+  0%,
+  8% {
+    opacity: 0.25;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  15%,
+  82% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0.25;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+}
+
 .animate-hausvia-float {
   animation: hausvia-float 4.8s ease-in-out infinite;
 }
@@ -106,11 +146,31 @@ img {
   animation-name: hausvia-snowfall;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-  will-change: transform, opacity;
+}
+
+.animate-hausvia-map-guide-pointer {
+  animation: hausvia-map-guide-pointer 4.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-hausvia-map-guide-dot {
+  animation: hausvia-map-guide-dot 4.4s ease-in-out infinite;
+}
+
+.hausvia-place-autocomplete {
+  display: block;
+  width: 100%;
+  min-height: 3.25rem;
+  color-scheme: light;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-hausvia-snowfall {
     display: none;
+  }
+
+  .animate-hausvia-map-guide-pointer,
+  .animate-hausvia-map-guide-dot {
+    animation: none;
   }
 }
