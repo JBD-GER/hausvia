@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -56,6 +55,11 @@ const WinterAddressSearch = dynamic(
 
 const WinterAreaMapDialog = dynamic(
   () => import("@/components/WinterAreaMapDialog").then((module) => module.WinterAreaMapDialog),
+  { ssr: false },
+);
+
+const WinterAreaResultMap = dynamic(
+  () => import("@/components/WinterAreaResultMap").then((module) => module.WinterAreaResultMap),
   { ssr: false },
 );
 
@@ -1191,20 +1195,14 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                 </p>
               </div>
 
-              {mapSnapshot ? (
-                <figure className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <Image
-                    src={mapSnapshot}
-                    alt={`Flächenskizze mit ${polygons.length} markierten Winterdienstflächen`}
-                    width={720}
-                    height={405}
-                    unoptimized
-                    className="h-auto w-full"
-                  />
-                  <figcaption className="border-t border-slate-200 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
-                    Flächenübersicht · {polygons.length} {polygons.length === 1 ? "Teilfläche" : "Teilflächen"} · insgesamt {Math.round(numericArea).toLocaleString("de-DE")} m²
-                  </figcaption>
-                </figure>
+              {areaSource === "map" && mapsAvailable && polygons.length > 0 ? (
+                <WinterAreaResultMap
+                  apiKey={googleMapsApiKey}
+                  address={address}
+                  polygons={polygons}
+                  totalArea={numericArea}
+                  fallbackSnapshot={mapSnapshot}
+                />
               ) : null}
 
               <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
