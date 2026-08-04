@@ -160,13 +160,13 @@ export function OfferRequestForm({ requestContext }: { requestContext?: WinterOf
       </div>
 
       {requestContext ? (
-        <div className="mt-6 rounded-xl border border-cyan-200 bg-cyan-50 p-4 sm:p-5">
+        <div className="mt-6 rounded-xl border border-brand/15 bg-brand-soft p-4 sm:p-5">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-cyan-700 text-white">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-brand text-white">
               <Snowflake aria-hidden="true" className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-wide text-cyan-800">
+              <p className="text-xs font-extrabold uppercase tracking-wide text-brand">
                 Winterdienst vorausgewählt
               </p>
               <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
@@ -179,7 +179,7 @@ export function OfferRequestForm({ requestContext }: { requestContext?: WinterOf
 
           {requestContext.estimate ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-cyan-100 bg-white p-4">
+              <div className="rounded-lg border border-brand/10 bg-white p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Saison-Grundbetrag</p>
                 <p className="mt-1 text-xl font-extrabold text-slate-950">
                   {formatCurrency(requestContext.estimate.seasonBaseGross)}
@@ -188,12 +188,12 @@ export function OfferRequestForm({ requestContext }: { requestContext?: WinterOf
                   {formatCurrency(requestContext.estimate.monthlyBaseGross)} monatlich, November bis März
                 </p>
               </div>
-              <div className="rounded-lg bg-cyan-700 p-4 text-white">
-                <p className="text-xs font-bold uppercase tracking-wide text-cyan-100">Je tatsächlichem Einsatz</p>
+              <div className="rounded-lg bg-brand p-4 text-white">
+                <p className="text-xs font-bold uppercase tracking-wide text-blue-100">Je tatsächlichem Einsatz</p>
                 <p className="mt-1 text-xl font-extrabold">
                   + {formatCurrency(requestContext.estimate.deploymentGross)}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-cyan-50">Nur bei tatsächlichem Winterdiensteinsatz</p>
+                <p className="mt-1 text-xs leading-5 text-blue-100">Nur bei tatsächlichem Winterdiensteinsatz</p>
               </div>
             </div>
           ) : null}

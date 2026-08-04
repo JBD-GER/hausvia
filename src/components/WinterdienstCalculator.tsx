@@ -49,15 +49,15 @@ function SelectionCard({
         disabled
           ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-55"
           : active
-          ? "border-cyan-400 bg-cyan-50 shadow-sm ring-2 ring-cyan-100"
-          : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-sky-50/50"
+          ? "border-brand bg-brand-soft shadow-sm ring-2 ring-brand/10"
+          : "border-slate-200 bg-white hover:border-brand/40 hover:bg-brand-soft/50"
       }`}
       aria-pressed={active}
     >
       <span className="block pr-7 text-sm font-extrabold text-slate-950">{title}</span>
       <span className="mt-1.5 block text-xs leading-5 text-slate-600">{text}</span>
       {active ? (
-        <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-cyan-600 text-white">
+        <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-brand text-white">
           <Check aria-hidden="true" className="h-3.5 w-3.5" />
         </span>
       ) : null}
@@ -122,22 +122,22 @@ export function WinterdienstCalculator() {
   return (
     <section
       id="winterdienst-preis"
-      className="scroll-mt-24 overflow-hidden rounded-2xl border border-cyan-200 bg-white shadow-[0_24px_70px_rgba(8,47,73,0.12)]"
+      className="scroll-mt-24 overflow-hidden rounded-2xl border border-brand/15 bg-white shadow-[0_24px_70px_rgba(8,43,97,0.12)]"
       aria-labelledby="winter-calculator-title"
     >
-      <div className="border-b border-cyan-200 bg-gradient-to-r from-slate-950 via-sky-950 to-cyan-950 px-5 py-6 text-white sm:px-7">
+      <div className="border-b border-brand bg-brand px-5 py-6 text-white sm:px-7">
         <div className="flex items-start gap-4">
-          <span className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-cyan-300 text-sky-950 shadow-lg shadow-cyan-950/20">
+          <span className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-white text-brand shadow-lg shadow-black/15">
             <Calculator aria-hidden="true" className="h-6 w-6" />
           </span>
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-cyan-200">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-100">
               Direkt und ohne E-Mail
             </p>
             <h3 id="winter-calculator-title" className="mt-1 text-2xl font-extrabold sm:text-3xl">
               Winterdienst-Preis berechnen
             </h3>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-sky-100">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
               Vier Angaben genügen für Grundbetrag und Preis je tatsächlichem Einsatz.
             </p>
           </div>
@@ -189,7 +189,7 @@ export function WinterdienstCalculator() {
                 aria-describedby="winter-area-help"
                 aria-invalid={showAreaError && !areaIsValid}
                 required
-                className="min-h-14 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-16 text-xl font-extrabold text-slate-950 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                className="min-h-14 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-16 text-xl font-extrabold text-slate-950 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/15"
               />
               <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-bold text-slate-500">m²</span>
             </span>
@@ -247,13 +247,13 @@ export function WinterdienstCalculator() {
           <button
             type="button"
             onClick={calculate}
-            className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-6 py-3.5 text-base font-extrabold text-white shadow-lg shadow-cyan-900/15 transition hover:bg-cyan-800"
+            className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-base font-extrabold text-white shadow-lg shadow-brand/15 transition hover:bg-brand-dark"
           >
             <Euro aria-hidden="true" className="h-5 w-5" /> Preis jetzt anzeigen
           </button>
         </div>
 
-        <div className="bg-gradient-to-b from-sky-50 to-white p-5 sm:p-7">
+        <div className="bg-gradient-to-b from-brand-soft/60 to-white p-5 sm:p-7">
           <p className="sr-only" aria-live="polite">
             {hasCalculated && estimate
               ? `Preiseinschätzung: ${currency.format(estimate.monthlyBaseGross)} Grundbetrag pro Monat und ${currency.format(estimate.deploymentGross)} je tatsächlichem Einsatz.`
@@ -261,20 +261,20 @@ export function WinterdienstCalculator() {
           </p>
           {hasCalculated && estimate ? (
             <div ref={resultRef} tabIndex={-1} className="scroll-mt-24 outline-none">
-              <div className="flex items-center gap-2 text-cyan-800">
+              <div className="flex items-center gap-2 text-brand">
                 <Snowflake aria-hidden="true" className="h-5 w-5" />
                 <p className="text-xs font-extrabold uppercase tracking-[0.17em]">Ihre direkte Preiseinschätzung</p>
               </div>
 
               <div className="mt-6 grid gap-3">
-                <div className="rounded-2xl border border-sky-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-brand/15 bg-white p-5 shadow-sm">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Grundbetrag pro Monat</p>
                   <p className="mt-2 text-4xl font-extrabold tracking-tight text-slate-950">{currency.format(estimate.monthlyBaseGross)}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     {currency.format(estimate.seasonBaseGross)} fester Grundbetrag für die gesamte Saison.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-cyan-700 bg-cyan-800 p-5 text-white shadow-lg shadow-cyan-900/10">
+                <div className="rounded-2xl border border-brand bg-brand p-5 text-white shadow-lg shadow-brand/10">
                   <p className="text-xs font-bold uppercase tracking-wide text-white">Je tatsächlichem Einsatz</p>
                   <p className="mt-2 text-4xl font-extrabold tracking-tight">+ {currency.format(estimate.deploymentGross)}</p>
                   <p className="mt-2 text-sm leading-6 text-white">Nur wenn am Objekt tatsächlich geräumt oder gestreut wird.</p>
@@ -307,7 +307,7 @@ export function WinterdienstCalculator() {
 
               <Link
                 href={requestHref}
-                className="mt-7 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-3.5 text-base font-extrabold text-white transition hover:bg-sky-950"
+                className="mt-7 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand-dark px-6 py-3.5 text-base font-extrabold text-white transition hover:bg-brand"
               >
                 Diese Einschätzung anfragen <ArrowRight aria-hidden="true" className="h-5 w-5" />
               </Link>
@@ -316,8 +316,8 @@ export function WinterdienstCalculator() {
               </p>
             </div>
           ) : (
-            <div className="flex min-h-[32rem] flex-col items-center justify-center rounded-2xl border border-dashed border-cyan-300 bg-white/70 p-8 text-center">
-              <span className="grid h-16 w-16 place-items-center rounded-2xl bg-cyan-100 text-cyan-800">
+            <div className="flex min-h-[32rem] flex-col items-center justify-center rounded-2xl border border-dashed border-brand/30 bg-white/70 p-8 text-center">
+              <span className="grid h-16 w-16 place-items-center rounded-2xl bg-brand-soft text-brand">
                 <CloudSnow aria-hidden="true" className="h-8 w-8" />
               </span>
               <h3 className="mt-6 text-2xl font-extrabold text-slate-950">Ihr Preis ohne Kontaktdaten</h3>

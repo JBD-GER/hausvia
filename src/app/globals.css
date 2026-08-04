@@ -67,6 +67,29 @@ img {
   }
 }
 
+@keyframes hausvia-snowfall {
+  0% {
+    opacity: 0;
+    transform: translate3d(-10px, -12vh, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 0.42;
+  }
+  38% {
+    transform: translate3d(16px, 34vh, 0) rotate(130deg);
+  }
+  68% {
+    transform: translate3d(-8px, 72vh, 0) rotate(250deg);
+  }
+  88% {
+    opacity: 0.38;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(12px, 112vh, 0) rotate(360deg);
+  }
+}
+
 .animate-hausvia-float {
   animation: hausvia-float 4.8s ease-in-out infinite;
 }
@@ -77,4 +100,17 @@ img {
 
 .animate-hausvia-pop {
   animation: hausvia-pop 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-hausvia-snowfall {
+  animation-name: hausvia-snowfall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hausvia-snowfall {
+    display: none;
+  }
 }
