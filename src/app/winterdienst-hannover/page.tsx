@@ -71,12 +71,17 @@ const faqs: FaqItem[] = [
   {
     question: "Was ist im monatlichen Grundbetrag enthalten?",
     answer:
-      "Der Grundbetrag reserviert Einsatzkapazität für Ihr Objekt und deckt die saisonale Einsatzplanung, Wetterbeobachtung sowie die Vorbereitung der vereinbarten Winterdienstflächen ab. Er wird nur in den fünf Vertragsmonaten berechnet.",
+      "Der Grundbetrag startet bei 70 Euro inklusive Mehrwertsteuer pro Monat für bis zu 100 m² Winterdienstfläche. Für größere Flächen steigt er anteilig um 10 Euro je weitere 100 m² und wird auf 5 Euro gerundet. Er reserviert die passende Einsatzkapazität und wird ausschließlich von November bis März berechnet.",
   },
   {
     question: "Wann wird ein tatsächlicher Einsatz berechnet?",
     answer:
-      "Ein Einsatz wird berechnet, wenn Hausvia am Objekt tatsächlich einen vereinbarten Winterdienstdurchgang ausführt. Je nach Witterung wird dabei geräumt, gestreut oder beides erledigt. Der Preis richtet sich nach Fläche, Zugänglichkeit, Bearbeitungsart und möglichen Erschwernissen.",
+      "Ein Einsatz wird berechnet, wenn Hausvia am Objekt tatsächlich einen vereinbarten Winterdienstdurchgang ausführt. Der Rechner verwendet je Quadratmeter 2,20 Euro für Handräumung beziehungsweise 1,40 Euro für maschinelle Räumung und zusätzlich 0,45 Euro für Streugut – jeweils inklusive Mehrwertsteuer.",
+  },
+  {
+    question: "Welche Abrechnungsmodelle kann ich wählen?",
+    answer:
+      "Bei Flex zahlen Sie den flächenabhängigen Grundbetrag und zusätzlich nur tatsächlich ausgeführte Einsätze. Die planbare Saisonpauschale verteilt den Grundbetrag und zehn enthaltene Einsätze gleichmäßig auf die fünf Vertragsmonate; weitere Einsätze werden zum ausgewiesenen Einsatzpreis berechnet. Beide Varianten erscheinen in Ihrer Preiseinschätzung und im PDF.",
   },
   {
     question: "Zählt ein weiterer Durchgang am selben Tag als neuer Einsatz?",
@@ -86,7 +91,7 @@ const faqs: FaqItem[] = [
   {
     question: "Ist der Preis aus dem Rechner verbindlich?",
     answer:
-      "Nein. Sie erhalten sofort eine realistische und unverbindliche Preiseinschätzung. Vor einem verbindlichen Angebot prüft Hausvia die Adresse, die angegebenen Flächen, die Zugänglichkeit und die verfügbare Tourenkapazität.",
+      "Nein. Die Preiseinschätzung stellt kein Angebot dar. Vor einem finalen Angebot prüft Hausvia die Adresse, die angegebenen Flächen, die Zugänglichkeit und die verfügbare Tourenkapazität. Falls erforderlich, vereinbaren wir zuvor einen Vor-Ort-Termin.",
   },
   {
     question: "Welche Flächen kann Hausvia betreuen?",
@@ -107,7 +112,7 @@ const faqs: FaqItem[] = [
 
 const trustItems = [
   { icon: CalendarRange, text: "Saisonvertrag November bis März" },
-  { icon: Euro, text: "Grundbetrag plus tatsächliche Einsätze" },
+  { icon: Euro, text: "Grundbetrag ab 70 € pro Monat" },
   { icon: ClipboardCheck, text: "Vertraglich festgelegte Flächen" },
   { icon: MapPin, text: "Für Objekte im Tourengebiet Hannover" },
 ];
@@ -141,12 +146,12 @@ const services = [
 
 const planningSteps = [
   {
-    title: "Preis sofort berechnen",
-    text: "Adresse, Winterdienstfläche, Objektart und mögliche Erschwernisse online angeben.",
+    title: "Fläche digital erfassen",
+    text: "Adresse suchen und alle zu räumenden Teilflächen direkt auf der Karte markieren.",
   },
   {
-    title: "Einschätzung anfragen",
-    text: "Die Rechnerangaben direkt übernehmen und ohne doppelte Eingabe an Hausvia senden.",
+    title: "Preis und PDF erhalten",
+    text: "Kontaktdaten eintragen, Preis direkt öffnen und die Einschätzung per E-Mail bekommen.",
   },
   {
     title: "Objekt und Route prüfen",
@@ -173,7 +178,7 @@ export const metadata: Metadata = metadataForPage({
   ],
   ogTitle: "Winterdienst Hannover: Grundbetrag plus tatsächliche Einsätze",
   ogDescription:
-    "Vier Objektangaben, sofortige Preiseinschätzung und ein klarer Saisonvertrag von November bis März.",
+    "Fläche digital markieren, Kontaktdaten eintragen und die Preiseinschätzung inklusive PDF erhalten.",
 });
 
 export default function WinterdienstHannoverPage() {
@@ -218,8 +223,14 @@ export default function WinterdienstHannoverPage() {
             <h1 className="max-w-3xl text-[2.55rem] font-extrabold leading-[1.04] tracking-tight sm:text-5xl lg:text-6xl">
               Winterdienst Hannover
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200 sm:text-xl">
-              Planbar durch den Winter: Sie zahlen einen festen Grundbetrag für die Einsatzbereitschaft von November bis März – und zusätzlich nur die tatsächlich ausgeführten Winterdiensteinsätze.
+            <div className="winter-ice-slogan mt-5" aria-label="Aus Hannover für Hannover">
+              <span className="relative z-10 flex items-center gap-2">
+                <MapPin aria-hidden="true" className="h-4 w-4" />
+                Aus Hannover für Hannover
+              </span>
+            </div>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200 sm:text-xl">
+              Planbar durch den Winter: Sie zahlen einen zur Fläche passenden Grundbetrag für die Einsatzbereitschaft von November bis März – und zusätzlich nur die tatsächlich ausgeführten Winterdiensteinsätze.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -242,7 +253,7 @@ export default function WinterdienstHannoverPage() {
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-bold text-blue-100">
               <span className="flex items-center gap-2">
                 <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-accent" />
-                Preiseinschätzung sofort · ohne E-Mail
+                Preiseinschätzung inklusive PDF
               </span>
               <span className="flex items-center gap-2">
                 <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-accent" />
@@ -269,8 +280,8 @@ export default function WinterdienstHannoverPage() {
                     <p className="mt-1 text-lg font-extrabold">01.11.–31.03.</p>
                   </div>
                   <div className="rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
-                    <p className="text-xs font-bold uppercase tracking-wide text-blue-100">Abrechnung</p>
-                    <p className="mt-1 text-lg font-extrabold">Nur echte Einsätze</p>
+                    <p className="text-xs font-bold uppercase tracking-wide text-blue-100">Erfahrung</p>
+                    <p className="mt-1 text-lg font-extrabold">500+ Einsätze</p>
                   </div>
                 </div>
               </div>
@@ -307,7 +318,7 @@ export default function WinterdienstHannoverPage() {
               Was kostet Winterdienst für Ihr Objekt?
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-700 sm:text-lg">
-              Vier Angaben genügen. Grundbetrag, Einsatzpreis und Saisonbeispiele erscheinen direkt im Browser – ohne E-Mail-Adresse und ohne versteckte Freischaltung.
+              In fünf kurzen Schritten markieren Sie die Flächen und geben die Objektdaten ein. Danach vergleichen Sie Flex-Tarif und planbare Saisonpauschale direkt online; beide Varianten erhalten Sie zusätzlich als PDF per E-Mail.
             </p>
           </div>
           <WinterdienstCalculator googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""} />
@@ -330,7 +341,7 @@ export default function WinterdienstHannoverPage() {
               <p className="mt-6 text-xs font-extrabold uppercase tracking-[0.16em] text-brand">01. November bis 31. März</p>
               <h3 className="mt-2 text-2xl font-extrabold text-slate-950">Der monatliche Grundbetrag</h3>
               <p className="mt-4 text-base leading-7 text-slate-700">
-                Er reserviert Einsatzkapazität für Ihr Objekt und berücksichtigt Saisonplanung, Wetterbeobachtung und die Vorbereitung der vereinbarten Flächen. Außerhalb der fünfmonatigen Vertragslaufzeit fällt dieser Grundbetrag nicht an.
+                Er startet bei 70 € inklusive Mehrwertsteuer für bis zu 100 m². Oberhalb davon steigt er anteilig um 10 € je weitere 100 m² und wird auf 5 € gerundet. So wächst die reservierte Einsatzkapazität nachvollziehbar mit Ihrer Fläche; berechnet wird sie nur von November bis März.
               </p>
             </article>
 

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { winterRequestEventName } from "@/lib/winterCalculatorDraft";
 
 export function MobileStickyCTA() {
   const pathname = usePathname();
@@ -20,19 +19,12 @@ export function MobileStickyCTA() {
         >
           Preis berechnen
         </Link>
-        <button
-          type="button"
-          onClick={() => {
-            const handledByCalculator = !window.dispatchEvent(
-              new Event(winterRequestEventName, { cancelable: true }),
-            );
-
-            if (!handledByCalculator) window.location.assign("/angebot-anfragen?leistung=winterdienst");
-          }}
+        <Link
+          href="/angebot-anfragen?leistung=winterdienst"
           className="flex min-h-12 items-center justify-center rounded-md border border-brand bg-white px-3 py-3 text-center text-sm font-bold text-brand"
         >
           Winterdienst anfragen
-        </button>
+        </Link>
       </div>
     );
   }

@@ -3,8 +3,17 @@ export type WinterMapPoint = {
   lng: number;
 };
 
+export type WinterMapPolygon = WinterMapPoint[];
+
+export type WinterMapPolygonOverlap = {
+  firstIndex: number;
+  secondIndex: number;
+};
+
 export const winterMapConfig = {
   maximumPoints: 40,
+  maximumPolygons: 12,
+  maximumTotalPoints: 160,
   maximumAddressLength: 300,
   earthRadiusMeters: 6_378_137,
 } as const;
@@ -52,6 +61,24 @@ function segmentsIntersect(a: WinterMapPoint, b: WinterMapPoint, c: WinterMapPoi
   return false;
 }
 
+function pointIsInsidePolygon(point: WinterMapPoint, polygon: WinterMapPoint[]) {
+  let inside = false;
+
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index, index += 1) {
+    const currentPoint = polygon[index];
+    const previousPoint = polygon[previous];
+    const crossesLatitude = currentPoint.lat > point.lat !== previousPoint.lat > point.lat;
+    const intersectionLongitude =
+      ((previousPoint.lng - currentPoint.lng) * (point.lat - currentPoint.lat)) /
+        (previousPoint.lat - currentPoint.lat) +
+      currentPoint.lng;
+
+    if (crossesLatitude && point.lng < intersectionLongitude) inside = !inside;
+  }
+
+  return inside;
+}
+
 export function sanitizeWinterMapPoints(value: unknown): WinterMapPoint[] {
   if (!Array.isArray(value) || value.length > winterMapConfig.maximumPoints) return [];
 
@@ -75,6 +102,24 @@ export function sanitizeWinterMapPoints(value: unknown): WinterMapPoint[] {
   }
 
   return points;
+}
+
+export function sanitizeWinterMapPolygons(value: unknown): WinterMapPolygon[] {
+  if (!Array.isArray(value) || value.length > winterMapConfig.maximumPolygons) return [];
+
+  const polygons: WinterMapPolygon[] = [];
+  let totalPoints = 0;
+
+  for (const valuePolygon of value) {
+    const points = sanitizeWinterMapPoints(valuePolygon);
+    if (points.length < 3) return [];
+
+    totalPoints += points.length;
+    if (totalPoints > winterMapConfig.maximumTotalPoints) return [];
+    polygons.push(points);
+  }
+
+  return polygons;
 }
 
 export function sanitizeWinterObjectAddress(value: unknown) {
@@ -128,4 +173,67 @@ export function isSimpleWinterPolygon(value: unknown) {
   }
 
   return calculateWinterPolygonArea(points) > 0;
+}
+
+/**
+ * Verwendet dieselben Regeln wie die serverseitige Annahme: Teilflächen dürfen
+ * weder Kanten kreuzen/berühren noch ganz oder teilweise ineinander liegen.
+ * Identische Polygone werden dadurch ebenfalls als Überschneidung erkannt.
+ */
+export function winterMapPolygonsOverlap(firstValue: unknown, secondValue: unknown) {
+  const first = sanitizeWinterMapPoints(firstValue);
+  const second = sanitizeWinterMapPoints(secondValue);
+  if (!isSimpleWinterPolygon(first) || !isSimpleWinterPolygon(second)) return false;
+
+  for (let firstIndex = 0; firstIndex < first.length; firstIndex += 1) {
+    const firstStart = first[firstIndex];
+    const firstEnd = first[(firstIndex + 1) % first.length];
+
+    for (let secondIndex = 0; secondIndex < second.length; secondIndex += 1) {
+      const secondStart = second[secondIndex];
+      const secondEnd = second[(secondIndex + 1) % second.length];
+      if (segmentsIntersect(firstStart, firstEnd, secondStart, secondEnd)) return true;
+    }
+  }
+
+  return pointIsInsidePolygon(first[0], second) || pointIsInsidePolygon(second[0], first);
+}
+
+export function findWinterMapPolygonOverlaps(value: unknown): WinterMapPolygonOverlap[] {
+  if (!Array.isArray(value) || value.length > winterMapConfig.maximumPolygons) return [];
+
+  const polygons = value.map((polygon) => sanitizeWinterMapPoints(polygon));
+  const overlaps: WinterMapPolygonOverlap[] = [];
+
+  for (let firstIndex = 0; firstIndex < polygons.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < polygons.length; secondIndex += 1) {
+      if (winterMapPolygonsOverlap(polygons[firstIndex], polygons[secondIndex])) {
+        overlaps.push({ firstIndex, secondIndex });
+      }
+    }
+  }
+
+  return overlaps;
+}
+
+export function areValidWinterMapPolygons(value: unknown) {
+  const polygons = sanitizeWinterMapPolygons(value);
+  return (
+    polygons.length > 0 &&
+    polygons.every((polygon) => isSimpleWinterPolygon(polygon)) &&
+    findWinterMapPolygonOverlaps(polygons).length === 0
+  );
+}
+
+export function calculateWinterPolygonsArea(value: unknown) {
+  const polygons = sanitizeWinterMapPolygons(value);
+  if (
+    !polygons.length ||
+    polygons.some((polygon) => !isSimpleWinterPolygon(polygon)) ||
+    findWinterMapPolygonOverlaps(polygons).length > 0
+  ) {
+    return 0;
+  }
+
+  return polygons.reduce((total, polygon) => total + calculateWinterPolygonArea(polygon), 0);
 }

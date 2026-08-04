@@ -37,3 +37,8 @@ export async function loadGoogleMapDrawing(apiKey: string) {
   configureGoogleMaps(apiKey);
   return Promise.all([importLibrary("maps"), importLibrary("geometry")]);
 }
+
+export async function loadGoogleGeocoding(apiKey: string) {
+  configureGoogleMaps(apiKey);
+  return importLibrary("geocoding");
+}

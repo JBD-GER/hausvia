@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Building2,
   Calculator,
   Check,
   CheckCircle2,
@@ -14,16 +15,20 @@ import {
   CloudSnow,
   Edit3,
   Euro,
+  FileCheck2,
   Keyboard,
   Loader2,
+  Mail,
   MapPin,
   MapPinned,
+  Phone,
   Ruler,
+  Send,
   ShieldCheck,
-  Snowflake,
+  UserRound,
 } from "lucide-react";
 import type { WinterAddressSelection } from "@/components/WinterAddressSearch";
-import { winterRequestEventName, writeWinterCalculatorDraft } from "@/lib/winterCalculatorDraft";
+import { loadGoogleGeocoding } from "@/lib/googleMapsClient";
 import type { WinterMapPoint } from "@/lib/winterMap";
 import {
   calculateWinterPrice,
@@ -33,6 +38,7 @@ import {
   winterSeasonTotal,
   type WinterAccess,
   type WinterObjectType,
+  type WinterPricingEstimate,
 } from "@/lib/winterPricing";
 
 const WinterAddressSearch = dynamic(
@@ -55,15 +61,84 @@ const WinterAreaMapDialog = dynamic(
 const currency = new Intl.NumberFormat("de-DE", {
   style: "currency",
   currency: "EUR",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
+
+function isFinitePrice(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function parseServerWinterEstimate(value: unknown): WinterPricingEstimate | null {
+  if (!value || typeof value !== "object") return null;
+
+  const estimate = value as Record<string, unknown>;
+  const pricingOptions = estimate.pricingOptions as Record<string, unknown> | undefined;
+  const flex = pricingOptions?.flex as Record<string, unknown> | undefined;
+  const plan = pricingOptions?.plan as Record<string, unknown> | undefined;
+  const breakdown = estimate.deploymentBreakdown as Record<string, unknown> | undefined;
+  const estimateNumbers = [
+    estimate.monthlyBaseGross,
+    estimate.seasonBaseGross,
+    estimate.deploymentGross,
+    estimate.monthlyBaseNet,
+    estimate.seasonBaseNet,
+    estimate.deploymentNet,
+  ];
+  const flexNumbers = [flex?.monthlyBaseGross, flex?.seasonBaseGross, flex?.deploymentGross];
+  const planNumbers = [
+    plan?.includedDeployments,
+    plan?.monthlyGross,
+    plan?.seasonGross,
+    plan?.additionalDeploymentGross,
+  ];
+  const breakdownNumbers = [
+    breakdown?.areaSquareMeters,
+    breakdown?.manualShare,
+    breakdown?.machineShare,
+    breakdown?.clearingRateGrossPerSquareMeter,
+    breakdown?.gritReferenceRateGrossPerSquareMeter,
+    breakdown?.gritRateGrossPerSquareMeter,
+    breakdown?.totalRateGrossPerSquareMeter,
+    breakdown?.clearingGross,
+    breakdown?.gritGross,
+  ];
+
+  if (
+    estimate.seasonMonths !== 5 ||
+    estimate.contractPeriod !== "1. November bis 31. März" ||
+    estimate.vatRate !== 19 ||
+    !["manual", "mixed", "machine"].includes(String(breakdown?.appliedSurfaceProfile)) ||
+    ![...estimateNumbers, ...flexNumbers, ...planNumbers, ...breakdownNumbers].every(isFinitePrice)
+  ) {
+    return null;
+  }
+
+  return value as WinterPricingEstimate;
+}
 
 const wizardSteps = [
   { title: "Adresse", icon: MapPin },
   { title: "Fläche", icon: Ruler },
   { title: "Objekt", icon: ShieldCheck },
+  { title: "Kontakt", icon: UserRound },
   { title: "Preis", icon: Euro },
 ] as const;
+
+const hannoverCenter: WinterMapPoint = { lat: 52.3759, lng: 9.732 };
+
+const initialContactForm = {
+  firstName: "",
+  lastName: "",
+  company: "",
+  phone: "",
+  email: "",
+  privacyAccepted: false,
+  termsAccepted: false,
+};
+
+const contactInputClassName =
+  "mt-2 min-h-13 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-950 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10";
 
 function SelectionCard({
   active,
@@ -105,7 +180,7 @@ function SelectionCard({
 
 function WizardProgress({ step }: { step: number }) {
   return (
-    <ol className="grid grid-cols-4 border-b border-slate-200 bg-slate-50" aria-label="Fortschritt der Preiseinschätzung">
+    <ol className="grid grid-cols-5 border-b border-slate-200 bg-slate-50" aria-label="Fortschritt der Preiseinschätzung">
       {wizardSteps.map((item, index) => {
         const Icon = item.icon;
         const completed = index < step;
@@ -148,23 +223,35 @@ function BackButton({ onClick }: { onClick: () => void }) {
 }
 
 export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsApiKey?: string }) {
-  const router = useRouter();
   const mapsAvailable = Boolean(googleMapsApiKey.trim());
   const [step, setStep] = useState(0);
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState<WinterMapPoint | null>(null);
+  const [manualLocationNotice, setManualLocationNotice] = useState("");
+  const [locatingAddress, setLocatingAddress] = useState(false);
   const [mapsActivated, setMapsActivated] = useState(false);
   const [manualAddressMode, setManualAddressMode] = useState(!mapsAvailable);
   const [mapOpen, setMapOpen] = useState(false);
   const [hasSeenMapGuide, setHasSeenMapGuide] = useState(false);
-  const [polygonPoints, setPolygonPoints] = useState<WinterMapPoint[]>([]);
+  const [polygons, setPolygons] = useState<WinterMapPoint[][]>([]);
+  const [mapSnapshot, setMapSnapshot] = useState("");
   const [areaSource, setAreaSource] = useState<"map" | "manual">("manual");
   const [area, setArea] = useState("");
   const [objectType, setObjectType] = useState<WinterObjectType>("residential");
   const [access, setAccess] = useState<WinterAccess>("standard");
+  const [contact, setContact] = useState(initialContactForm);
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmedEstimate, setConfirmedEstimate] = useState<WinterPricingEstimate | null>(null);
+  const [selectedPriceModel, setSelectedPriceModel] = useState<"plan" | "flex">("plan");
+  const [emailDelivered, setEmailDelivered] = useState<boolean | null>(null);
+  const [deliveryWarning, setDeliveryWarning] = useState("");
+  const [confirmedEmail, setConfirmedEmail] = useState("");
   const [error, setError] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   const areaInputRef = useRef<HTMLInputElement>(null);
+  const submissionIdRef = useRef("");
+  const submittedAtRef = useRef("");
+  const addressRef = useRef("");
 
   const numericArea = parseWinterArea(area) ?? Number.NaN;
   const areaIsValid =
@@ -179,34 +266,23 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
         : null,
     [access, areaIsValid, numericArea, objectType, surfaceProfile],
   );
-  const requestHref = useMemo(() => {
-    if (!estimate) return "/angebot-anfragen?leistung=winterdienst";
-
-    const params = new URLSearchParams({
-      leistung: "winterdienst",
-      objectType,
-      area: String(Math.round(numericArea)),
-      surfaceProfile,
-      access,
-    });
-
-    return `/angebot-anfragen?${params.toString()}`;
-  }, [access, estimate, numericArea, objectType, surfaceProfile]);
-
   const resetAreaMeasurement = useCallback(() => {
-    setPolygonPoints([]);
+    setPolygons([]);
+    setMapSnapshot("");
     setArea("");
     setAreaSource("manual");
   }, []);
 
   const handleAddressSelection = useCallback((selection: WinterAddressSelection) => {
+    addressRef.current = selection.address;
     setAddress(selection.address);
     setLocation(selection.location);
+    setManualLocationNotice("");
     resetAreaMeasurement();
     setError("");
   }, [resetAreaMeasurement]);
 
-  function goToStep(nextStep: number) {
+  const goToStep = useCallback((nextStep: number) => {
     setStep(nextStep);
     setError("");
     window.requestAnimationFrame(() => {
@@ -216,15 +292,52 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
         block: "start",
       });
     });
-  }
+  }, []);
 
-  function continueFromAddress() {
-    if (address.trim().length < 5) {
+  async function continueFromAddress() {
+    const requestedAddress = address.trim();
+    if (requestedAddress.length < 5) {
       setError("Bitte geben Sie die vollständige Objektadresse ein.");
       return;
     }
-    if (!location && !/\d/.test(address)) {
+    if (!location && !/\d/.test(requestedAddress)) {
       setError("Bitte ergänzen Sie die Hausnummer der Objektadresse.");
+      return;
+    }
+
+    if (!location && mapsAvailable && mapsActivated) {
+      setLocatingAddress(true);
+      setError("");
+
+      let approximateLocation = hannoverCenter;
+      try {
+        const { Geocoder } = await loadGoogleGeocoding(googleMapsApiKey);
+        const response = await new Geocoder().geocode({
+          address: requestedAddress,
+          componentRestrictions: { country: "DE" },
+          region: "DE",
+        });
+        const firstResult = response.results[0];
+        if (firstResult?.geometry.location) {
+          approximateLocation = {
+            lat: firstResult.geometry.location.lat(),
+            lng: firstResult.geometry.location.lng(),
+          };
+        }
+      } catch {
+        // Wenn Google keinen Treffer liefert, startet die Karte bewusst im Zentrum Hannovers.
+      } finally {
+        setLocatingAddress(false);
+      }
+
+      if (addressRef.current.trim() !== requestedAddress) return;
+
+      setLocation(approximateLocation);
+      setManualLocationNotice(
+        "Google konnte diese Adresse nicht eindeutig als vollständige Hausadresse bestätigen. Bitte verschieben und zoomen Sie die Karte selbst bis zum richtigen Gebäude.",
+      );
+      goToStep(1);
+      window.requestAnimationFrame(() => setMapOpen(true));
       return;
     }
 
@@ -246,7 +359,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
     goToStep(2);
   }
 
-  function showResult() {
+  function showContactGate() {
     if (!estimate) {
       setError("Bitte prüfen Sie die Flächen- und Objektangaben.");
       return;
@@ -254,26 +367,136 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
     goToStep(3);
   }
 
-  const startWinterRequest = useCallback(() => {
-    const draftId = writeWinterCalculatorDraft({
-      objectAddress: address,
-      areaSource,
-      polygonPoints: areaSource === "map" ? polygonPoints : [],
-    });
+  function updateContact<K extends keyof typeof contact>(key: K, value: (typeof contact)[K]) {
+    setContact((current) => ({ ...current, [key]: value }));
+    setError("");
+  }
 
-    const separator = requestHref.includes("?") ? "&" : "?";
-    router.push(draftId ? `${requestHref}${separator}entwurf=${encodeURIComponent(draftId)}` : requestHref);
-  }, [address, areaSource, polygonPoints, requestHref, router]);
-
-  useEffect(() => {
-    function handleStickyRequest(event: Event) {
-      event.preventDefault();
-      startWinterRequest();
+  async function submitContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!estimate || !areaIsValid) {
+      setError("Bitte prüfen Sie zuerst die Objekt- und Flächenangaben.");
+      return;
     }
 
-    window.addEventListener(winterRequestEventName, handleStickyRequest);
-    return () => window.removeEventListener(winterRequestEventName, handleStickyRequest);
-  }, [startWinterRequest]);
+    const firstName = contact.firstName.trim();
+    const lastName = contact.lastName.trim();
+    const company = contact.company.trim();
+    const phone = contact.phone.trim();
+    const email = contact.email.trim();
+
+    if (!firstName) {
+      setError("Bitte geben Sie Ihren Vornamen ein.");
+      return;
+    }
+    if (!lastName) {
+      setError("Bitte geben Sie Ihren Nachnamen ein.");
+      return;
+    }
+    if (!company) {
+      setError("Bitte geben Sie Ihre Firma an oder tragen Sie „Privatperson“ ein.");
+      return;
+    }
+    if (!phone) {
+      setError("Bitte geben Sie Ihre Telefonnummer ein.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Bitte geben Sie eine gültige E-Mail-Adresse ein.");
+      return;
+    }
+    if (!contact.privacyAccepted) {
+      setError("Bitte bestätigen Sie die Datenschutzerklärung.");
+      return;
+    }
+    if (!contact.termsAccepted) {
+      setError("Bitte bestätigen Sie die AGB.");
+      return;
+    }
+
+    if (!submissionIdRef.current) {
+      submissionIdRef.current =
+        typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      submittedAtRef.current = new Date().toISOString();
+    }
+
+    setSubmitting(true);
+    setError("");
+    setDeliveryWarning("");
+
+    try {
+      const response = await fetch("/api/lead", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": submissionIdRef.current,
+        },
+        body: JSON.stringify({
+          source: "offer-request",
+          submittedAt: submittedAtRef.current,
+          submissionId: submissionIdRef.current,
+          lead: {
+            firstName,
+            lastName,
+            company,
+            name: `${firstName} ${lastName}`,
+            phone,
+            email,
+            services: ["Winterdienst"],
+            winterContactGate: "direct-price-v1",
+            objectAddress: address,
+            winterAreaSource: areaSource,
+            ...(areaSource === "map"
+              ? {
+                  winterPolygons: polygons,
+                  winterPolygonPoints: polygons[0] ?? [],
+                }
+              : {}),
+            winterPricingInput: {
+              objectType,
+              area: String(Math.round(numericArea)),
+              surfaceProfile,
+              access,
+            },
+            privacyAccepted: contact.privacyAccepted,
+            termsAccepted: contact.termsAccepted,
+          },
+        }),
+      });
+
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+        emailDelivered?: boolean;
+        deliveryWarning?: string;
+        estimate?: unknown;
+      } | null;
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.message || "Die Preiseinschätzung konnte gerade nicht versendet werden.");
+      }
+
+      const serverEstimate = parseServerWinterEstimate(result.estimate);
+      if (!serverEstimate) {
+        throw new Error("Die serverseitig geprüfte Preiseinschätzung konnte nicht geladen werden.");
+      }
+
+      setEmailDelivered(result.emailDelivered !== false);
+      setDeliveryWarning(result.deliveryWarning || "");
+      setConfirmedEmail(email);
+      setConfirmedEstimate(serverEstimate);
+      goToStep(4);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error && caughtError.message
+          ? caughtError.message
+          : "Die Preiseinschätzung konnte gerade nicht versendet werden. Bitte versuchen Sie es erneut.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <section
@@ -287,12 +510,12 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
             <Calculator aria-hidden="true" className="h-6 w-6" />
           </span>
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-100">Direkt und ohne E-Mail</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-100">Digital vermessen · als PDF erhalten</p>
             <h3 id="winter-calculator-title" className="mt-1 text-2xl font-extrabold sm:text-3xl">
               Winterdienst-Preis berechnen
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
-              Adresse finden, Fläche auf der Karte markieren und sofort Grundbetrag sowie Einsatzpreis sehen.
+              Adresse finden, alle Winterdienstflächen markieren und nach den Kontaktdaten die Einschätzung als PDF erhalten.
             </p>
           </div>
         </div>
@@ -304,7 +527,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
         {step === 0 ? (
           <div className="mx-auto max-w-4xl p-5 sm:p-8 lg:p-10">
             <div className="max-w-2xl">
-              <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 1 von 4</p>
+              <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 1 von 5</p>
               <h4 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
                 Wo soll der Winterdienst stattfinden?
               </h4>
@@ -349,25 +572,36 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
               ) : null}
 
               {manualAddressMode ? (
-                <label className="block">
-                  <span className="text-sm font-extrabold text-slate-900">Objektadresse</span>
-                  <span className="relative mt-2 block">
-                    <MapPin aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand" />
-                    <input
-                      value={address}
-                      onChange={(event) => {
-                        setAddress(event.target.value);
-                        setLocation(null);
-                        resetAreaMeasurement();
-                        setError("");
-                      }}
-                      autoComplete="street-address"
-                      maxLength={300}
-                      placeholder="z. B. Musterstraße 12, 30159 Hannover"
-                      className="min-h-14 w-full rounded-xl border border-slate-300 bg-white py-3 pl-12 pr-4 text-base font-semibold text-slate-950 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10"
-                    />
-                  </span>
-                </label>
+                <div>
+                  {mapsAvailable && mapsActivated ? (
+                    <p className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950">
+                      <CircleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 flex-none" />
+                      Ist die Hausadresse bei Google nicht gelistet, öffnen wir die Karte ungefähr am eingegebenen Ort. Navigieren Sie dort selbst zum richtigen Gebäude.
+                    </p>
+                  ) : null}
+                  <label className="block">
+                    <span className="text-sm font-extrabold text-slate-900">Objektadresse</span>
+                    <span className="relative mt-2 block">
+                      <MapPin aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand" />
+                      <input
+                        value={address}
+                        onChange={(event) => {
+                          addressRef.current = event.target.value;
+                          setAddress(event.target.value);
+                          setLocation(null);
+                          setManualLocationNotice("");
+                          resetAreaMeasurement();
+                          setError("");
+                        }}
+                        autoComplete="street-address"
+                        disabled={locatingAddress}
+                        maxLength={300}
+                        placeholder="z. B. Musterstraße 12, 30159 Hannover"
+                        className="min-h-14 w-full rounded-xl border border-slate-300 bg-white py-3 pl-12 pr-4 text-base font-semibold text-slate-950 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10"
+                      />
+                    </span>
+                  </label>
+                </div>
               ) : null}
 
               {address && location ? (
@@ -382,8 +616,10 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                   <button
                     type="button"
                     onClick={() => {
+                      addressRef.current = "";
                       setAddress("");
                       setLocation(null);
+                      setManualLocationNotice("");
                       resetAreaMeasurement();
                     }}
                     className="flex-none text-xs font-extrabold text-brand underline underline-offset-4"
@@ -397,16 +633,22 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                 <button
                   type="button"
                   onClick={() => {
+                    setMapsActivated(true);
                     setManualAddressMode((current) => !current);
+                    addressRef.current = "";
                     setAddress("");
                     setLocation(null);
+                    setManualLocationNotice("");
                     resetAreaMeasurement();
                     setError("");
                   }}
-                  className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-bold text-brand underline decoration-brand/30 underline-offset-4"
+                  disabled={locatingAddress}
+                  className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-bold text-brand underline decoration-brand/30 underline-offset-4 disabled:cursor-wait disabled:opacity-60"
                 >
                   <Keyboard aria-hidden="true" className="h-4 w-4" />
-                  {manualAddressMode ? "Google-Adressfinder nutzen" : "Adresse manuell eingeben"}
+                  {manualAddressMode
+                    ? "Google-Adressfinder nutzen"
+                    : "Adresse nicht gefunden? Manuell eingeben und auf der Karte suchen"}
                 </button>
               ) : null}
             </div>
@@ -419,18 +661,26 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
 
             <button
               type="button"
-              onClick={continueFromAddress}
+              onClick={() => void continueFromAddress()}
+              disabled={locatingAddress}
               className="mt-7 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-base font-extrabold text-white shadow-lg shadow-brand/15 transition hover:bg-brand-dark"
             >
-              {location ? "Adresse übernehmen & Fläche markieren" : "Weiter zur Flächeneingabe"}
-              <ArrowRight aria-hidden="true" className="h-5 w-5" />
+              {locatingAddress ? <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" /> : null}
+              {locatingAddress
+                ? "Ort für die Karte wird gesucht …"
+                : location
+                  ? "Adresse übernehmen & Fläche markieren"
+                  : mapsAvailable && mapsActivated
+                    ? "Adresse übernehmen & auf der Karte suchen"
+                    : "Weiter zur Flächeneingabe"}
+              {!locatingAddress ? <ArrowRight aria-hidden="true" className="h-5 w-5" /> : null}
             </button>
           </div>
         ) : null}
 
         {step === 1 ? (
           <div className="mx-auto max-w-4xl p-5 sm:p-8 lg:p-10">
-            <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 2 von 4</p>
+            <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 2 von 5</p>
             <h4 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
               Welche Fläche soll betreut werden?
             </h4>
@@ -459,8 +709,8 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                       </p>
                       <p className="mt-1 text-sm leading-6 text-slate-650">
                         {areaSource === "map" && areaIsValid
-                          ? `${Math.round(numericArea).toLocaleString("de-DE")} m² aus ${polygonPoints.length} Eckpunkten übernommen.`
-                          : "Punkte um Wege und Zugänge setzen und den ersten Punkt zum Abschluss anklicken."}
+                          ? `${Math.round(numericArea).toLocaleString("de-DE")} m² aus ${polygons.length} ${polygons.length === 1 ? "Teilfläche" : "Teilflächen"} übernommen.`
+                          : "Nur die zu räumenden Wege markieren. Getrennte Bereiche können als weitere Teilfläche ergänzt werden."}
                       </p>
                     </div>
                   </div>
@@ -487,7 +737,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
               <span className="text-base font-extrabold text-slate-950">Winterdienstfläche in m²</span>
               <span className="mt-1 block text-xs leading-5 text-slate-600">
                 Online kalkulierbar von {winterPricingConfig.minimumArea} bis {winterPricingConfig.maximumArea.toLocaleString("de-DE")} m².{" "}
-                Bei mehreren getrennten Teilflächen können Sie deren Gesamtsumme hier manuell eintragen.
+                Alternativ können Sie die bekannte Gesamtsumme hier manuell eintragen.
               </span>
               <span className="relative mt-3 block max-w-sm">
                 <input
@@ -496,7 +746,8 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                   onChange={(event) => {
                     setArea(event.target.value.replace(/[^\d.,\s]/g, ""));
                     setAreaSource("manual");
-                    setPolygonPoints([]);
+                    setPolygons([]);
+                    setMapSnapshot("");
                     setError("");
                   }}
                   inputMode="decimal"
@@ -529,7 +780,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
 
         {step === 2 ? (
           <div className="mx-auto max-w-5xl p-5 sm:p-8 lg:p-10">
-            <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 3 von 4</p>
+            <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 3 von 5</p>
             <h4 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Noch zwei kurze Objektangaben</h4>
             <p className="mt-3 text-sm leading-7 text-slate-650 sm:text-base">
               Die häufigste Variante ist vorausgewählt. Bitte kurz prüfen – die passende Bearbeitungsart plant der Rechner automatisch mit ein.
@@ -590,64 +841,383 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
               <BackButton onClick={() => goToStep(1)} />
               <button
                 type="button"
-                onClick={showResult}
+                onClick={showContactGate}
                 className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-base font-extrabold text-white shadow-lg shadow-brand/15 transition hover:bg-brand-dark"
               >
-                <Euro aria-hidden="true" className="h-5 w-5" /> Preis jetzt anzeigen
+                Weiter zu den Kontaktdaten <ArrowRight aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
           </div>
         ) : null}
 
         {step === 3 && estimate ? (
+          <form onSubmit={submitContact} className="mx-auto max-w-5xl p-5 sm:p-8 lg:p-10" aria-labelledby="winter-contact-title">
+            <fieldset disabled={submitting} className="grid gap-7 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 4 von 5</p>
+                <h4 id="winter-contact-title" className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+                  Wohin dürfen wir Ihre Preiseinschätzung senden?
+                </h4>
+                <p className="mt-3 text-sm leading-7 text-slate-650 sm:text-base">
+                  Nach dem Absenden sehen Sie den Preis direkt auf der letzten Seite und Ihre Anfrage geht an Hausvia.
+                  Gleichzeitig erhalten Sie die „Winterdienst Preiseinschätzung“ als PDF per E-Mail.
+                </p>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <UserRound aria-hidden="true" className="h-4 w-4 text-brand" /> Vorname
+                    </span>
+                    <input
+                      value={contact.firstName}
+                      onChange={(event) => updateContact("firstName", event.target.value)}
+                      autoComplete="given-name"
+                      maxLength={80}
+                      className={contactInputClassName}
+                      required
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-extrabold text-slate-900">Nachname</span>
+                    <input
+                      value={contact.lastName}
+                      onChange={(event) => updateContact("lastName", event.target.value)}
+                      autoComplete="family-name"
+                      maxLength={80}
+                      className={contactInputClassName}
+                      required
+                    />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <span className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <Building2 aria-hidden="true" className="h-4 w-4 text-brand" /> Firma / Privatperson
+                    </span>
+                    <input
+                      value={contact.company}
+                      onChange={(event) => updateContact("company", event.target.value)}
+                      autoComplete="organization"
+                      maxLength={160}
+                      placeholder="z. B. Musterverwaltung GmbH oder Privatperson"
+                      className={contactInputClassName}
+                      required
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <Phone aria-hidden="true" className="h-4 w-4 text-brand" /> Telefon
+                    </span>
+                    <input
+                      type="tel"
+                      value={contact.phone}
+                      onChange={(event) => updateContact("phone", event.target.value)}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      maxLength={40}
+                      className={contactInputClassName}
+                      required
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                      <Mail aria-hidden="true" className="h-4 w-4 text-brand" /> E-Mail
+                    </span>
+                    <input
+                      type="email"
+                      value={contact.email}
+                      onChange={(event) => updateContact("email", event.target.value)}
+                      autoComplete="email"
+                      inputMode="email"
+                      maxLength={180}
+                      className={contactInputClassName}
+                      required
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  <label className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={contact.privacyAccepted}
+                      onChange={(event) => updateContact("privacyAccepted", event.target.checked)}
+                      className="mt-1 h-5 w-5 flex-none rounded border-slate-300 text-brand focus:ring-brand"
+                      required
+                    />
+                    <span>
+                      Ich habe die{" "}
+                      <Link href="/datenschutz" target="_blank" className="font-bold text-brand underline underline-offset-2">
+                        Datenschutzerklärung
+                      </Link>{" "}
+                      gelesen und bin mit der Verarbeitung zur Bearbeitung meiner Anfrage einverstanden.
+                    </span>
+                  </label>
+                  <label className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={contact.termsAccepted}
+                      onChange={(event) => updateContact("termsAccepted", event.target.checked)}
+                      className="mt-1 h-5 w-5 flex-none rounded border-slate-300 text-brand focus:ring-brand"
+                      required
+                    />
+                    <span>
+                      Ich akzeptiere die{" "}
+                      <Link href="/agb" target="_blank" className="font-bold text-brand underline underline-offset-2">
+                        AGB
+                      </Link>{" "}
+                      von Hausvia.
+                    </span>
+                  </label>
+                </div>
+
+                {error ? (
+                  <p className="mt-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-900" role="alert">
+                    <CircleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 flex-none" /> {error}
+                  </p>
+                ) : null}
+
+                <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <BackButton onClick={() => goToStep(2)} />
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-base font-extrabold text-white shadow-lg shadow-brand/15 transition hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
+                  >
+                    {submitting ? <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" /> : <Send aria-hidden="true" className="h-5 w-5" />}
+                    {submitting ? "Anfrage und PDF werden gesendet …" : "Anfrage senden & Preis anzeigen"}
+                  </button>
+                </div>
+              </div>
+
+              <aside className="rounded-2xl border border-brand/15 bg-brand-soft p-5 sm:p-6 lg:sticky lg:top-24">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-brand text-white">
+                    <FileCheck2 aria-hidden="true" className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-wide text-brand">Ihre Angaben</p>
+                    <p className="mt-1 font-extrabold leading-6 text-slate-950">{address}</p>
+                  </div>
+                </div>
+                <dl className="mt-5 grid gap-3 text-sm">
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-white px-4 py-3">
+                    <dt className="font-semibold text-slate-600">Winterdienstfläche</dt>
+                    <dd className="font-extrabold text-slate-950">{Math.round(numericArea).toLocaleString("de-DE")} m²</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-white px-4 py-3">
+                    <dt className="font-semibold text-slate-600">Erfassung</dt>
+                    <dd className="text-right font-extrabold text-slate-950">
+                      {areaSource === "map" ? `${polygons.length} ${polygons.length === 1 ? "Teilfläche" : "Teilflächen"}` : "Manuell"}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-white px-4 py-3">
+                    <dt className="font-semibold text-slate-600">Vertragszeitraum</dt>
+                    <dd className="font-extrabold text-slate-950">Nov.–März</dd>
+                  </div>
+                </dl>
+                <p className="mt-4 text-xs leading-5 text-slate-600">
+                  Ihre Kontaktdaten werden nicht auf der Karte angezeigt. Die Preisberechnung wird serverseitig erneut geprüft.
+                </p>
+              </aside>
+            </fieldset>
+          </form>
+        ) : null}
+
+        {step === 4 && confirmedEstimate ? (
           <div className="bg-gradient-to-b from-brand-soft/60 to-white p-5 sm:p-8 lg:p-10">
             <div className="mx-auto max-w-5xl">
               <div className="flex items-center gap-2 text-brand">
-                <Snowflake aria-hidden="true" className="h-5 w-5" />
-                <p className="text-xs font-extrabold uppercase tracking-[0.17em]">Ihre direkte Preiseinschätzung</p>
+                <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-emerald-600" />
+                <p className="text-xs font-extrabold uppercase tracking-[0.17em]">
+                  {emailDelivered === false ? "Direkt freigeschaltet" : "Anfrage versendet und direkt freigeschaltet"}
+                </p>
               </div>
-              <h4 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Der Winterdienst für dieses Objekt</h4>
+              <h4 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Ihre Winterdienst-Preiseinschätzung</h4>
               <p className="mt-3 text-sm font-semibold leading-6 text-slate-650">
                 {address} · {Math.round(numericArea).toLocaleString("de-DE")} m²
               </p>
 
-              <div className="mt-7 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-brand/15 bg-white p-6 shadow-sm">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Grundbetrag pro Monat</p>
-                  <p className="mt-2 text-4xl font-extrabold tracking-tight text-slate-950">{currency.format(estimate.monthlyBaseGross)}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {currency.format(estimate.seasonBaseGross)} fester Grundbetrag für November bis März.
+              {emailDelivered === false ? (
+                <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950" role="status">
+                  <CircleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 flex-none" />
+                  <p>
+                    {deliveryWarning || "Der PDF-Versand ist vorübergehend fehlgeschlagen."} Ihre validierte Preiseinschätzung bleibt hier sichtbar. Bitte kontaktieren Sie uns bei Bedarf über die{" "}
+                    <Link href="/kontakt" className="font-extrabold text-brand underline underline-offset-2">
+                      Kontaktseite
+                    </Link>
+                    .
                   </p>
                 </div>
-                <div className="rounded-2xl border border-brand bg-brand p-6 text-white shadow-lg shadow-brand/10">
-                  <p className="text-xs font-bold uppercase tracking-wide text-blue-100">Je tatsächlichem Einsatz</p>
-                  <p className="mt-2 text-4xl font-extrabold tracking-tight">+ {currency.format(estimate.deploymentGross)}</p>
-                  <p className="mt-2 text-sm leading-6 text-blue-100">Nur wenn am Objekt tatsächlich geräumt oder gestreut wird.</p>
+              ) : (
+                <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-950">
+                  <Mail aria-hidden="true" className="mt-0.5 h-5 w-5 flex-none text-emerald-700" />
+                  <p>
+                    Das PDF „Winterdienst Preiseinschätzung“ wurde an <strong>{confirmedEmail}</strong> versendet. Hausvia hat parallel eine Kopie Ihrer Anfrage erhalten.
+                  </p>
                 </div>
+              )}
+
+              <section className="mt-7" aria-labelledby="pricing-model-title">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand">Tarifansicht wechseln</p>
+                    <h5 id="pricing-model-title" className="mt-1 text-xl font-extrabold text-slate-950">Planbar oder flexibel vergleichen</h5>
+                  </div>
+                  <p className="text-xs font-semibold leading-5 text-slate-600">Die Auswahl wechselt die Budgetansicht; beide Varianten stehen gemeinsam in Ihrer Anfrage und im PDF.</p>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPriceModel("plan")}
+                    aria-pressed={selectedPriceModel === "plan"}
+                    className={`relative rounded-2xl border p-6 text-left transition ${
+                      selectedPriceModel === "plan"
+                        ? "border-brand bg-brand text-white shadow-lg shadow-brand/15 ring-2 ring-brand/10"
+                        : "border-slate-200 bg-white text-slate-950 hover:border-brand/40"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide ${
+                        selectedPriceModel === "plan" ? "bg-white/15 text-blue-50" : "bg-brand-soft text-brand"
+                      }`}
+                    >
+                      10 Einsätze enthalten
+                    </span>
+                    <span className="mt-4 block text-xs font-bold uppercase tracking-wide opacity-75">Planbar · Saisonpauschale</span>
+                    <span className="mt-1 block text-4xl font-extrabold tracking-tight">
+                      {currency.format(confirmedEstimate.pricingOptions.plan.monthlyGross)}
+                      <span className="ml-1 text-sm font-bold opacity-75">/ Monat</span>
+                    </span>
+                    <span className="mt-3 block text-sm leading-6 opacity-85">
+                      {currency.format(confirmedEstimate.pricingOptions.plan.seasonGross)} für November bis März inklusive zehn Einsätzen. Danach {currency.format(confirmedEstimate.pricingOptions.plan.additionalDeploymentGross)} je weiterem Einsatz.
+                    </span>
+                    {selectedPriceModel === "plan" ? (
+                      <span className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full bg-white text-brand">
+                        <Check aria-hidden="true" className="h-4 w-4" />
+                      </span>
+                    ) : null}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPriceModel("flex")}
+                    aria-pressed={selectedPriceModel === "flex"}
+                    className={`relative rounded-2xl border p-6 text-left transition ${
+                      selectedPriceModel === "flex"
+                        ? "border-brand bg-brand text-white shadow-lg shadow-brand/15 ring-2 ring-brand/10"
+                        : "border-slate-200 bg-white text-slate-950 hover:border-brand/40"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide ${
+                        selectedPriceModel === "flex" ? "bg-white/15 text-blue-50" : "bg-brand-soft text-brand"
+                      }`}
+                    >
+                      Nur tatsächliche Einsätze
+                    </span>
+                    <span className="mt-4 block text-xs font-bold uppercase tracking-wide opacity-75">Flex · Grundbetrag + Einsatz</span>
+                    <span className="mt-1 block text-4xl font-extrabold tracking-tight">
+                      {currency.format(confirmedEstimate.pricingOptions.flex.monthlyBaseGross)}
+                      <span className="ml-1 text-sm font-bold opacity-75">Grundbetrag / Monat</span>
+                    </span>
+                    <span className="mt-3 block text-sm leading-6 opacity-85">
+                      Plus {currency.format(confirmedEstimate.pricingOptions.flex.deploymentGross)} je tatsächlich ausgeführtem Einsatz. Saison-Grundbetrag: {currency.format(confirmedEstimate.pricingOptions.flex.seasonBaseGross)}.
+                    </span>
+                    {selectedPriceModel === "flex" ? (
+                      <span className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full bg-white text-brand">
+                        <Check aria-hidden="true" className="h-4 w-4" />
+                      </span>
+                    ) : null}
+                  </button>
+                </div>
+              </section>
+
+              <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+                <CircleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 flex-none" />
+                <p>
+                  <strong>Diese Preiseinschätzung stellt kein Angebot dar.</strong> Ein finales Angebot erhalten Sie erst nach Prüfung der Angaben und Flächen durch Hausvia; falls erforderlich, vereinbaren wir zuvor einen Vor-Ort-Termin.
+                </p>
               </div>
 
-              <button
-                type="button"
-                onClick={startWinterRequest}
-                className="mt-6 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand-dark px-6 py-3.5 text-base font-extrabold text-white transition hover:bg-brand"
-              >
-                Winterdienst für dieses Objekt anfragen <ArrowRight aria-hidden="true" className="h-5 w-5" />
-              </button>
-              <p className="mt-3 text-center text-xs leading-5 text-slate-500">
-                Adresse, Fläche und Rechnerangaben werden übernommen. Die Anfrage bleibt kostenlos und unverbindlich.
-              </p>
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-950">So entsteht der Einsatzpreis</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">Bruttowerte inklusive 19 % MwSt. für die markierte Gesamtfläche.</p>
+                  </div>
+                  <p className="text-xs font-bold text-brand">
+                    {currency.format(confirmedEstimate.deploymentBreakdown.totalRateGrossPerSquareMeter)} pro m²
+                  </p>
+                </div>
+                <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Räumen</dt>
+                    <dd className="mt-1 text-lg font-extrabold text-slate-950">
+                      {currency.format(confirmedEstimate.deploymentBreakdown.clearingGross)}
+                    </dd>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {currency.format(confirmedEstimate.deploymentBreakdown.clearingRateGrossPerSquareMeter)} pro m²
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Streugut</dt>
+                    <dd className="mt-1 text-lg font-extrabold text-slate-950">
+                      {currency.format(confirmedEstimate.deploymentBreakdown.gritGross)}
+                    </dd>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {currency.format(confirmedEstimate.deploymentBreakdown.gritRateGrossPerSquareMeter)} pro m²
+                    </p>
+                  </div>
+                </dl>
+                <p className="mt-4 text-xs leading-5 text-slate-600">
+                  Grundlage sind 80 % innerhalb der von MyHammer veröffentlichten Preisspannen. Der rechnerische Streugutsatz von 0,44 €/m² wird auf 0,45 €/m² gerundet. {" "}
+                  <Link
+                    href="https://www.my-hammer.de/garten-aussenbereich/preisradar/was-kostet-winterdienst"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-extrabold text-brand underline underline-offset-2"
+                  >
+                    Preisquelle ansehen
+                  </Link>
+                </p>
+              </div>
+
+              {mapSnapshot ? (
+                <figure className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <Image
+                    src={mapSnapshot}
+                    alt={`Flächenskizze mit ${polygons.length} markierten Winterdienstflächen`}
+                    width={720}
+                    height={405}
+                    unoptimized
+                    className="h-auto w-full"
+                  />
+                  <figcaption className="border-t border-slate-200 px-5 py-3 text-xs font-semibold leading-5 text-slate-600">
+                    Flächenübersicht · {polygons.length} {polygons.length === 1 ? "Teilfläche" : "Teilflächen"} · insgesamt {Math.round(numericArea).toLocaleString("de-DE")} m²
+                  </figcaption>
+                </figure>
+              ) : null}
 
               <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-                <p className="text-sm font-extrabold text-slate-950">Saisonbeispiele zur Budgetplanung</p>
+                <p className="text-sm font-extrabold text-slate-950">
+                  Saisonbeispiele · {selectedPriceModel === "plan" ? "Planbar" : "Flex"}
+                </p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   {[5, 10, 15].map((deployments) => (
                     <div key={deployments} className="rounded-xl bg-slate-50 px-2 py-3">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{deployments} Einsätze</p>
-                      <p className="mt-1 text-sm font-extrabold text-slate-950 sm:text-lg">{currency.format(winterSeasonTotal(estimate, deployments))}</p>
+                      <p className="mt-1 text-sm font-extrabold text-slate-950 sm:text-lg">
+                        {currency.format(winterSeasonTotal(confirmedEstimate, deployments, selectedPriceModel))}
+                      </p>
                     </div>
                   ))}
                 </div>
-                <p className="mt-3 text-xs leading-5 text-slate-500">Budgetbeispiele, keine Wetter- oder Einsatzprognose.</p>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  {selectedPriceModel === "plan"
+                    ? "Planbar enthält zehn Einsätze fest; deshalb bleibt der Saisonbetrag bis einschließlich zehn Einsätzen gleich."
+                    : "Flex wird aus Saison-Grundbetrag und tatsächlich ausgeführten Einsätzen berechnet."}{" "}
+                  Budgetbeispiele, keine Wetter- oder Einsatzprognose.
+                </p>
               </div>
 
               <ul className="mt-6 grid gap-2 text-xs font-semibold leading-5 text-slate-600 sm:grid-cols-3">
@@ -659,10 +1229,19 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
               <div className="mt-5 flex justify-center">
                 <button
                   type="button"
-                  onClick={() => goToStep(2)}
+                  onClick={() => {
+                    submissionIdRef.current = "";
+                    submittedAtRef.current = "";
+                    setConfirmedEstimate(null);
+                    setSelectedPriceModel("plan");
+                    setEmailDelivered(null);
+                    setDeliveryWarning("");
+                    setConfirmedEmail("");
+                    goToStep(2);
+                  }}
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-brand underline decoration-brand/30 underline-offset-4"
                 >
-                  <Edit3 aria-hidden="true" className="h-4 w-4" /> Angaben ändern
+                  <Edit3 aria-hidden="true" className="h-4 w-4" /> Angaben ändern und neu berechnen
                 </button>
               </div>
 
@@ -678,7 +1257,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
       </div>
 
       <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 text-xs leading-5 text-slate-600 sm:px-7">
-        Unverbindliche Online-Preiseinschätzung für Objekte im Hausvia-Tourengebiet Hannover. Vor Vertragsschluss prüfen wir Adresse, markierte Flächen, Objektgegebenheiten und verfügbare Kapazitäten.
+        Diese unverbindliche Online-Preiseinschätzung stellt kein Angebot dar. Vor einem finalen Angebot prüft Hausvia Adresse, markierte Flächen, Objektgegebenheiten und verfügbare Kapazitäten – falls erforderlich bei einem Vor-Ort-Termin.
       </div>
 
       {mapOpen && location ? (
@@ -686,20 +1265,23 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
           apiKey={googleMapsApiKey}
           address={address}
           location={location}
-          initialPoints={polygonPoints}
+          locationNotice={manualLocationNotice}
+          initialPolygons={polygons}
           showGuide={!hasSeenMapGuide}
           onGuideSeen={() => setHasSeenMapGuide(true)}
           onClose={() => setMapOpen(false)}
           onUseManual={() => {
             setMapOpen(false);
             setAreaSource("manual");
-            setPolygonPoints([]);
+            setPolygons([]);
+            setMapSnapshot("");
             window.requestAnimationFrame(() => areaInputRef.current?.focus());
           }}
-          onConfirm={({ area: measuredArea, points }) => {
+          onConfirm={({ area: measuredArea, polygons: measuredPolygons, snapshotDataUrl }) => {
             setArea(String(measuredArea));
             setAreaSource("map");
-            setPolygonPoints(points);
+            setPolygons(measuredPolygons);
+            setMapSnapshot(snapshotDataUrl ?? "");
             setError("");
             setMapOpen(false);
           }}
