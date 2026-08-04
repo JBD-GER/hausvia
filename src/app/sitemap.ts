@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
-import { allSeoPaths, blogCategories, blogPosts, locationPages, marketingPages } from "@/lib/site";
+import { ASSETS, allSeoPaths, blogCategories, blogPosts, locationPages, marketingPages } from "@/lib/site";
 import { serviceLandingPages } from "@/lib/serviceLandingPages";
 import { absoluteUrl } from "@/lib/seo";
 
 const siteUpdatedAt = new Date("2026-07-28");
+const winterServiceUpdatedAt = new Date("2026-08-04");
+const redirectedPaths = new Set(["/leistungen/winterdienst-hannover"]);
 
 function changeFrequencyFor(path: string): MetadataRoute.Sitemap[number]["changeFrequency"] {
   if (path === "/" || path === "/ratgeber") return "weekly";
@@ -20,6 +22,7 @@ function priorityFor(path: string) {
   if (path === "/") return 1;
   if (path === "/angebot-anfragen") return 0.94;
   if (path === "/kosten-einschaetzen") return 0.9;
+  if (path === "/winterdienst-hannover") return 0.93;
   if (coreServiceSlugs.has(path)) return 0.92;
   if (path === "/einsatzgebiete" || path === "/kontakt") return 0.86;
   if (path.startsWith("/leistungen/")) return 0.82;
@@ -32,6 +35,7 @@ function priorityFor(path: string) {
 function lastModifiedFor(path: string) {
   const blogPost = blogPosts.find((post) => path === `/ratgeber/${post.slug}`);
 
+  if (path === "/winterdienst-hannover") return winterServiceUpdatedAt;
   if (blogPost) return new Date(blogPost.updatedAt);
   if (blogCategories.some((category) => path === `/ratgeber/kategorie/${category.slug}`)) return siteUpdatedAt;
   if (locationPages.some((page) => path === `/einsatzgebiete/${page.slug}`)) return siteUpdatedAt;
@@ -43,13 +47,16 @@ function lastModifiedFor(path: string) {
 function imagesFor(path: string) {
   const blogPost = blogPosts.find((post) => path === `/ratgeber/${post.slug}`);
 
+  if (path === "/winterdienst-hannover") return [absoluteUrl(ASSETS.blogWinter)];
   if (!blogPost) return undefined;
 
   return [absoluteUrl(blogPost.image)];
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const paths = [...allSeoPaths, ...serviceLandingPages.map((page) => `/leistungen/${page.slug}`)];
+  const paths = [...allSeoPaths, ...serviceLandingPages.map((page) => `/leistungen/${page.slug}`)].filter(
+    (path) => !redirectedPaths.has(path),
+  );
 
   return paths.map((path) => {
     const images = imagesFor(path);

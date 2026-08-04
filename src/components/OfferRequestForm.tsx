@@ -3,8 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, Loader2, ShieldCheck, Snowflake } from "lucide-react";
 import { markLeadConversionPending } from "@/components/LeadConversionTracker";
+import type { WinterPricingEstimate, WinterPricingInput } from "@/lib/winterPricing";
+
+export type WinterOfferRequestContext = {
+  service: "winterdienst";
+  input?: WinterPricingInput;
+  estimate?: WinterPricingEstimate;
+  labels?: {
+    objectType: string;
+    surfaceProfile: string;
+    access: string;
+  };
+};
 
 const initialForm = {
   firstName: "",
@@ -15,7 +27,17 @@ const initialForm = {
   termsAccepted: false,
 };
 
-export function OfferRequestForm() {
+const currencyFormatter = new Intl.NumberFormat("de-DE", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+
+function formatCurrency(value: number) {
+  return currencyFormatter.format(value);
+}
+
+export function OfferRequestForm({ requestContext }: { requestContext?: WinterOfferRequestContext }) {
   const router = useRouter();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
@@ -62,6 +84,8 @@ export function OfferRequestForm() {
     setSubmitting(true);
     setError("");
 
+    const isWinterRequest = requestContext?.service === "winterdienst";
+
     try {
       const response = await fetch("/api/lead", {
         method: "POST",
@@ -75,7 +99,17 @@ export function OfferRequestForm() {
             name: `${firstName} ${lastName}`,
             phone,
             email,
-            services: ["Angebotsanfrage"],
+            services: isWinterRequest ? ["Winterdienst"] : ["Angebotsanfrage"],
+            ...(requestContext?.input
+              ? {
+                  winterPricingInput: {
+                    objectType: requestContext.input.objectType,
+                    area: String(requestContext.input.area),
+                    surfaceProfile: requestContext.input.surfaceProfile,
+                    access: requestContext.input.access,
+                  },
+                }
+              : {}),
             privacyAccepted: form.privacyAccepted,
             termsAccepted: form.termsAccepted,
           },
@@ -87,7 +121,7 @@ export function OfferRequestForm() {
         throw new Error(result?.message || "Die Anfrage konnte gerade nicht gesendet werden.");
       }
 
-      markLeadConversionPending("offer-request");
+      markLeadConversionPending(isWinterRequest ? "winter-service-request" : "offer-request");
       router.push("/danke?art=anfrage");
     } catch (caughtError) {
       setError(
@@ -105,8 +139,9 @@ export function OfferRequestForm() {
 
   return (
     <form
+      id="anfrage"
       onSubmit={submit}
-      className="rounded-xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/5 sm:p-7"
+      className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/5 sm:p-7"
       aria-labelledby="offer-form-title"
     >
       <div className="flex items-start gap-4">
@@ -123,6 +158,51 @@ export function OfferRequestForm() {
           </p>
         </div>
       </div>
+
+      {requestContext ? (
+        <div className="mt-6 rounded-xl border border-cyan-200 bg-cyan-50 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-cyan-700 text-white">
+              <Snowflake aria-hidden="true" className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold uppercase tracking-wide text-cyan-800">
+                Winterdienst vorausgewählt
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
+                {requestContext.estimate && requestContext.input && requestContext.labels
+                  ? `${requestContext.input.area.toLocaleString("de-DE")} m² · ${requestContext.labels.objectType} · ${requestContext.labels.surfaceProfile} · ${requestContext.labels.access}`
+                  : "Ihre Anfrage wird direkt dem Winterdienst zugeordnet."}
+              </p>
+            </div>
+          </div>
+
+          {requestContext.estimate ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-cyan-100 bg-white p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Saison-Grundbetrag</p>
+                <p className="mt-1 text-xl font-extrabold text-slate-950">
+                  {formatCurrency(requestContext.estimate.seasonBaseGross)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  {formatCurrency(requestContext.estimate.monthlyBaseGross)} monatlich, November bis März
+                </p>
+              </div>
+              <div className="rounded-lg bg-cyan-700 p-4 text-white">
+                <p className="text-xs font-bold uppercase tracking-wide text-cyan-100">Je tatsächlichem Einsatz</p>
+                <p className="mt-1 text-xl font-extrabold">
+                  + {formatCurrency(requestContext.estimate.deploymentGross)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-cyan-50">Nur bei tatsächlichem Winterdiensteinsatz</p>
+              </div>
+            </div>
+          ) : null}
+
+          <p className="mt-3 text-xs leading-5 text-slate-600">
+            Die Preiseinschätzung ist unverbindlich. Vor Vertragsschluss prüfen wir Adresse und Objektgegebenheiten.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <label className="block">
@@ -225,12 +305,14 @@ export function OfferRequestForm() {
         className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-base font-bold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
       >
         {submitting ? <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" /> : null}
-        Angebot kostenlos anfragen
+        {requestContext ? "Winterdienst unverbindlich anfragen" : "Angebot kostenlos anfragen"}
         {!submitting ? <ArrowRight aria-hidden="true" className="h-5 w-5" /> : null}
       </button>
 
       <p className="mt-4 text-center text-xs font-semibold leading-5 text-slate-500">
-        Keine Objektangaben nötig. Ihre Anfrage ist kostenlos und unverbindlich.
+        {requestContext?.input
+          ? "Ihre Rechnerangaben werden übernommen. Die Anfrage ist kostenlos und unverbindlich."
+          : "Keine Objektangaben nötig. Ihre Anfrage ist kostenlos und unverbindlich."}
       </p>
     </form>
   );

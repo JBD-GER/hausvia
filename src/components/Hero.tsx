@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle2, Star } from "lucide-react";
 
 export function Hero({
@@ -14,6 +15,8 @@ export function Hero({
   secondaryLabel,
   bullets = [],
   trustText,
+  aside,
+  showActions = true,
 }: {
   eyebrow?: string;
   title: string;
@@ -26,10 +29,16 @@ export function Hero({
   secondaryLabel?: string;
   bullets?: string[];
   trustText?: string;
+  aside?: ReactNode;
+  showActions?: boolean;
 }) {
   return (
     <section className="relative overflow-hidden bg-slate-50">
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:grid-cols-[1fr_0.92fr] lg:px-8 lg:py-20">
+      <div
+        className={`mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20 ${
+          aside ? "lg:grid-cols-[0.7fr_1.3fr]" : "lg:grid-cols-[1fr_0.92fr]"
+        }`}
+      >
         <div>
           {eyebrow ? (
             <p className="mb-4 text-sm font-bold uppercase tracking-wide text-brand">{eyebrow}</p>
@@ -60,26 +69,30 @@ export function Hero({
             </ul>
           ) : null}
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href={primaryHref}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-base font-bold text-white shadow-sm transition hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
-            >
-              {primaryLabel}
-              <ArrowRight aria-hidden="true" size={18} />
-            </Link>
-            {secondaryHref && secondaryLabel ? (
+          {showActions ? (
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                href={secondaryHref}
-                className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-6 py-3 text-base font-bold text-slate-900 transition hover:border-brand hover:text-brand"
+                href={primaryHref}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-base font-bold text-white shadow-sm transition hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
               >
-                {secondaryLabel}
+                {primaryLabel}
+                <ArrowRight aria-hidden="true" size={18} />
               </Link>
-            ) : null}
-          </div>
+              {secondaryHref && secondaryLabel ? (
+                <Link
+                  href={secondaryHref}
+                  className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-6 py-3 text-base font-bold text-slate-900 transition hover:border-brand hover:text-brand"
+                >
+                  {secondaryLabel}
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
-        {image ? (
+        {aside ? (
+          <div className="min-w-0">{aside}</div>
+        ) : image ? (
           <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <Image
               src={image}

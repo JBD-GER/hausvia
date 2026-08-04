@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, MailCheck, SearchCheck, ShieldCheck } from "lucide-react";
-import { GoogleAdsLeadConversion } from "@/components/GoogleAdsLeadConversion";
+import { LeadConversionTracker } from "@/components/LeadConversionTracker";
 import { absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -68,7 +68,7 @@ export default async function DankePage({
 
   return (
     <main className="overflow-hidden bg-white">
-      <GoogleAdsLeadConversion />
+      <LeadConversionTracker />
       <section className="relative border-b border-slate-200 bg-slate-50">
         <div className="absolute inset-x-0 top-0 h-2 bg-accent" aria-hidden="true" />
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8">

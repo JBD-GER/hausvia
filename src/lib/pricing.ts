@@ -47,7 +47,6 @@ export type EstimateResult = {
 export const pricingConfig = {
   areaRates: {
     usableAreaPerSqm: 0.5,
-    outdoorCarePerSqm: 1.25,
     simpleOutdoorPerSqm: 0.35,
   },
   roundingStep: 10,
@@ -210,7 +209,17 @@ export const pricingConfig = {
     "minorMaintenance",
   ] as ServiceId[],
   gardenServiceIds: ["gardenCare", "lawnMowing", "hedgeCutting", "leafRemoval"] as ServiceId[],
-  simpleOutdoorServiceIds: ["outdoorCleaning", "binService"] as ServiceId[],
+  usableAreaServiceIds: [
+    "caretaker",
+    "interiorCleaning",
+    "technicalChecks",
+    "lightingChecks",
+    "technicalRooms",
+    "contractorAccess",
+    "meterReading",
+    "minorMaintenance",
+  ] as ServiceId[],
+  simpleOutdoorServiceIds: ["outdoorCleaning"] as ServiceId[],
 };
 
 function roundDown(value: number, step: number) {
@@ -276,39 +285,61 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
   const selectedServices = pricingConfig.services.filter((service) => input.services.includes(service.id as ServiceId));
 
   const hasGardenCare = input.services.some((serviceId) => pricingConfig.gardenServiceIds.includes(serviceId));
+  const hasUsableAreaService = input.services.some((serviceId) =>
+    pricingConfig.usableAreaServiceIds.includes(serviceId),
+  );
   const hasSimpleOutdoor = input.services.some((serviceId) =>
     pricingConfig.simpleOutdoorServiceIds.includes(serviceId),
   );
+  // Garden guidance is a complete price band. Excluding its overlapping tasks
+  // here prevents garden care, mowing, hedge cutting and leaf removal from
+  // multiplying the same square-meter basis several times.
+  const nonGardenServices = selectedServices.filter(
+    (service) => !pricingConfig.gardenServiceIds.includes(service.id as ServiceId),
+  );
+  const nonGardenBasePrice =
+    (hasUsableAreaService ? usableArea * pricingConfig.areaRates.usableAreaPerSqm : 0) +
+    (hasSimpleOutdoor ? outdoorArea * pricingConfig.areaRates.simpleOutdoorPerSqm : 0);
+  const serviceFactor = 1 + nonGardenServices.reduce((sum, service) => sum + service.surcharge, 0);
+  const recurringEstimate =
+    nonGardenBasePrice * objectType.factor * frequency.factor * serviceFactor * complexity.factor;
+  const isOneTime = input.frequency === "oneTime";
+  const oneTimeMultiplier = isOneTime ? pricingConfig.oneTimeSurchargeMultiplier : 1;
+  const minimumPrice = objectType.minimumMonthly * oneTimeMultiplier;
+  const nonGardenEstimate = recurringEstimate * oneTimeMultiplier;
+  const gardenGuidance = hasGardenCare ? getGardenGuidance(outdoorArea) : undefined;
+  const gardenLower = gardenGuidance?.lower ?? 0;
+  const gardenUpper = gardenGuidance?.upper ?? 0;
+  const gardenMidpoint = (gardenLower + gardenUpper) / 2;
+  const minimumAdjustedEstimate = Math.max(nonGardenEstimate + gardenMidpoint, minimumPrice);
+
+  const lower = Math.max(
+    minimumPrice,
+    gardenGuidance ? nonGardenEstimate * 0.85 + gardenLower : minimumAdjustedEstimate * 0.85,
+  );
+  const upper = Math.max(
+    minimumPrice,
+    gardenGuidance ? nonGardenEstimate * 1.25 + gardenUpper : minimumAdjustedEstimate * 1.25,
+  );
+  let gardenNote: string | undefined;
+
+  if (gardenGuidance) {
+    gardenNote = gardenGuidance.note;
+  }
+
+  const basePrice = nonGardenBasePrice + gardenMidpoint;
   const outdoorRate = hasGardenCare
-    ? pricingConfig.areaRates.outdoorCarePerSqm
+    ? outdoorArea > 0
+      ? gardenMidpoint / outdoorArea
+      : 0
     : hasSimpleOutdoor
       ? pricingConfig.areaRates.simpleOutdoorPerSqm
       : 0;
 
-  const basePrice = usableArea * pricingConfig.areaRates.usableAreaPerSqm + outdoorArea * outdoorRate;
-  const serviceFactor = 1 + selectedServices.reduce((sum, service) => sum + service.surcharge, 0);
-  const recurringEstimate = basePrice * objectType.factor * frequency.factor * serviceFactor * complexity.factor;
-  const isOneTime = input.frequency === "oneTime";
-  const oneTimeMultiplier = isOneTime ? pricingConfig.oneTimeSurchargeMultiplier : 1;
-  const minimumPrice = objectType.minimumMonthly * oneTimeMultiplier;
-  const rawEstimate = recurringEstimate * oneTimeMultiplier;
-  const minimumAdjustedEstimate = Math.max(rawEstimate, minimumPrice);
-
-  let lower = Math.max(minimumPrice, minimumAdjustedEstimate * 0.85);
-  let upper = Math.max(minimumPrice, minimumAdjustedEstimate * 1.25);
-  let gardenNote: string | undefined;
-
-  if (hasGardenCare) {
-    const gardenGuidance = getGardenGuidance(outdoorArea);
-    lower = Math.max(lower, gardenGuidance.lower);
-    upper = Math.max(upper, gardenGuidance.upper);
-    gardenNote = gardenGuidance.note;
-  }
-
   return {
-    lower: roundDown(lower, pricingConfig.roundingStep),
-    upper: roundUp(upper, pricingConfig.roundingStep),
-    estimatedMonthlyPrice: Math.round(minimumAdjustedEstimate),
+    lower: Math.max(minimumPrice, roundDown(lower, pricingConfig.roundingStep)),
+    upper: Math.max(minimumPrice, roundUp(upper, pricingConfig.roundingStep)),
+    estimatedMonthlyPrice: Math.max(minimumPrice, Math.round(minimumAdjustedEstimate)),
     estimateLabel: isOneTime ? "Einmalige Ersteinschätzung" : "Monatliche Ersteinschätzung",
     billingPeriodLabel: isOneTime ? "einmalig" : "pro Monat",
     isOneTime,

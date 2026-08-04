@@ -5,8 +5,7 @@ import { Hero } from "@/components/Hero";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ServiceFunnel } from "@/components/ServiceFunnel";
-import { TrustBar } from "@/components/TrustBar";
-import { ASSETS, trustItems, type FaqItem } from "@/lib/site";
+import { ASSETS, type FaqItem } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
 const faqs: FaqItem[] = [
@@ -62,14 +61,9 @@ export default function KostenEinschaetzenPage() {
         secondaryHref="/angebot-anfragen"
         secondaryLabel="Einfach Angebot anfragen"
         trustText="Realistische Einschätzung für WEG, Privathaushalt und Gewerbeobjekt"
+        aside={<ServiceFunnel compact />}
+        showActions={false}
       />
-      <TrustBar items={trustItems} />
-
-      <section className="bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
-          <ServiceFunnel />
-        </div>
-      </section>
 
       <section className="bg-slate-50">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:px-8">

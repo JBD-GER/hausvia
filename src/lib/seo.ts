@@ -244,11 +244,13 @@ export function serviceSchema({
   description,
   path,
   serviceType,
+  areaServed = SEO_SERVICE_AREAS,
 }: {
   name: string;
   description: string;
   path: string;
   serviceType: string;
+  areaServed?: readonly string[];
 }) {
   const url = absoluteUrl(path);
 
@@ -260,7 +262,7 @@ export function serviceSchema({
     description,
     url,
     inLanguage: "de-DE",
-    areaServed: SEO_SERVICE_AREAS.map((area) => ({
+    areaServed: areaServed.map((area) => ({
       "@type": area === "Hannover" ? "City" : "Place",
       name: area,
     })),

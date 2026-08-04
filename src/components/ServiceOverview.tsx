@@ -119,7 +119,11 @@ export function ServiceOverview({
                         </div>
                       </div>
                       <Link
-                        href={`/leistungen/${landingPage.slug}`}
+                        href={
+                          serviceId === "winterService"
+                            ? "/winterdienst-hannover"
+                            : `/leistungen/${landingPage.slug}`
+                        }
                         className="mt-5 inline-flex text-sm font-bold text-brand hover:text-brand-dark"
                       >
                         Details ansehen

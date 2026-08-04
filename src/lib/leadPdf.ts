@@ -8,6 +8,15 @@ type LeadPdfInput = {
   lead: LeadRecord;
 };
 
+type WinterPdfEstimate = {
+  monthlyBaseGross: number;
+  seasonBaseGross: number;
+  deploymentGross: number;
+  seasonMonths: number;
+  contractPeriod: string;
+  vatRate: number;
+};
+
 const pageWidth = 595;
 const pageHeight = 842;
 const margin = 46;
@@ -86,6 +95,10 @@ function valueAsStringList(value: unknown) {
   return value.map((item) => valueAsString(item, "")).filter(Boolean);
 }
 
+function valueAsRecord(value: unknown): LeadRecord | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as LeadRecord) : null;
+}
+
 function formatEuro(value: number) {
   return `${value.toLocaleString("de-DE")} EUR`;
 }
@@ -116,6 +129,25 @@ function getEstimateText(lead: LeadRecord) {
       : "pro Monat";
 
   return `${formatEuro(lower)} bis ${formatEuro(upper)} ${billingPeriodLabel}`;
+}
+
+function getWinterEstimate(lead: LeadRecord): WinterPdfEstimate | null {
+  const estimate = valueAsRecord(lead.estimate);
+  if (!estimate || estimate.pricingModel !== "winter-season-plus-deployment") return null;
+
+  const monthlyBaseGross = valueAsNumber(estimate.monthlyBaseGross);
+  const seasonBaseGross = valueAsNumber(estimate.seasonBaseGross);
+  const deploymentGross = valueAsNumber(estimate.deploymentGross);
+  if (!monthlyBaseGross || !seasonBaseGross || !deploymentGross) return null;
+
+  return {
+    monthlyBaseGross,
+    seasonBaseGross,
+    deploymentGross,
+    seasonMonths: valueAsNumber(estimate.seasonMonths) || 5,
+    contractPeriod: valueAsString(estimate.contractPeriod, "1. November bis 31. März"),
+    vatRate: valueAsNumber(estimate.vatRate) || 19,
+  };
 }
 
 function wrapText(value: string, maxChars: number) {
@@ -179,6 +211,8 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   let rowIndex = 0;
   const contentWidth = pageWidth - margin * 2;
   const valueX = margin + 190;
+  const winterEstimate = getWinterEstimate(lead);
+  const winterPricingInput = valueAsRecord(lead.winterPricingInput);
 
   function newPage() {
     commands = [];
@@ -187,7 +221,16 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     commands.push(rect(0, 744, pageWidth, 24, yellow));
     commands.push(text("Hausvia", margin, 807, 24, white, "F2"));
     commands.push(text("HAUSMEISTERSERVICE", margin, 787, 8, white, "F2"));
-    commands.push(text("Kosteneinschätzung für Objektbetreuung", margin, 752, 10, brand, "F2"));
+    commands.push(
+      text(
+        winterEstimate ? "Winterdienst-Preiseinschätzung" : "Kosteneinschätzung für Objektbetreuung",
+        margin,
+        752,
+        10,
+        brand,
+        "F2",
+      ),
+    );
     commands.push(text(`Erstellt am ${formatDate(submittedAt)}`, 400, 752, 8, brand));
     commands.push(line(margin, 58, pageWidth - margin, 58, softBlue));
     commands.push(text(`${SITE.name} · ${SITE.email} · ${SITE.phone}`, margin, 38, 8, muted));
@@ -262,6 +305,53 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     y -= cardHeight + 24;
   }
 
+  function addWinterEstimateCard(estimate: WinterPdfEstimate) {
+    const cardHeight = 138;
+    ensure(cardHeight + 18);
+    commands.push(rect(margin, y - cardHeight + 8, contentWidth, cardHeight, softYellow));
+    commands.push(rect(margin, y - cardHeight + 8, 5, cardHeight, yellow));
+    commands.push(text("WINTERDIENST · ZWEITEILIGES PREISMODELL", margin + 20, y - 16, 9, brand, "F2"));
+    commands.push(
+      text(
+        `${formatEuro(estimate.monthlyBaseGross)} Grundbetrag pro Monat`,
+        margin + 20,
+        y - 45,
+        18,
+        slate,
+        "F2",
+      ),
+    );
+    commands.push(
+      text(
+        `${formatEuro(estimate.seasonBaseGross)} fester Grundbetrag für ${estimate.seasonMonths} Monate`,
+        margin + 20,
+        y - 69,
+        10,
+        muted,
+      ),
+    );
+    commands.push(
+      text(
+        `+ ${formatEuro(estimate.deploymentGross)} je tatsächlichem Einsatz`,
+        margin + 20,
+        y - 98,
+        16,
+        brand,
+        "F2",
+      ),
+    );
+    commands.push(
+      text(
+        `Vertragslaufzeit ${estimate.contractPeriod} · Preise inkl. ${estimate.vatRate} % USt.`,
+        margin + 20,
+        y - 122,
+        9,
+        muted,
+      ),
+    );
+    y -= cardHeight + 24;
+  }
+
   function addInfoCard(title: string, body: string) {
     const bodyLines = wrapText(body, 78);
     const cardHeight = Math.max(78, 42 + bodyLines.length * 13);
@@ -276,7 +366,16 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
 
   newPage();
 
-  commands.push(text("Unverbindliche Einschätzung", margin, y, 25, slate, "F2"));
+  commands.push(
+    text(
+      winterEstimate ? "Unverbindliche Winterdienst-Einschätzung" : "Unverbindliche Einschätzung",
+      margin,
+      y,
+      winterEstimate ? 22 : 25,
+      slate,
+      "F2",
+    ),
+  );
   y -= 26;
   commands.push(
     text(
@@ -290,7 +389,9 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   y -= 30;
 
   const estimateText = getEstimateText(lead);
-  if (estimateText) {
+  if (winterEstimate) {
+    addWinterEstimateCard(winterEstimate);
+  } else if (estimateText) {
     addEstimateCard(estimateText);
   } else {
     addInfoCard("Klassische Anfrage", "Diese Anfrage enthält noch keine automatisierte Kostenspanne.");
@@ -305,41 +406,67 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   addRow("Gewünschter Starttermin", valueAsString(lead.desiredStartDate));
   addRow("Gewünschte Rückrufzeit", valueAsString(lead.preferredCallbackTime));
 
-  addSection("Objektdaten", "Grundlage der Einschätzung sind Objektart, Standort, Flächen, Häufigkeit und Komplexität.");
-  addRow(
-    "Anfragequelle",
-    source === "cost-funnel"
-      ? "Kostencheck / Service-Funnel"
-      : source === "offer-request"
-        ? "Kurze Angebotsanfrage"
-        : "Kontaktformular",
-  );
-  addRow("Objektart", valueAsString(lead.objectTypeLabel ?? lead.objectType));
-  addRow("Standort", valueAsString(lead.location));
-  addRow("Außerhalb Standard-Einsatzgebiet", valueAsString(lead.outsideArea));
-  addRow("Einheiten / Nutzbereiche", `${valueAsString(lead.unitCount, "0")} Einheit(en)`);
-  addRow("Ø Fläche je Einheit", `${valueAsString(lead.averageUnitArea, "0")} m²`);
-  addRow("Berechnete Wohn-/Nutzfläche", `${valueAsString(lead.computedUsableArea, "0")} m²`);
-  addRow("Aktiv betreute Außenfläche", `${valueAsString(lead.outdoorArea, "0")} m²`);
-  addRow("Häufigkeit", valueAsString(lead.frequencyLabel ?? lead.frequency));
-  addRow("Komplexität", valueAsString(lead.complexityLabel ?? lead.complexity));
+  if (winterEstimate) {
+    addSection(
+      "Winterdienst-Objektdaten",
+      "Die Preisbestandteile wurden serverseitig aus den übernommenen Rechnerangaben neu berechnet.",
+    );
+    addRow("Anfragequelle", "Winterdienst-Rechner / Angebotsanfrage");
+    addRow("Objektart", valueAsString(lead.objectTypeLabel ?? lead.objectType));
+    addRow(
+      "Winterdienstfläche",
+      `${valueAsNumber(winterPricingInput?.area ?? lead.winterArea).toLocaleString("de-DE")} m²`,
+    );
+    addRow("Bearbeitung der Fläche", valueAsString(lead.winterSurfaceProfileLabel));
+    addRow("Zugänglichkeit", valueAsString(lead.winterAccessLabel));
+    addRow("Vertragslaufzeit", winterEstimate.contractPeriod);
+    addRow("Abrechnung", "Fester Saison-Grundbetrag plus Preis je tatsächlichem Einsatz");
+  } else {
+    addSection("Objektdaten", "Grundlage der Einschätzung sind Objektart, Standort, Flächen, Häufigkeit und Komplexität.");
+    addRow(
+      "Anfragequelle",
+      source === "cost-funnel"
+        ? "Kostencheck / Service-Funnel"
+        : source === "offer-request"
+          ? "Kurze Angebotsanfrage"
+          : "Kontaktformular",
+    );
+    addRow("Objektart", valueAsString(lead.objectTypeLabel ?? lead.objectType));
+    addRow("Standort", valueAsString(lead.location));
+    addRow("Außerhalb Standard-Einsatzgebiet", valueAsString(lead.outsideArea));
+    addRow("Einheiten / Nutzbereiche", `${valueAsString(lead.unitCount, "0")} Einheit(en)`);
+    addRow("Ø Fläche je Einheit", `${valueAsString(lead.averageUnitArea, "0")} m²`);
+    addRow("Berechnete Wohn-/Nutzfläche", `${valueAsString(lead.computedUsableArea, "0")} m²`);
+    addRow("Aktiv betreute Außenfläche", `${valueAsString(lead.outdoorArea, "0")} m²`);
+    addRow("Häufigkeit", valueAsString(lead.frequencyLabel ?? lead.frequency));
+    addRow("Komplexität", valueAsString(lead.complexityLabel ?? lead.complexity));
+  }
 
   const services = valueAsStringList(lead.selectedServiceLabels).length
     ? valueAsStringList(lead.selectedServiceLabels)
     : valueAsStringList(lead.services);
 
   addSection("Anforderungen und Leistungen");
-  addRow("Rundum-Sorglos-Paket", valueAsString(lead.servicePackage));
+  if (!winterEstimate) addRow("Rundum-Sorglos-Paket", valueAsString(lead.servicePackage));
   addRow("Gewünschte Leistungen", services.join(", ") || valueAsString(lead.serviceInterest));
   addRow("Nachricht", valueAsString(lead.message));
 
   addSection("Wichtige Hinweise");
-  addParagraph(
-    "Diese Einschätzung ist unverbindlich und dient als erste Orientierung. Der finale Preis hängt von Objektzustand, Zugänglichkeit, Leistungsumfang, Häufigkeit, saisonalen Aufgaben und Abstimmung vor Ort ab.",
-  );
-  addParagraph(
-    "Reparaturen, Instandsetzungen und größere Handwerksleistungen sind nicht automatisch enthalten und werden separat kalkuliert.",
-  );
+  if (winterEstimate) {
+    addParagraph(
+      "Der Saison-Grundbetrag fällt während der fünf Vertragsmonate unabhängig von der Anzahl der Einsätze an. Der Einsatzpreis wird zusätzlich nur berechnet, wenn am Objekt tatsächlich geräumt oder gestreut wird.",
+    );
+    addParagraph(
+      "Die Einschätzung setzt zutreffende Flächen- und Zugänglichkeitsangaben voraus. Adresse, Leistungsflächen, Prioritäten und verfügbare Kapazitäten werden vor Vertragsschluss geprüft.",
+    );
+  } else {
+    addParagraph(
+      "Diese Einschätzung ist unverbindlich und dient als erste Orientierung. Der finale Preis hängt von Objektzustand, Zugänglichkeit, Leistungsumfang, Häufigkeit, saisonalen Aufgaben und Abstimmung vor Ort ab.",
+    );
+    addParagraph(
+      "Reparaturen, Instandsetzungen und größere Handwerksleistungen sind nicht automatisch enthalten und werden separat kalkuliert.",
+    );
+  }
   addParagraph(
     "Die Anfrage wurde mit Zustimmung zu Datenschutz und AGB übermittelt. Rechtliche Pflichttexte sind vor Veröffentlichung final zu prüfen.",
   );

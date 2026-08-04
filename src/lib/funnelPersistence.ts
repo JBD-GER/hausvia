@@ -101,6 +101,15 @@ export async function persistFunnelLead({ source = "website", submittedAt, lead 
     .select("id")
     .single();
 
+  const isStandaloneWinterRequest = !estimate && requestedServices.includes("Winterdienst");
+  if (estimate?.pricingModel === "winter-season-plus-deployment" || isStandaloneWinterRequest) {
+    return {
+      customerId: customer.id as string,
+      leadId: leadRow?.id as string | undefined,
+      projectId: undefined,
+    };
+  }
+
   const lower = asNumber(estimate?.lower);
   const upper = asNumber(estimate?.upper);
   const grossTotal = lower && upper ? (lower + upper) / 2 : 0;

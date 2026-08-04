@@ -78,7 +78,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" className="h-full scroll-smooth">
+    <html lang="de" className="h-full scroll-smooth" data-scroll-behavior="smooth">
       <body className="flex min-h-full flex-col bg-slate-50 text-slate-900 antialiased">
         <SiteChrome>{children}</SiteChrome>
         <GoogleAdsTag />
