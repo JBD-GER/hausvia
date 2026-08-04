@@ -143,13 +143,20 @@ export function OfferRequestForm({
         }),
       });
 
+      const result = (await response.json().catch(() => null)) as
+        | { message?: string; submissionId?: string }
+        | null;
+
       if (!response.ok) {
-        const result = (await response.json().catch(() => null)) as { message?: string } | null;
         throw new Error(result?.message || "Die Anfrage konnte gerade nicht gesendet werden.");
       }
 
       if (isWinterRequest) clearWinterCalculatorDraft();
-      markLeadConversionPending(isWinterRequest ? "winter-service-request" : "offer-request");
+      markLeadConversionPending(
+        isWinterRequest ? "winter-service-request" : "offer-request",
+        result?.submissionId || crypto.randomUUID(),
+        { email, phone },
+      );
       router.push("/danke?art=anfrage");
     } catch (caughtError) {
       setError(

@@ -63,10 +63,16 @@ export default function DatenschutzPage() {
               Browserspeicher und dient nur dazu, die Auswahl beim nächsten Besuch zu berücksichtigen.
             </p>
             <p>
-              Bei Zustimmung zu Marketingdiensten kann Google Ads Conversion-Messung eingebunden werden. Dabei wird das
-              Google Tag erst nach entsprechender Auswahl geladen, um abgesendete Anfragen und Kampagnenwirkung besser
-              einordnen zu können. Die konkrete Anbieterbeschreibung, Rechtsgrundlage, Speicherdauer und mögliche
-              Drittlandübermittlung müssen vor Veröffentlichung rechtlich geprüft und vollständig ergänzt werden.
+              Für Google Ads ist der Google Consent Mode v2 mit einer standardmäßig verweigerten Einwilligung
+              eingerichtet. Das Google Tag kann dadurch technisch aufgerufen werden, ohne vor Ihrer Auswahl
+              Werbe-Cookies zu setzen oder von Ihnen im Formular bereitgestellte Kontaktdaten für Werbung zu senden.
+              Im verweigerten Zustand können eingeschränkte, cookielose Messsignale wie Einwilligungsstatus,
+              Seitenaufruf und technische Geräteinformationen an Google übermittelt werden. Erst bei Zustimmung zu
+              Marketingdiensten werden die Werbefunktionen freigegeben und erfolgreich abgesendete Anfragen als
+              Conversion übermittelt. Für erweiterte Conversions können dabei die angegebene E-Mail-Adresse und
+              Telefonnummer normalisiert und durch Google vor der Zuordnung gehasht werden. Die
+              konkrete Anbieterbeschreibung, Rechtsgrundlage, Speicherdauer und mögliche Drittlandübermittlung müssen
+              vor Veröffentlichung rechtlich geprüft und vollständig ergänzt werden.
             </p>
             <p>
               Im Winterdienst-Rechner können Sie den Google-Adressfinder und eine Google-Karte zur Flächenmessung

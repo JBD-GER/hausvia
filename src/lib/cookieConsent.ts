@@ -1,4 +1,4 @@
-export const cookieConsentStorageKey = "hausvia-cookie-consent-v1";
+export const cookieConsentStorageKey = "hausvia-cookie-consent-v2";
 export const cookieConsentChangeEvent = "hausvia-cookie-consent-change";
 
 export type CookieConsent = {

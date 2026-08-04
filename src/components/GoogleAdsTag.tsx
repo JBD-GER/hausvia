@@ -1,23 +1,25 @@
 "use client";
 
-import Script from "next/script";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
   getCookieConsentRaw,
   parseCookieConsent,
   readCookieConsent,
   subscribeCookieConsentChange,
+  type CookieConsent,
 } from "@/lib/cookieConsent";
-
-const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "AW-18131829931";
-const leadConversionLabel =
-  process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL || "p6rgCLT7yr0cEKuJ98VD";
-const winterdienstConversionLabel =
-  process.env.NEXT_PUBLIC_GOOGLE_ADS_WINTERDIENST_CONVERSION_LABEL || "VMaTCOa13tscEKuJ98VD";
+import {
+  googleAdsId,
+  googleAdsLeadConversionLabel,
+  googleAdsWinterdienstConversionLabel,
+  normalizeGoogleAdsUserData,
+  type GoogleAdsUserData,
+  type GoogleAdsUserDataInput,
+} from "@/lib/googleAds";
 
 declare global {
   interface Window {
-    dataLayer?: Array<unknown[] | Record<string, unknown>>;
+    dataLayer?: Array<IArguments | unknown[] | Record<string, unknown>>;
     gtag?: (...args: unknown[]) => void;
   }
 }
@@ -28,6 +30,7 @@ const inFlightWinterdienstConversions = new Set<string>();
 const pushedWinterdienstCustomEvents = new Set<string>();
 const winterdienstConversionAttempts = new Map<string, number>();
 const winterdienstConversionTimers = new Map<string, number>();
+const winterdienstConversionUserData = new Map<string, GoogleAdsUserData>();
 const maximumWinterdienstConversionAttempts = 3;
 const winterdienstConversionCallbackTimeoutMs = 4_000;
 
@@ -93,7 +96,15 @@ function completeWinterdienstConversion(submissionId: string) {
   winterdienstConversionAttempts.delete(submissionId);
   inFlightWinterdienstConversions.delete(submissionId);
   pendingWinterdienstConversions.delete(submissionId);
+  winterdienstConversionUserData.delete(submissionId);
   persistWinterdienstConversionStatus(submissionId, "sent");
+}
+
+function setEnhancedConversionUserData(userData: GoogleAdsUserData | null | undefined) {
+  if (!userData || !hasMarketingConsent()) return;
+
+  initializeGtag();
+  window.gtag?.("set", "user_data", userData);
 }
 
 function dispatchWinterdienstConversion(submissionId: string) {
@@ -108,13 +119,15 @@ function dispatchWinterdienstConversion(submissionId: string) {
   if (attempts >= maximumWinterdienstConversionAttempts) return;
 
   const nextAttempt = attempts + 1;
-  const sendTo = `${googleAdsId}/${winterdienstConversionLabel}`;
+  const sendTo = `${googleAdsId}/${googleAdsWinterdienstConversionLabel}`;
   winterdienstConversionAttempts.set(submissionId, nextAttempt);
   inFlightWinterdienstConversions.add(submissionId);
   persistWinterdienstConversionStatus(submissionId, "pending");
 
   initializeGtag();
   window.gtag?.("config", googleAdsId);
+  const userData = winterdienstConversionUserData.get(submissionId);
+  setEnhancedConversionUserData(userData);
 
   if (!pushedWinterdienstCustomEvents.has(submissionId)) {
     window.dataLayer?.push({
@@ -122,7 +135,7 @@ function dispatchWinterdienstConversion(submissionId: string) {
       event_id: submissionId,
       conversion_name: "Winterdienst",
       conversion_id: googleAdsId,
-      conversion_label: winterdienstConversionLabel,
+      conversion_label: googleAdsWinterdienstConversionLabel,
       send_to: sendTo,
       submission_id: submissionId,
       transaction_id: submissionId,
@@ -135,6 +148,7 @@ function dispatchWinterdienstConversion(submissionId: string) {
     transaction_id: submissionId,
     event_callback: () => completeWinterdienstConversion(submissionId),
   });
+  if (userData) window.gtag?.("set", "user_data", {});
 
   if (!inFlightWinterdienstConversions.has(submissionId)) return;
 
@@ -152,17 +166,36 @@ export function initializeGtag() {
   window.dataLayer = window.dataLayer ?? [];
   window.gtag =
     window.gtag ??
-    function gtag(...args: unknown[]) {
-      window.dataLayer?.push(args);
+    function gtag() {
+      // Google dokumentiert für gtag bewusst das native arguments-Objekt als Queue-Eintrag.
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer?.push(arguments);
     };
 }
 
-export function markWinterdienstConversionPending(value: string) {
+export function updateGoogleAdsConsent(consent: CookieConsent | null = readCookieConsent()) {
+  initializeGtag();
+
+  const marketingGranted = consent?.marketing === true;
+  const analyticsGranted = consent?.analytics === true;
+  window.gtag?.("consent", "update", {
+    ad_storage: marketingGranted ? "granted" : "denied",
+    ad_user_data: marketingGranted ? "granted" : "denied",
+    ad_personalization: marketingGranted ? "granted" : "denied",
+    analytics_storage: analyticsGranted ? "granted" : "denied",
+  });
+  if (!marketingGranted) window.gtag?.("set", "user_data", {});
+}
+
+export function markWinterdienstConversionPending(value: string, userDataInput?: GoogleAdsUserDataInput) {
   if (typeof window === "undefined") return;
 
   const submissionId = normalizeSubmissionId(value);
   if (!submissionId) return;
   if (hasMarketingConsent() && readWinterdienstConversionStatus(submissionId) === "sent") return;
+
+  const userData = userDataInput ? normalizeGoogleAdsUserData(userDataInput) : null;
+  if (userData) winterdienstConversionUserData.set(submissionId, userData);
 
   pendingWinterdienstConversions.add(submissionId);
   if (hasMarketingConsent()) persistWinterdienstConversionStatus(submissionId, "pending");
@@ -179,33 +212,20 @@ export function flushPendingWinterdienstConversions() {
 export function GoogleAdsTag() {
   const rawConsent = useSyncExternalStore(subscribeCookieConsentChange, getCookieConsentRaw, () => "");
   const consent = useMemo(() => parseCookieConsent(rawConsent), [rawConsent]);
-  const canLoadMarketing = consent?.marketing === true && Boolean(googleAdsId);
 
   useEffect(() => {
-    if (!canLoadMarketing) return;
-
     initializeGtag();
-    window.gtag?.("js", new Date());
-    window.gtag?.("config", googleAdsId);
-    flushPendingWinterdienstConversions();
-  }, [canLoadMarketing]);
+    updateGoogleAdsConsent(consent);
+    if (consent?.marketing === true) flushPendingWinterdienstConversions();
+  }, [consent]);
 
-  if (!canLoadMarketing) return null;
-
-  return (
-    <Script
-      id="hausvia-google-ads-tag"
-      src={`https://www.googletagmanager.com/gtag/js?id=${googleAdsId}`}
-      strategy="afterInteractive"
-      onReady={flushPendingWinterdienstConversions}
-    />
-  );
+  return null;
 }
 
 export function getGoogleAdsConfig() {
   return {
     googleAdsId,
-    leadConversionLabel,
-    winterdienstConversionLabel,
+    leadConversionLabel: googleAdsLeadConversionLabel,
+    winterdienstConversionLabel: googleAdsWinterdienstConversionLabel,
   };
 }

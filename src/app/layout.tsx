@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { GoogleAdsTag } from "@/components/GoogleAdsTag";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { SiteChrome } from "@/components/SiteChrome";
+import { cookieConsentStorageKey } from "@/lib/cookieConsent";
+import { googleAdsId } from "@/lib/googleAds";
 import { ASSETS, SITE } from "@/lib/site";
 import { absoluteUrl, graph, localBusinessSchema, websiteSchema } from "@/lib/seo";
 import "./globals.css";
@@ -72,6 +75,33 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
+const safeGoogleAdsId = googleAdsId.replace(/[^A-Za-z0-9-]/g, "");
+const googleAdsConsentBootstrap = `
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){window.dataLayer.push(arguments);}
+  window.gtag = window.gtag || gtag;
+  window.gtag('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'denied',
+    wait_for_update: 500
+  });
+  window.gtag('set', 'ads_data_redaction', true);
+  window.gtag('set', 'url_passthrough', true);
+  try {
+    var hausviaConsent = JSON.parse(window.localStorage.getItem(${JSON.stringify(cookieConsentStorageKey)}) || 'null');
+    if (hausviaConsent && typeof hausviaConsent.marketing === 'boolean' && typeof hausviaConsent.analytics === 'boolean') {
+      window.gtag('consent', 'update', {
+        ad_storage: hausviaConsent.marketing ? 'granted' : 'denied',
+        ad_user_data: hausviaConsent.marketing ? 'granted' : 'denied',
+        ad_personalization: hausviaConsent.marketing ? 'granted' : 'denied',
+        analytics_storage: hausviaConsent.analytics ? 'granted' : 'denied'
+      });
+    }
+  } catch (error) {}
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -80,8 +110,19 @@ export default function RootLayout({
   return (
     <html lang="de" className="h-full scroll-smooth" data-scroll-behavior="smooth">
       <body className="flex min-h-full flex-col bg-slate-50 text-slate-900 antialiased">
+        <Script id="hausvia-google-consent-default" strategy="beforeInteractive">
+          {googleAdsConsentBootstrap}
+        </Script>
         <SiteChrome>{children}</SiteChrome>
         <GoogleAdsTag />
+        <Script
+          id="hausvia-google-ads-tag"
+          src={`https://www.googletagmanager.com/gtag/js?id=${safeGoogleAdsId}`}
+          strategy="afterInteractive"
+        />
+        <Script id="hausvia-google-ads-config" strategy="afterInteractive">
+          {`window.gtag('js', new Date()); window.gtag('config', '${safeGoogleAdsId}');`}
+        </Script>
         <Analytics />
         <SEOJsonLd data={graph([websiteSchema(), localBusinessSchema()])} />
       </body>

@@ -349,12 +349,18 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
         }),
       });
 
+      const result = (await response.json().catch(() => null)) as
+        | { message?: string; submissionId?: string }
+        | null;
+
       if (!response.ok) {
-        const result = (await response.json().catch(() => null)) as { message?: string } | null;
         throw new Error(result?.message || "Lead request failed");
       }
 
-      markLeadConversionPending("cost-funnel");
+      markLeadConversionPending("cost-funnel", result?.submissionId || crypto.randomUUID(), {
+        email: lead.email,
+        phone: lead.phone,
+      });
       router.push("/danke");
     } catch (error) {
       const message = error instanceof Error ? error.message : "";

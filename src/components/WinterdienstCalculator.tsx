@@ -1125,7 +1125,11 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
 
         {step === 4 && confirmedEstimate ? (
           <div className="bg-gradient-to-b from-brand-soft/60 to-white p-5 sm:p-8 lg:p-10">
-            <WinterdienstConversionTracker submissionId={confirmedSubmissionId} />
+            <WinterdienstConversionTracker
+              submissionId={confirmedSubmissionId}
+              email={confirmedEmail}
+              phone={contact.phone}
+            />
             <div className="mx-auto max-w-5xl">
               <div className="flex items-center gap-2 text-brand">
                 <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-emerald-600" />

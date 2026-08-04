@@ -85,7 +85,7 @@ export function CookieBanner() {
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {[
                 "Auswahl erforderlich, bevor es weitergeht",
-                "Google Ads Conversion-Messung nur mit Zustimmung",
+                "Werbe-Cookies und erweiterte Messdaten nur mit Zustimmung",
                 "Auswahl jederzeit über Cookie-Einstellungen änderbar",
               ].map((item) => (
                 <div key={item} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-bold leading-5 text-slate-800">
@@ -133,7 +133,8 @@ export function CookieBanner() {
                     <span>
                       <span className="block font-extrabold text-slate-950">Marketing & Google Ads</span>
                       <span className="mt-1 block leading-6">
-                        Ermöglicht Google Ads Tag und Conversion-Messung für abgesendete Anfragen.
+                        Ermöglicht Conversion-Messung und die gehashte Zuordnung abgesendeter Anfragen bei
+                        Google Ads. Ohne Zustimmung bleibt der Google Consent Mode vollständig eingeschränkt.
                       </span>
                     </span>
                   </span>
