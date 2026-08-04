@@ -39,6 +39,7 @@ import {
   type WinterAccess,
   type WinterObjectType,
   type WinterPricingEstimate,
+  type WinterReadiness,
 } from "@/lib/winterPricing";
 
 const WinterAddressSearch = dynamic(
@@ -81,6 +82,7 @@ function parseServerWinterEstimate(value: unknown): WinterPricingEstimate | null
   const pricingOptions = estimate.pricingOptions as Record<string, unknown> | undefined;
   const flex = pricingOptions?.flex as Record<string, unknown> | undefined;
   const plan = pricingOptions?.plan as Record<string, unknown> | undefined;
+  const baseBreakdown = estimate.baseBreakdown as Record<string, unknown> | undefined;
   const breakdown = estimate.deploymentBreakdown as Record<string, unknown> | undefined;
   const estimateNumbers = [
     estimate.monthlyBaseGross,
@@ -89,32 +91,49 @@ function parseServerWinterEstimate(value: unknown): WinterPricingEstimate | null
     estimate.monthlyBaseNet,
     estimate.seasonBaseNet,
     estimate.deploymentNet,
+    estimate.readinessSurchargePercent,
   ];
   const flexNumbers = [flex?.monthlyBaseGross, flex?.seasonBaseGross, flex?.deploymentGross];
   const planNumbers = [
     plan?.includedDeployments,
+    plan?.deploymentDiscountPercent,
+    plan?.discountedDeploymentGross,
     plan?.monthlyGross,
     plan?.seasonGross,
     plan?.additionalDeploymentGross,
+  ];
+  const baseBreakdownNumbers = [
+    baseBreakdown?.standardMonthlyBaseGross,
+    baseBreakdown?.readinessSurchargeGross,
   ];
   const breakdownNumbers = [
     breakdown?.areaSquareMeters,
     breakdown?.manualShare,
     breakdown?.machineShare,
-    breakdown?.clearingRateGrossPerSquareMeter,
-    breakdown?.gritReferenceRateGrossPerSquareMeter,
-    breakdown?.gritRateGrossPerSquareMeter,
-    breakdown?.totalRateGrossPerSquareMeter,
-    breakdown?.clearingGross,
-    breakdown?.gritGross,
+    breakdown?.mobilizationGross,
+    breakdown?.areaServiceGross,
+    breakdown?.minimumAdjustmentGross,
+    breakdown?.areaServiceRateGrossPerSquareMeter,
+    breakdown?.standardDeploymentGross,
+    breakdown?.readinessMultiplier,
+    breakdown?.readinessSurchargePercent,
+    breakdown?.readinessSurchargeGross,
+    breakdown?.effectiveDeploymentRateGrossPerSquareMeter,
   ];
 
   if (
     estimate.seasonMonths !== 5 ||
     estimate.contractPeriod !== "1. November bis 31. März" ||
     estimate.vatRate !== 19 ||
+    !["standard", "commercial24h"].includes(String(estimate.readiness)) ||
     !["manual", "mixed", "machine"].includes(String(breakdown?.appliedSurfaceProfile)) ||
-    ![...estimateNumbers, ...flexNumbers, ...planNumbers, ...breakdownNumbers].every(isFinitePrice)
+    ![
+      ...estimateNumbers,
+      ...flexNumbers,
+      ...planNumbers,
+      ...baseBreakdownNumbers,
+      ...breakdownNumbers,
+    ].every(isFinitePrice)
   ) {
     return null;
   }
@@ -244,6 +263,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
   const [area, setArea] = useState("");
   const [objectType, setObjectType] = useState<WinterObjectType>("residential");
   const [access, setAccess] = useState<WinterAccess>("standard");
+  const [readiness, setReadiness] = useState<WinterReadiness>("standard");
   const [contact, setContact] = useState(initialContactForm);
   const [submitting, setSubmitting] = useState(false);
   const [confirmedEstimate, setConfirmedEstimate] = useState<WinterPricingEstimate | null>(null);
@@ -268,9 +288,21 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
   const estimate = useMemo(
     () =>
       areaIsValid
-        ? calculateWinterPrice({ objectType, area: Math.round(numericArea), surfaceProfile, access })
+        ? calculateWinterPrice({
+            objectType,
+            area: Math.round(numericArea),
+            surfaceProfile,
+            access,
+            readiness,
+          })
         : null,
-    [access, areaIsValid, numericArea, objectType, surfaceProfile],
+    [access, areaIsValid, numericArea, objectType, readiness, surfaceProfile],
+  );
+  const confirmedReadinessOption = winterPricingConfig.readinessOptions.find(
+    (item) => item.id === confirmedEstimate?.readiness,
+  );
+  const selectedReadinessOption = winterPricingConfig.readinessOptions.find(
+    (item) => item.id === readiness,
   );
   const resetAreaMeasurement = useCallback(() => {
     setPolygons([]);
@@ -465,6 +497,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
               area: String(Math.round(numericArea)),
               surfaceProfile,
               access,
+              readiness,
             },
             privacyAccepted: contact.privacyAccepted,
             termsAccepted: contact.termsAccepted,
@@ -793,7 +826,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
         {step === 2 ? (
           <div className="mx-auto max-w-5xl p-5 sm:p-8 lg:p-10">
             <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-brand">Schritt 3 von 5</p>
-            <h4 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Noch zwei kurze Objektangaben</h4>
+            <h4 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Noch drei kurze Objektangaben</h4>
             <p className="mt-3 text-sm leading-7 text-slate-650 sm:text-base">
               Die häufigste Variante ist vorausgewählt. Bitte kurz prüfen – die passende Bearbeitungsart plant der Rechner automatisch mit ein.
             </p>
@@ -818,7 +851,16 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                 <legend className="text-base font-extrabold text-slate-950">1. Welche Objektart wird betreut?</legend>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   {winterPricingConfig.objectTypes.map((item) => (
-                    <SelectionCard key={item.id} active={objectType === item.id} title={item.label} text={item.description} onClick={() => setObjectType(item.id)} />
+                    <SelectionCard
+                      key={item.id}
+                      active={objectType === item.id}
+                      title={item.label}
+                      text={item.description}
+                      onClick={() => {
+                        setObjectType(item.id);
+                        if (item.id !== "commercial") setReadiness("standard");
+                      }}
+                    />
                   ))}
                 </div>
               </fieldset>
@@ -838,8 +880,34 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                 </div>
               </fieldset>
 
+              <fieldset>
+                <legend className="text-base font-extrabold text-slate-950">3. Einsatzbereitschaft / Zeiten</legend>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {winterPricingConfig.readinessOptions.map((item) => {
+                    const disabled = item.commercialOnly && objectType !== "commercial";
+                    return (
+                      <SelectionCard
+                        key={item.id}
+                        active={readiness === item.id}
+                        title={item.label}
+                        text={`${item.schedule}. ${
+                          disabled ? "Nur für Gewerbeobjekte auswählbar." : item.description
+                        }`}
+                        onClick={() => setReadiness(item.id)}
+                        disabled={disabled}
+                      />
+                    );
+                  })}
+                </div>
+                {readiness === "standard" ? (
+                  <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-950">
+                    {winterPricingConfig.standardCoverageNotice}
+                  </p>
+                ) : null}
+              </fieldset>
+
               <p className="rounded-xl border border-brand/15 bg-brand-soft p-4 text-xs font-semibold leading-5 text-slate-650">
-                Die voraussichtliche Bearbeitung – Handarbeit, gemischt oder maschinell – wird anhand von Fläche und Zugänglichkeit automatisch berücksichtigt.
+                Die voraussichtliche Bearbeitung – Handarbeit, gemischt oder maschinell – wird anhand von Fläche und Zugänglichkeit automatisch berücksichtigt. Beim 24/7 Gewerbe-Service werden Grundgebühr und jeder Einsatz um 20 % erhöht.
               </p>
             </div>
 
@@ -1025,6 +1093,12 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                     <dt className="font-semibold text-slate-600">Vertragszeitraum</dt>
                     <dd className="font-extrabold text-slate-950">Nov.–März</dd>
                   </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-white px-4 py-3">
+                    <dt className="font-semibold text-slate-600">Einsatzbereitschaft</dt>
+                    <dd className="text-right font-extrabold text-slate-950">
+                      {selectedReadinessOption?.label ?? "Standard"}
+                    </dd>
+                  </div>
                 </dl>
                 <p className="mt-4 text-xs leading-5 text-slate-600">
                   Ihre Kontaktdaten werden nicht auf der Karte angezeigt. Die Preisberechnung wird serverseitig erneut geprüft.
@@ -1073,7 +1147,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand">Tarifansicht wechseln</p>
-                    <h5 id="pricing-model-title" className="mt-1 text-xl font-extrabold text-slate-950">Planbar oder flexibel vergleichen</h5>
+                    <h5 id="pricing-model-title" className="mt-1 text-xl font-extrabold text-slate-950">Pauschal oder variabel vergleichen</h5>
                   </div>
                   <p className="text-xs font-semibold leading-5 text-slate-600">Die Auswahl wechselt die Budgetansicht; beide Varianten stehen gemeinsam in Ihrer Anfrage und im PDF.</p>
                 </div>
@@ -1094,15 +1168,15 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                         selectedPriceModel === "plan" ? "bg-white/15 text-blue-50" : "bg-brand-soft text-brand"
                       }`}
                     >
-                      10 Einsätze enthalten
+                      10 % weniger je Einsatz
                     </span>
-                    <span className="mt-4 block text-xs font-bold uppercase tracking-wide opacity-75">Planbar · Saisonpauschale</span>
+                    <span className="mt-4 block text-xs font-bold uppercase tracking-wide opacity-75">Pauschal · 10er-Saisonpaket</span>
                     <span className="mt-1 block text-4xl font-extrabold tracking-tight">
                       {currency.format(confirmedEstimate.pricingOptions.plan.monthlyGross)}
                       <span className="ml-1 text-sm font-bold opacity-75">/ Monat</span>
                     </span>
                     <span className="mt-3 block text-sm leading-6 opacity-85">
-                      {currency.format(confirmedEstimate.pricingOptions.plan.seasonGross)} für November bis März inklusive zehn Einsätzen. Danach {currency.format(confirmedEstimate.pricingOptions.plan.additionalDeploymentGross)} je weiterem Einsatz.
+                      {currency.format(confirmedEstimate.pricingOptions.plan.seasonGross)} für November bis März inklusive zehn Einsätzen. Jeder enthaltene und jeder weitere Einsatz kostet nur {currency.format(confirmedEstimate.pricingOptions.plan.discountedDeploymentGross)} statt {currency.format(confirmedEstimate.pricingOptions.flex.deploymentGross)}.
                     </span>
                     {selectedPriceModel === "plan" ? (
                       <span className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full bg-white text-brand">
@@ -1128,7 +1202,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                     >
                       Nur tatsächliche Einsätze
                     </span>
-                    <span className="mt-4 block text-xs font-bold uppercase tracking-wide opacity-75">Flex · Grundbetrag + Einsatz</span>
+                    <span className="mt-4 block text-xs font-bold uppercase tracking-wide opacity-75">Variabel · Grundbetrag + Einsatz</span>
                     <span className="mt-1 block text-4xl font-extrabold tracking-tight">
                       {currency.format(confirmedEstimate.pricingOptions.flex.monthlyBaseGross)}
                       <span className="ml-1 text-sm font-bold opacity-75">Grundbetrag / Monat</span>
@@ -1145,6 +1219,20 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                 </div>
               </section>
 
+              {confirmedReadinessOption ? (
+                <div className="mt-5 rounded-2xl border border-brand/15 bg-brand-soft p-5 text-sm text-slate-700">
+                  <p className="font-extrabold text-slate-950">Einsatzbereitschaft: {confirmedReadinessOption.label}</p>
+                  <p className="mt-1 leading-6">
+                    {confirmedReadinessOption.schedule}. {confirmedReadinessOption.description}
+                  </p>
+                  {confirmedEstimate.readiness === "standard" ? (
+                    <p className="mt-3 text-xs font-semibold leading-5 text-amber-900">
+                      {winterPricingConfig.standardCoverageNotice}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <CircleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 flex-none" />
                 <p>
@@ -1159,39 +1247,66 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                     <p className="mt-1 text-xs leading-5 text-slate-600">Bruttowerte inklusive 19 % MwSt. für die markierte Gesamtfläche.</p>
                   </div>
                   <p className="text-xs font-bold text-brand">
-                    {currency.format(confirmedEstimate.deploymentBreakdown.totalRateGrossPerSquareMeter)} pro m²
+                    effektiv {currency.format(confirmedEstimate.deploymentBreakdown.effectiveDeploymentRateGrossPerSquareMeter)} pro m²
                   </p>
                 </div>
-                <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl bg-slate-50 p-4">
-                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Räumen</dt>
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Einsatzstart</dt>
                     <dd className="mt-1 text-lg font-extrabold text-slate-950">
-                      {currency.format(confirmedEstimate.deploymentBreakdown.clearingGross)}
+                      {currency.format(confirmedEstimate.deploymentBreakdown.mobilizationGross)}
                     </dd>
-                    <p className="mt-1 text-xs text-slate-600">
-                      {currency.format(confirmedEstimate.deploymentBreakdown.clearingRateGrossPerSquareMeter)} pro m²
-                    </p>
+                    <p className="mt-1 text-xs text-slate-600">Tour, Anfahrt und Disposition</p>
                   </div>
                   <div className="rounded-xl bg-slate-50 p-4">
-                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Streugut</dt>
+                    <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Flächenleistung</dt>
                     <dd className="mt-1 text-lg font-extrabold text-slate-950">
-                      {currency.format(confirmedEstimate.deploymentBreakdown.gritGross)}
+                      {currency.format(confirmedEstimate.deploymentBreakdown.areaServiceGross)}
                     </dd>
                     <p className="mt-1 text-xs text-slate-600">
-                      {currency.format(confirmedEstimate.deploymentBreakdown.gritRateGrossPerSquareMeter)} pro m²
+                      inkl. Standard-Streugut · degressiv gestaffelt
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-brand-soft p-4">
+                    <dt className="text-xs font-bold uppercase tracking-wide text-brand">Variabler Einsatz gesamt</dt>
+                    <dd className="mt-1 text-lg font-extrabold text-slate-950">
+                      {currency.format(confirmedEstimate.deploymentGross)}
+                    </dd>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Pauschal nur {currency.format(confirmedEstimate.pricingOptions.plan.discountedDeploymentGross)}
                     </p>
                   </div>
                 </dl>
+                {confirmedEstimate.deploymentBreakdown.minimumAdjustmentGross > 0 ? (
+                  <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">
+                    Bei dieser kleinen Fläche enthält der Einsatzpreis einen Mindestansatz von {currency.format(confirmedEstimate.deploymentBreakdown.minimumAdjustmentGross)}.
+                  </p>
+                ) : null}
+                {confirmedEstimate.readinessSurchargePercent > 0 ? (
+                  <p className="mt-4 rounded-xl border border-brand/15 bg-brand-soft p-3 text-xs font-semibold leading-5 text-slate-700">
+                    Der ausgewiesene Einsatzpreis enthält den 24/7-Aufschlag von {confirmedEstimate.readinessSurchargePercent} % ({currency.format(confirmedEstimate.deploymentBreakdown.readinessSurchargeGross)} je variablem Einsatz).
+                  </p>
+                ) : null}
                 <p className="mt-4 text-xs leading-5 text-slate-600">
-                  Grundlage sind 80 % innerhalb der von MyHammer veröffentlichten Preisspannen. Der rechnerische Streugutsatz von 0,44 €/m² wird auf 0,45 €/m² gerundet. {" "}
+                  Größere Flächen werden nicht mehr linear hochgerechnet: Jeder weitere Flächenblock erhält einen niedrigeren Quadratmetersatz. Kalibriert wurde das Modell an veröffentlichten {" "}
                   <Link
-                    href="https://www.my-hammer.de/garten-aussenbereich/preisradar/was-kostet-winterdienst"
+                    href="https://www.krueger-services.de/dienstleistungen/winterdienst/hannover/mittelfeld"
                     target="_blank"
                     rel="noreferrer"
                     className="font-extrabold text-brand underline underline-offset-2"
                   >
-                    Preisquelle ansehen
+                    Hannover-Richtwerten
                   </Link>
+                  {" "}und einer {" "}
+                  <Link
+                    href="https://www.shinytouchgebaeudereinigung.de/blog/winterdienst-kosten"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-extrabold text-brand underline underline-offset-2"
+                  >
+                    Marktübersicht 2026
+                  </Link>
+                  . Das Ergebnis bleibt eine unverbindliche Preiseinschätzung.
                 </p>
               </div>
 
@@ -1207,7 +1322,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
 
               <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
                 <p className="text-sm font-extrabold text-slate-950">
-                  Saisonbeispiele · {selectedPriceModel === "plan" ? "Planbar" : "Flex"}
+                  Saisonbeispiele · {selectedPriceModel === "plan" ? "Pauschal" : "Variabel"}
                 </p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   {[5, 10, 15].map((deployments) => (
@@ -1221,15 +1336,15 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                 </div>
                 <p className="mt-3 text-xs leading-5 text-slate-500">
                   {selectedPriceModel === "plan"
-                    ? "Planbar enthält zehn Einsätze fest; deshalb bleibt der Saisonbetrag bis einschließlich zehn Einsätzen gleich."
-                    : "Flex wird aus Saison-Grundbetrag und tatsächlich ausgeführten Einsätzen berechnet."}{" "}
+                    ? `Das Pauschalpaket enthält zehn Einsätze mit ${confirmedEstimate.pricingOptions.plan.deploymentDiscountPercent} % Preisvorteil; auch jeder zusätzliche Einsatz behält den Rabatt.`
+                    : "Die variable Abrechnung besteht aus Saison-Grundgebühr und tatsächlich ausgeführten Einsätzen."}{" "}
                   Budgetbeispiele, keine Wetter- oder Einsatzprognose.
                 </p>
               </div>
 
               <ul className="mt-6 grid gap-2 text-xs font-semibold leading-5 text-slate-600 sm:grid-cols-3">
                 <li className="flex gap-2"><Check aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-emerald-600" /> Vertragslaufzeit: 1. November bis 31. März</li>
-                <li className="flex gap-2"><Check aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-emerald-600" /> Streugut und Leistungsumfang werden im Angebot ausgewiesen</li>
+                <li className="flex gap-2"><Check aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-emerald-600" /> Standard-Streugut ist in der Flächenkalkulation enthalten</li>
                 <li className="flex gap-2"><Check aria-hidden="true" className="mt-0.5 h-4 w-4 flex-none text-emerald-600" /> Alle Rechnerpreise inklusive 19 % MwSt.</li>
               </ul>
 

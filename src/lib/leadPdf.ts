@@ -1,5 +1,6 @@
 import { SITE } from "@/lib/site";
 import { parseWinterPolygons, type WinterMapPoint } from "@/lib/winterLeadSubmission";
+import { winterPricingConfig } from "@/lib/winterPricing";
 
 type LeadRecord = Record<string, unknown>;
 
@@ -16,6 +17,8 @@ type WinterPdfEstimate = {
   seasonMonths: number;
   contractPeriod: string;
   vatRate: number;
+  readiness: string;
+  readinessSurchargePercent: number;
   pricingOptions: {
     flex: {
       monthlyBaseGross: number;
@@ -24,6 +27,8 @@ type WinterPdfEstimate = {
     };
     plan: {
       includedDeployments: number;
+      deploymentDiscountPercent: number;
+      discountedDeploymentGross: number;
       monthlyGross: number;
       seasonGross: number;
       additionalDeploymentGross: number;
@@ -190,11 +195,15 @@ function getWinterEstimate(lead: LeadRecord): WinterPdfEstimate | null {
   const flexSeasonBaseGross = valueAsNumber(submittedFlex?.seasonBaseGross) || seasonBaseGross;
   const flexDeploymentGross = valueAsNumber(submittedFlex?.deploymentGross) || deploymentGross;
   const includedDeployments = valueAsNumber(submittedPlan?.includedDeployments) || 10;
-  const fallbackPlanSeasonGross = flexSeasonBaseGross + flexDeploymentGross * includedDeployments;
+  const deploymentDiscountPercent = valueAsNumber(submittedPlan?.deploymentDiscountPercent) || 10;
+  const discountedDeploymentGross =
+    valueAsNumber(submittedPlan?.discountedDeploymentGross) ||
+    Math.round(flexDeploymentGross * (1 - deploymentDiscountPercent / 100) * 100) / 100;
+  const fallbackPlanSeasonGross = flexSeasonBaseGross + discountedDeploymentGross * includedDeployments;
   const planSeasonGross = valueAsNumber(submittedPlan?.seasonGross) || fallbackPlanSeasonGross;
   const planMonthlyGross = valueAsNumber(submittedPlan?.monthlyGross) || planSeasonGross / seasonMonths;
   const additionalDeploymentGross =
-    valueAsNumber(submittedPlan?.additionalDeploymentGross) || flexDeploymentGross;
+    valueAsNumber(submittedPlan?.additionalDeploymentGross) || discountedDeploymentGross;
 
   return {
     monthlyBaseGross,
@@ -203,6 +212,8 @@ function getWinterEstimate(lead: LeadRecord): WinterPdfEstimate | null {
     seasonMonths,
     contractPeriod: valueAsString(estimate.contractPeriod, "1. November bis 31. März"),
     vatRate: valueAsNumber(estimate.vatRate) || 19,
+    readiness: valueAsString(estimate.readiness, "standard"),
+    readinessSurchargePercent: valueAsNumber(estimate.readinessSurchargePercent),
     pricingOptions: {
       flex: {
         monthlyBaseGross: flexMonthlyBaseGross,
@@ -211,6 +222,8 @@ function getWinterEstimate(lead: LeadRecord): WinterPdfEstimate | null {
       },
       plan: {
         includedDeployments,
+        deploymentDiscountPercent,
+        discountedDeploymentGross,
         monthlyGross: planMonthlyGross,
         seasonGross: planSeasonGross,
         additionalDeploymentGross,
@@ -462,7 +475,7 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     commands.push(rect(secondColumnX, columnBottom, columnWidth, columnHeight, softBlue));
 
     const flex = estimate.pricingOptions.flex;
-    commands.push(text("FLEX · EINSATZGENAU", firstColumnX + 14, y - 53, 9, brand, "F2"));
+    commands.push(text("VARIABEL · EINSATZGENAU", firstColumnX + 14, y - 53, 9, brand, "F2"));
     commands.push(
       text(
         `${formatEuro(flex.monthlyBaseGross)} / Monat`,
@@ -487,7 +500,7 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     commands.push(text("Abrechnung nur bei tatsächlichem Einsatz", firstColumnX + 14, y - 149, 7.8, muted));
 
     const plan = estimate.pricingOptions.plan;
-    commands.push(text("PLANBAR · SAISONPAUSCHALE", secondColumnX + 14, y - 53, 9, brand, "F2"));
+    commands.push(text("PAUSCHAL · 10ER-SAISONPAKET", secondColumnX + 14, y - 53, 9, brand, "F2"));
     commands.push(
       text(
         `${formatEuro(plan.monthlyGross)} / Monat`,
@@ -499,7 +512,13 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
       ),
     );
     commands.push(
-      text(`${plan.includedDeployments} Einsätze in der Saison inklusive`, secondColumnX + 14, y - 103, 8.5, muted),
+      text(
+        `${plan.includedDeployments} Einsätze · je ${plan.deploymentDiscountPercent} % günstiger`,
+        secondColumnX + 14,
+        y - 103,
+        8.5,
+        muted,
+      ),
     );
     commands.push(
       text(
@@ -511,7 +530,15 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
         "F2",
       ),
     );
-    commands.push(text(`${formatEuro(plan.seasonGross)} für die Saison`, secondColumnX + 14, y - 149, 8.5, muted));
+    commands.push(
+      text(
+        `${formatEuro(plan.seasonGross)} Saison · Rabatt gilt auch extra`,
+        secondColumnX + 14,
+        y - 149,
+        8.5,
+        muted,
+      ),
+    );
 
     commands.push(
       text(
@@ -656,26 +683,50 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     if (winterEstimate) {
       addRow("Bearbeitung der Fläche", valueAsString(lead.winterSurfaceProfileLabel));
       addRow("Zugänglichkeit", valueAsString(lead.winterAccessLabel));
+      addRow("Einsatzbereitschaft / Zeiten", valueAsString(lead.winterReadinessLabel));
+      const baseBreakdown = valueAsRecord(valueAsRecord(lead.estimate)?.baseBreakdown);
       const deploymentBreakdown = valueAsRecord(valueAsRecord(lead.estimate)?.deploymentBreakdown);
-      const clearingRate = valueAsNumber(deploymentBreakdown?.clearingRateGrossPerSquareMeter);
-      const gritRate = valueAsNumber(deploymentBreakdown?.gritRateGrossPerSquareMeter);
-      if (clearingRate > 0) {
-        addRow("Räumen je m² und Einsatz", `${clearingRate.toLocaleString("de-DE")} EUR inkl. USt.`);
+      const monthlyBaseSurchargeGross = valueAsNumber(baseBreakdown?.readinessSurchargeGross);
+      const mobilizationGross = valueAsNumber(deploymentBreakdown?.mobilizationGross);
+      const areaServiceGross = valueAsNumber(deploymentBreakdown?.areaServiceGross);
+      const minimumAdjustmentGross = valueAsNumber(deploymentBreakdown?.minimumAdjustmentGross);
+      const effectiveRate = valueAsNumber(deploymentBreakdown?.effectiveDeploymentRateGrossPerSquareMeter);
+      const readinessSurchargeGross = valueAsNumber(deploymentBreakdown?.readinessSurchargeGross);
+      if (mobilizationGross > 0) {
+        addRow("Einsatzstart", `${formatEuro(mobilizationGross)} für Tour, Anfahrt und Disposition`);
       }
-      if (gritRate > 0) {
-        addRow("Streugut je m² und Einsatz", `${gritRate.toLocaleString("de-DE")} EUR inkl. USt.`);
+      if (areaServiceGross > 0) {
+        addRow("Flächenleistung", `${formatEuro(areaServiceGross)} inkl. Standard-Streugut`);
+      }
+      if (minimumAdjustmentGross > 0) {
+        addRow("Mindestansatz kleiner Flächen", formatEuro(minimumAdjustmentGross));
+      }
+      if (effectiveRate > 0) {
+        addRow("Effektiver Einsatzpreis je m²", `${formatEuro(effectiveRate)} inkl. USt.`);
+      }
+      if (readinessSurchargeGross > 0) {
+        if (monthlyBaseSurchargeGross > 0) {
+          addRow(
+            "24/7-Aufschlag Grundgebühr",
+            `${formatEuro(monthlyBaseSurchargeGross)} monatlich (${winterEstimate.readinessSurchargePercent} % enthalten)`,
+          );
+        }
+        addRow(
+          "24/7-Aufschlag je variablem Einsatz",
+          `${formatEuro(readinessSurchargeGross)} (${winterEstimate.readinessSurchargePercent} % enthalten)`,
+        );
       }
       addRow(
-        "Tarif Flex",
+        "Tarif Variabel",
         `${formatEuro(winterEstimate.pricingOptions.flex.monthlyBaseGross)} Grundgebühr pro Monat + ${formatEuro(winterEstimate.pricingOptions.flex.deploymentGross)} je Einsatz`,
       );
       addRow(
-        "Tarif Planbar",
-        `${formatEuro(winterEstimate.pricingOptions.plan.monthlyGross)} pro Monat inkl. ${winterEstimate.pricingOptions.plan.includedDeployments} Einsätzen in der Saison`,
+        "Tarif Pauschal",
+        `${formatEuro(winterEstimate.pricingOptions.plan.monthlyGross)} pro Monat inkl. ${winterEstimate.pricingOptions.plan.includedDeployments} Einsätzen mit ${winterEstimate.pricingOptions.plan.deploymentDiscountPercent} % Einsatzrabatt`,
       );
       addRow(
-        "Weitere Planbar-Einsätze",
-        `${formatEuro(winterEstimate.pricingOptions.plan.additionalDeploymentGross)} je weiterem Einsatz`,
+        "Weitere Pauschal-Einsätze",
+        `${formatEuro(winterEstimate.pricingOptions.plan.additionalDeploymentGross)} je weiterem Einsatz (Rabatt bleibt erhalten)`,
       );
       addRow("Vertragslaufzeit", winterEstimate.contractPeriod);
       addRow("Preise", `Beide Varianten inklusive ${winterEstimate.vatRate} % USt.`);
@@ -717,10 +768,19 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   addSection("Wichtige Hinweise");
   if (winterEstimate) {
     addParagraph(
-      `Flex besteht aus der monatlichen flächenabhängigen Grundgebühr und dem Preis je tatsächlichem Einsatz. Planbar ist eine monatliche Saisonpauschale mit ${winterEstimate.pricingOptions.plan.includedDeployments} enthaltenen Einsätzen; weitere Einsätze werden mit ${formatEuro(winterEstimate.pricingOptions.plan.additionalDeploymentGross)} je Einsatz berechnet.`,
+      `Variabel besteht aus der monatlichen flächenabhängigen Grundgebühr und dem Preis je tatsächlichem Einsatz. Das Pauschalpaket enthält ${winterEstimate.pricingOptions.plan.includedDeployments} Einsätze; jeder enthaltene und zusätzliche Einsatz ist gegenüber Variabel um ${winterEstimate.pricingOptions.plan.deploymentDiscountPercent} % reduziert. Zusätzliche Einsätze kosten ${formatEuro(winterEstimate.pricingOptions.plan.additionalDeploymentGross)}.`,
     );
+    if (winterEstimate.readiness === "standard") {
+      addParagraph(winterPricingConfig.standardCoverageNotice, 9.5, muted);
+    } else if (winterEstimate.readinessSurchargePercent > 0) {
+      addParagraph(
+        `Beim 24/7 Gewerbe-Service ist der Aufschlag von ${winterEstimate.readinessSurchargePercent} % sowohl in der monatlichen Grundgebühr als auch in jedem Einsatzpreis enthalten.`,
+        9.5,
+        muted,
+      );
+    }
     addParagraph(
-      "Die Einschätzung setzt zutreffende Flächen- und Zugänglichkeitsangaben voraus. Adresse, Leistungsflächen, Prioritäten und verfügbare Kapazitäten werden vor Vertragsschluss geprüft.",
+      "Die degressive Flächenkalkulation enthält Standard-Streugut und setzt zutreffende Flächen- und Zugänglichkeitsangaben voraus. Adresse, Leistungsflächen, Prioritäten und verfügbare Kapazitäten werden vor Vertragsschluss geprüft.",
     );
     addParagraph(
       "Diese Online-Preiseinschätzung stellt ausdrücklich kein Angebot dar. Die finale Kalkulation und ein verbindliches Angebot erfolgen erst nach Prüfung durch Hausvia und, falls erforderlich, nach einem Vor-Ort-Termin.",

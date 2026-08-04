@@ -333,13 +333,13 @@ function copyWinterPricingInput(
 ): ValidationFailure | null {
   const value = input.winterPricingInput;
   if (value === undefined) return null;
-  const allowedFields = new Set(["objectType", "area", "surfaceProfile", "access"]);
+  const allowedFields = new Set(["objectType", "area", "surfaceProfile", "access", "readiness"]);
   if (!isRecord(value) || !hasOnlyFields(value, allowedFields, allowedFields.size)) {
     return failure("Die Winterdienstangaben enthalten nicht unterstützte Felder.");
   }
 
   const sanitized: Record<string, unknown> = {};
-  for (const field of ["objectType", "surfaceProfile", "access"] as const) {
+  for (const field of ["objectType", "surfaceProfile", "access", "readiness"] as const) {
     const error = copyString(value, sanitized, field, 40);
     if (error) return error;
   }

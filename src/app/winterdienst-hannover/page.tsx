@@ -76,12 +76,17 @@ const faqs: FaqItem[] = [
   {
     question: "Wann wird ein tatsächlicher Einsatz berechnet?",
     answer:
-      "Ein Einsatz wird berechnet, wenn Hausvia am Objekt tatsächlich einen vereinbarten Winterdienstdurchgang ausführt. Der Rechner verwendet je Quadratmeter 2,20 Euro für Handräumung beziehungsweise 1,40 Euro für maschinelle Räumung und zusätzlich 0,45 Euro für Streugut – jeweils inklusive Mehrwertsteuer.",
+      "Ein Einsatz wird berechnet, wenn Hausvia am Objekt tatsächlich einen vereinbarten Winterdienstdurchgang ausführt. Statt jeden Quadratmeter mit demselben Satz hochzurechnen, kombiniert der Rechner einen Einsatzstart für Tour, Anfahrt und Disposition mit einer degressiven Flächenstaffel inklusive Standard-Streugut. Dadurch werden größere zusammenhängende Flächen je zusätzlichem Quadratmeter günstiger.",
   },
   {
     question: "Welche Abrechnungsmodelle kann ich wählen?",
     answer:
-      "Bei Flex zahlen Sie den flächenabhängigen Grundbetrag und zusätzlich nur tatsächlich ausgeführte Einsätze. Die planbare Saisonpauschale verteilt den Grundbetrag und zehn enthaltene Einsätze gleichmäßig auf die fünf Vertragsmonate; weitere Einsätze werden zum ausgewiesenen Einsatzpreis berechnet. Beide Varianten erscheinen in Ihrer Preiseinschätzung und im PDF.",
+      "Bei der variablen Abrechnung zahlen Sie den flächenabhängigen Grundbetrag und zusätzlich nur tatsächlich ausgeführte Einsätze. Das Pauschalpaket verteilt Grundbetrag und zehn Einsätze auf fünf Vertragsmonate. Jeder dieser zehn Einsätze ist gegenüber Variabel um 10 Prozent reduziert – und derselbe Rabatt gilt auch für jeden weiteren Einsatz. Beide Varianten erscheinen online und im PDF.",
+  },
+  {
+    question: "Welche Einsatzbereitschaft kann ich auswählen?",
+    answer:
+      "Standard umfasst die Hausvia-Einsatzplanung montags bis samstags von 7:00 bis 20:00 Uhr sowie sonn- und feiertags von 8:00 bis 20:00 Uhr. Für Gewerbeobjekte ist ein 24/7-Service mit 20 Prozent Aufschlag auf Grundgebühr und Einsätze kalkulierbar. Wichtig: Für öffentliche Gehwege reicht die örtliche Räum- und Streupflicht in Hannover grundsätzlich bis 22:00 Uhr; die Absicherung nach 20:00 Uhr wird beim Standardmodell im finalen Angebot separat festgelegt.",
   },
   {
     question: "Zählt ein weiterer Durchgang am selben Tag als neuer Einsatz?",
@@ -113,7 +118,7 @@ const faqs: FaqItem[] = [
 const trustItems = [
   { icon: CalendarRange, text: "Saisonvertrag November bis März" },
   { icon: Euro, text: "Grundbetrag ab 70 € pro Monat" },
-  { icon: ClipboardCheck, text: "Vertraglich festgelegte Flächen" },
+  { icon: ClipboardCheck, text: "10 % Einsatzvorteil im Pauschalpaket" },
   { icon: MapPin, text: "Für Objekte im Tourengebiet Hannover" },
 ];
 
@@ -166,7 +171,7 @@ const planningSteps = [
 export const metadata: Metadata = metadataForPage({
   title: "Winterdienst Hannover | Preis direkt berechnen | Hausvia",
   description:
-    "Winterdienst in Hannover für Wohn- und Gewerbeobjekte: Grundbetrag plus tatsächliche Einsätze, Saison November bis März. Preis sofort online berechnen.",
+    "Winterdienst in Hannover für Wohn- und Gewerbeobjekte: variable Abrechnung oder 10er-Saisonpaket, degressive Flächenpreise und direkte Preiseinschätzung.",
   path: pagePath,
   image: ASSETS.blogWinter,
   imageAlt: "Winterdienst an einem Mehrfamilienhaus mit Schneeschieber und Streuwagen",
@@ -178,7 +183,7 @@ export const metadata: Metadata = metadataForPage({
   ],
   ogTitle: "Winterdienst Hannover: Grundbetrag plus tatsächliche Einsätze",
   ogDescription:
-    "Fläche digital markieren, Kontaktdaten eintragen und die Preiseinschätzung inklusive PDF erhalten.",
+    "Fläche digital markieren, Variabel und Pauschal vergleichen und die Preiseinschätzung inklusive PDF erhalten.",
 });
 
 export default function WinterdienstHannoverPage() {
@@ -230,7 +235,7 @@ export default function WinterdienstHannoverPage() {
               </span>
             </div>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200 sm:text-xl">
-              Planbar durch den Winter: Sie zahlen einen zur Fläche passenden Grundbetrag für die Einsatzbereitschaft von November bis März – und zusätzlich nur die tatsächlich ausgeführten Winterdiensteinsätze.
+              Variabel nur tatsächliche Einsätze zahlen oder zehn Einsätze pauschal mit 10 % Preisvorteil sichern. Die degressive Flächenkalkulation macht große Flächen automatisch günstiger.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -318,7 +323,7 @@ export default function WinterdienstHannoverPage() {
               Was kostet Winterdienst für Ihr Objekt?
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-700 sm:text-lg">
-              In fünf kurzen Schritten markieren Sie die Flächen und geben die Objektdaten ein. Danach vergleichen Sie Flex-Tarif und planbare Saisonpauschale direkt online; beide Varianten erhalten Sie zusätzlich als PDF per E-Mail.
+              In fünf kurzen Schritten markieren Sie die Flächen und wählen Objektart, Zugänglichkeit sowie Einsatzzeiten. Danach vergleichen Sie variable Abrechnung und 10er-Saisonpaket direkt online; beide Varianten erhalten Sie zusätzlich als PDF per E-Mail.
             </p>
           </div>
           <WinterdienstCalculator googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""} />
@@ -329,8 +334,8 @@ export default function WinterdienstHannoverPage() {
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <SectionHeading
             eyebrow="Transparente Kosten"
-            title="Ein fairer Preis aus Grundbetrag und tatsächlichen Einsätzen"
-            text="Das kombinierte Modell verteilt das Wetterrisiko sinnvoll: Kapazität bleibt für Ihr Objekt eingeplant, während wetterbedingte Arbeit nur dann berechnet wird, wenn sie vor Ort wirklich anfällt."
+            title="Ein fairer Preis mit echtem Mengenvorteil"
+            text="Die Grundgebühr reserviert Kapazität für Ihr Objekt. Der Einsatzpreis wird in günstiger werdenden Flächenblöcken berechnet – und im Pauschalpaket sind alle Einsätze nochmals 10 % reduziert."
           />
 
           <div className="mt-10 grid gap-5 lg:grid-cols-2">
@@ -352,7 +357,7 @@ export default function WinterdienstHannoverPage() {
               <p className="mt-6 text-xs font-extrabold uppercase tracking-[0.16em] text-blue-100">Wetterabhängig und nachvollziehbar</p>
               <h3 className="mt-2 text-2xl font-extrabold">Der Preis je tatsächlichem Einsatz</h3>
               <p className="mt-4 text-base leading-7 text-blue-50">
-                Dieser Betrag fällt nur an, wenn Hausvia am Objekt einen vereinbarten Winterdienstdurchgang ausführt. Je nach Witterung wird geräumt, gestreut oder beides erledigt. Erneuter Schneefall oder neue Glätte können einen weiteren Einsatz erforderlich machen.
+                Der Einsatzstart deckt Tour, Anfahrt und Disposition. Die Fläche inklusive Standard-Streugut wird degressiv gestaffelt: Mit wachsender Fläche sinkt der Preis für jeden zusätzlichen Flächenblock. Im Pauschalpaket kostet jeder enthaltene und zusätzliche Einsatz nochmals 10 % weniger.
               </p>
             </article>
           </div>
@@ -361,7 +366,7 @@ export default function WinterdienstHannoverPage() {
             <div>
               <p className="text-sm font-extrabold text-slate-950">Erst rechnen, dann entscheiden.</p>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Der Rechner zeigt beide Preisbestandteile getrennt und übernimmt Ihre Objektangaben direkt in die Anfrage.
+                Der Rechner zeigt Grundgebühr, Einsatzstart, degressive Flächenleistung, Einsatzzeiten und den konkreten Pauschalrabatt getrennt an.
               </p>
             </div>
             <Link

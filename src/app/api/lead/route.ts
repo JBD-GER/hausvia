@@ -279,6 +279,7 @@ function enrichWinterServiceLead(lead: Record<string, unknown>, input: WinterPri
       lead.winterAreaSource === "map" ? "Auf der Satellitenkarte markiert" : "Manuell in m² eingegeben",
     winterSurfaceProfileLabel: labels.surfaceProfile,
     winterAccessLabel: labels.access,
+    winterReadinessLabel: labels.readiness,
     frequency: "weather-dependent",
     frequencyLabel: `Witterungsabhängig · ${estimate.contractPeriod}`,
     estimate: {
@@ -292,6 +293,9 @@ function enrichWinterServiceLead(lead: Record<string, unknown>, input: WinterPri
       seasonMonths: estimate.seasonMonths,
       contractPeriod: estimate.contractPeriod,
       vatRate: estimate.vatRate,
+      readiness: estimate.readiness,
+      readinessSurchargePercent: estimate.readinessSurchargePercent,
+      baseBreakdown: estimate.baseBreakdown,
       pricingOptions: estimate.pricingOptions,
       deploymentBreakdown: estimate.deploymentBreakdown,
     },
@@ -379,6 +383,7 @@ const grossCurrencyFormatter = new Intl.NumberFormat("de-DE", {
 function winterPricingEmailSummary(lead: Record<string, unknown>) {
   const estimate = isRecord(lead.estimate) ? lead.estimate : null;
   const options = estimate && isRecord(estimate.pricingOptions) ? estimate.pricingOptions : null;
+  const baseBreakdown = estimate && isRecord(estimate.baseBreakdown) ? estimate.baseBreakdown : null;
   const flex = options && isRecord(options.flex) ? options.flex : null;
   const plan = options && isRecord(options.plan) ? options.plan : null;
   if (!flex || !plan) return "";
@@ -389,7 +394,15 @@ function winterPricingEmailSummary(lead: Record<string, unknown>) {
   const planMonthly = asNumber(plan.monthlyGross);
   const planSeason = asNumber(plan.seasonGross);
   const includedDeployments = asNumber(plan.includedDeployments);
+  const deploymentDiscountPercent = asNumber(plan.deploymentDiscountPercent);
   const additionalDeployment = asNumber(plan.additionalDeploymentGross);
+  const readinessSurchargePercent = asNumber(estimate?.readinessSurchargePercent);
+  const monthlyBaseSurcharge = asNumber(baseBreakdown?.readinessSurchargeGross);
+  const readinessSurchargeSummary =
+    readinessSurchargePercent > 0
+      ? ` Der ${readinessSurchargePercent}-%-Aufschlag ist in Grundgebühr und Einsätzen enthalten` +
+        `${monthlyBaseSurcharge > 0 ? ` (${grossCurrencyFormatter.format(monthlyBaseSurcharge)} davon monatlich in der Grundgebühr)` : ""}.`
+      : "";
   if (
     flexMonthly <= 0 ||
     flexSeasonBase <= 0 ||
@@ -398,18 +411,22 @@ function winterPricingEmailSummary(lead: Record<string, unknown>) {
     planSeason <= 0 ||
     !Number.isInteger(includedDeployments) ||
     includedDeployments <= 0 ||
+    deploymentDiscountPercent <= 0 ||
     additionalDeployment <= 0
   ) {
     return "";
   }
 
   return (
-    `Flex: ${grossCurrencyFormatter.format(flexMonthly)} Grundgebühr pro Monat plus ` +
+    `Variabel: ${grossCurrencyFormatter.format(flexMonthly)} Grundgebühr pro Monat plus ` +
     `${grossCurrencyFormatter.format(flexDeployment)} je tatsächlichem Einsatz ` +
     `(Saison-Grundgebühr ${grossCurrencyFormatter.format(flexSeasonBase)}). ` +
-    `Planbar: ${grossCurrencyFormatter.format(planMonthly)} monatliche Saisonpauschale mit ` +
-    `${includedDeployments} enthaltenen Einsätzen (Saison ${grossCurrencyFormatter.format(planSeason)}); jeder weitere Einsatz ` +
-    `${grossCurrencyFormatter.format(additionalDeployment)}.`
+    `Pauschal: ${grossCurrencyFormatter.format(planMonthly)} monatliches 10er-Saisonpaket mit ` +
+    `${includedDeployments} enthaltenen Einsätzen (Saison ${grossCurrencyFormatter.format(planSeason)}). ` +
+    `Jeder enthaltene und zusätzliche Einsatz erhält ${deploymentDiscountPercent} % Preisvorteil; ` +
+    `zusätzliche Einsätze kosten ${grossCurrencyFormatter.format(additionalDeployment)}. ` +
+    `Einsatzbereitschaft: ${asString(lead.winterReadinessLabel) || "Standard"}.` +
+    readinessSurchargeSummary
   );
 }
 
@@ -767,7 +784,7 @@ export async function POST(request: Request) {
               : `Es ist eine neue Kontaktanfrage von ${customerName || "unbekannt"} eingegangen. Das PDF mit allen Angaben ist beigefügt.`,
           note:
             isWinterServiceRequest && hasWinterEstimate
-              ? "Flex und Planbar wurden serverseitig neu berechnet. Die Online-Preiseinschätzung ist kein Angebot; die finale Kalkulation und ein Angebot erfolgen erst nach Hausvia-Prüfung und gegebenenfalls einem Vor-Ort-Termin."
+              ? "Variable Abrechnung und Pauschalpaket wurden serverseitig neu berechnet. Die Online-Preiseinschätzung ist kein Angebot; die finale Kalkulation und ein Angebot erfolgen erst nach Hausvia-Prüfung und gegebenenfalls einem Vor-Ort-Termin."
               : "Die interne Kopie enthält alle übermittelten Daten und, falls vorhanden, die berechnete Ersteinschätzung.",
         }),
         text:

@@ -1,12 +1,14 @@
 export type WinterObjectType = "private" | "residential" | "commercial";
 export type WinterSurfaceProfile = "manual" | "mixed" | "machine";
 export type WinterAccess = "standard" | "difficult";
+export type WinterReadiness = "standard" | "commercial24h";
 
 export type WinterPricingInput = {
   objectType: WinterObjectType;
   area: number;
   surfaceProfile: WinterSurfaceProfile;
   access: WinterAccess;
+  readiness: WinterReadiness;
 };
 
 export type WinterDeploymentBreakdown = {
@@ -14,12 +16,15 @@ export type WinterDeploymentBreakdown = {
   appliedSurfaceProfile: WinterSurfaceProfile;
   manualShare: number;
   machineShare: number;
-  clearingRateGrossPerSquareMeter: number;
-  gritReferenceRateGrossPerSquareMeter: number;
-  gritRateGrossPerSquareMeter: number;
-  totalRateGrossPerSquareMeter: number;
-  clearingGross: number;
-  gritGross: number;
+  mobilizationGross: number;
+  areaServiceGross: number;
+  minimumAdjustmentGross: number;
+  areaServiceRateGrossPerSquareMeter: number;
+  standardDeploymentGross: number;
+  readinessMultiplier: number;
+  readinessSurchargePercent: number;
+  readinessSurchargeGross: number;
+  effectiveDeploymentRateGrossPerSquareMeter: number;
 };
 
 export type WinterPricingEstimate = {
@@ -32,6 +37,12 @@ export type WinterPricingEstimate = {
   seasonMonths: 5;
   contractPeriod: "1. November bis 31. März";
   vatRate: 19;
+  readiness: WinterReadiness;
+  readinessSurchargePercent: number;
+  baseBreakdown: {
+    standardMonthlyBaseGross: number;
+    readinessSurchargeGross: number;
+  };
   pricingOptions: {
     flex: {
       monthlyBaseGross: number;
@@ -40,6 +51,8 @@ export type WinterPricingEstimate = {
     };
     plan: {
       includedDeployments: number;
+      deploymentDiscountPercent: number;
+      discountedDeploymentGross: number;
       monthlyGross: number;
       seasonGross: number;
       additionalDeploymentGross: number;
@@ -48,23 +61,21 @@ export type WinterPricingEstimate = {
   deploymentBreakdown: WinterDeploymentBreakdown;
 };
 
-const referencePosition = 0.8;
-const sourceRanges = {
-  manualClearing: { low: 1, high: 2.5 },
-  machineClearing: { low: 1, high: 1.5 },
-  grit: { low: 0.2, high: 0.5 },
-} as const;
+type WinterAreaRateBand = {
+  upTo: number;
+  manualGrossPerSquareMeter: number;
+  machineGrossPerSquareMeter: number;
+};
 
-function rateAtReferencePosition({ low, high }: { low: number; high: number }) {
-  return Math.round((low + referencePosition * (high - low)) * 100) / 100;
-}
+const areaRateBands = [
+  { upTo: 100, manualGrossPerSquareMeter: 0.5, machineGrossPerSquareMeter: 0.4 },
+  { upTo: 250, manualGrossPerSquareMeter: 0.38, machineGrossPerSquareMeter: 0.3 },
+  { upTo: 500, manualGrossPerSquareMeter: 0.28, machineGrossPerSquareMeter: 0.22 },
+  { upTo: 1_000, manualGrossPerSquareMeter: 0.2, machineGrossPerSquareMeter: 0.15 },
+] as const satisfies readonly WinterAreaRateBand[];
 
 function roundToCents(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-function roundUpToFiveCents(value: number) {
-  return Math.ceil((value - Number.EPSILON) * 20) / 20;
 }
 
 function roundToFourDecimals(value: number) {
@@ -75,11 +86,6 @@ function roundToIncrement(value: number, increment: number) {
   return Math.round((value + Number.EPSILON) / increment) * increment;
 }
 
-const manualClearingRateGross = rateAtReferencePosition(sourceRanges.manualClearing);
-const machineClearingRateGross = rateAtReferencePosition(sourceRanges.machineClearing);
-const gritReferenceRateGross = rateAtReferencePosition(sourceRanges.grit);
-const gritRateGross = roundUpToFiveCents(gritReferenceRateGross);
-
 export const winterPricingConfig = {
   minimumArea: 10,
   maximumArea: 1_000,
@@ -87,23 +93,23 @@ export const winterPricingConfig = {
   automaticMachineArea: 400,
   seasonMonths: 5,
   vatRate: 0.19,
+  modelVersion: "2026-08-hannover-degressive-v2",
+  referenceSource: "Regionaler Marktvergleich Hannover",
+  referenceUpdatedAt: "2026-08-04",
   monthlyBase: {
     minimumGross: 70,
     includedArea: 100,
     grossPerAdditionalSquareMeter: 0.1,
     roundingIncrement: 5,
   },
-  flatRateIncludedDeployments: 10,
-  referenceSource: "MyHammer",
-  referenceUpdatedAt: "2026-02-05",
-  referencePosition,
-  sourceRanges,
-  appliedRates: {
-    manualClearingGrossPerSquareMeter: manualClearingRateGross,
-    machineClearingGrossPerSquareMeter: machineClearingRateGross,
-    gritReferenceGrossPerSquareMeter: gritReferenceRateGross,
-    gritGrossPerSquareMeter: gritRateGross,
+  deployment: {
+    mobilizationGross: 29,
+    minimumGross: 49,
+    areaRateBands,
+    standardGritIncluded: true,
   },
+  flatRateIncludedDeployments: 10,
+  flatRateDeploymentDiscountPercent: 10,
   objectTypes: [
     {
       id: "private",
@@ -150,6 +156,28 @@ export const winterPricingConfig = {
       description: "Treppen, Rampen, Gefälle oder mehrere getrennte Teilflächen.",
     },
   ],
+  readinessOptions: [
+    {
+      id: "standard",
+      label: "Standard",
+      schedule: "Mo–Sa 7:00–20:00 Uhr · So/Feiertag 8:00–20:00 Uhr",
+      description: "Einsatzplanung im regulären Hausvia-Zeitfenster.",
+      surchargePercent: 0,
+      multiplier: 1,
+      commercialOnly: false,
+    },
+    {
+      id: "commercial24h",
+      label: "24/7 Gewerbe-Service",
+      schedule: "Rund um die Uhr",
+      description: "+20 % auf Grundgebühr und jeden Einsatz.",
+      surchargePercent: 20,
+      multiplier: 1.2,
+      commercialOnly: true,
+    },
+  ],
+  standardCoverageNotice:
+    "Hinweis für öffentliche Gehwege in Hannover: Die örtliche Räum- und Streupflicht reicht grundsätzlich bis 22:00 Uhr. Die Absicherung nach 20:00 Uhr wird beim Standard-Zeitfenster vor Vertragsschluss separat festgelegt.",
 } as const;
 
 function grossToNet(gross: number) {
@@ -166,6 +194,10 @@ export function isWinterSurfaceProfile(value: unknown): value is WinterSurfacePr
 
 export function isWinterAccess(value: unknown): value is WinterAccess {
   return winterPricingConfig.accessOptions.some((item) => item.id === value);
+}
+
+export function isWinterReadiness(value: unknown): value is WinterReadiness {
+  return winterPricingConfig.readinessOptions.some((item) => item.id === value);
 }
 
 export function deriveWinterSurfaceProfile(area: number, access: WinterAccess): WinterSurfaceProfile {
@@ -199,6 +231,7 @@ export function parseWinterArea(value: unknown) {
 }
 
 export function isAllowedWinterCombination(input: WinterPricingInput) {
+  if (input.readiness === "commercial24h" && input.objectType !== "commercial") return false;
   return !(
     input.surfaceProfile === "machine" &&
     (input.area < winterPricingConfig.minimumMachineArea || input.access !== "standard")
@@ -209,12 +242,14 @@ export function parseWinterPricingInput(values: Record<string, unknown>): Winter
   const objectType = singleString(values.objectType);
   const surfaceProfile = singleString(values.surfaceProfile);
   const access = singleString(values.access);
+  const readiness = singleString(values.readiness);
   const areaValue = parseWinterArea(values.area);
 
   if (
     !isWinterObjectType(objectType) ||
     !isWinterSurfaceProfile(surfaceProfile) ||
     !isWinterAccess(access) ||
+    !isWinterReadiness(readiness) ||
     areaValue === null ||
     areaValue < winterPricingConfig.minimumArea ||
     areaValue > winterPricingConfig.maximumArea
@@ -223,8 +258,9 @@ export function parseWinterPricingInput(values: Record<string, unknown>): Winter
   }
 
   if (
-    surfaceProfile === "machine" &&
-    (areaValue < winterPricingConfig.minimumMachineArea || access !== "standard")
+    (surfaceProfile === "machine" &&
+      (areaValue < winterPricingConfig.minimumMachineArea || access !== "standard")) ||
+    (readiness === "commercial24h" && objectType !== "commercial")
   ) {
     return null;
   }
@@ -234,9 +270,28 @@ export function parseWinterPricingInput(values: Record<string, unknown>): Winter
     area: Math.round(areaValue),
     surfaceProfile,
     access,
+    readiness,
   };
 
   return isAllowedWinterCombination(input) ? input : null;
+}
+
+function tieredAreaCost(area: number, profile: "manual" | "machine") {
+  let previousLimit = 0;
+  let cost = 0;
+
+  for (const band of winterPricingConfig.deployment.areaRateBands) {
+    const squareMetersInBand = Math.max(0, Math.min(area, band.upTo) - previousLimit);
+    if (squareMetersInBand > 0) {
+      const rate =
+        profile === "manual" ? band.manualGrossPerSquareMeter : band.machineGrossPerSquareMeter;
+      cost += squareMetersInBand * rate;
+    }
+    previousLimit = band.upTo;
+    if (area <= band.upTo) break;
+  }
+
+  return roundToCents(cost);
 }
 
 export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEstimate {
@@ -249,27 +304,28 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
       `Die Winterdienstfläche muss zwischen ${winterPricingConfig.minimumArea} und ${winterPricingConfig.maximumArea} m² liegen.`,
     );
   }
-  const area = Math.round(input.area);
 
+  const area = Math.round(input.area);
   const objectType = winterPricingConfig.objectTypes.find((item) => item.id === input.objectType);
   const surfaceProfileIsValid = isWinterSurfaceProfile(input.surfaceProfile);
   const access = winterPricingConfig.accessOptions.find((item) => item.id === input.access);
+  const readiness = winterPricingConfig.readinessOptions.find((item) => item.id === input.readiness);
 
-  if (!objectType || !surfaceProfileIsValid || !access) {
+  if (!objectType || !surfaceProfileIsValid || !access || !readiness) {
     throw new TypeError("Die Winterdienstangaben sind ungültig.");
   }
 
   const normalizedInput = { ...input, area };
   if (!isAllowedWinterCombination(normalizedInput)) {
+    if (input.readiness === "commercial24h" && input.objectType !== "commercial") {
+      throw new RangeError("Der 24/7 Gewerbe-Service ist online nur für Gewerbeobjekte kalkulierbar.");
+    }
     throw new RangeError(
       `Maschinelle Bearbeitung ist online erst ab ${winterPricingConfig.minimumMachineArea} m² und bei normaler Zugänglichkeit kalkulierbar.`,
     );
   }
 
   const appliedSurfaceProfile = input.access === "difficult" ? "manual" : input.surfaceProfile;
-  // Im Mischbereich wächst der Maschinenanteil gleichmäßig von 0 auf 100 Prozent.
-  // So bleiben die Referenzsätze nachvollziehbar und der Einsatzpreis fällt an
-  // den automatischen Profilgrenzen nicht plötzlich ab.
   const machineShare = roundToFourDecimals(
     appliedSurfaceProfile === "machine"
       ? 1
@@ -285,22 +341,42 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
           ),
   );
   const manualShare = roundToFourDecimals(1 - machineShare);
-  const clearingRateGrossPerSquareMeter = roundToFourDecimals(
-    manualClearingRateGross * manualShare + machineClearingRateGross * machineShare,
+
+  const manualAreaServiceGross = tieredAreaCost(area, "manual");
+  const machineAreaServiceGross = tieredAreaCost(area, "machine");
+  const standardAreaServiceGross = roundToCents(
+    manualAreaServiceGross * manualShare + machineAreaServiceGross * machineShare,
   );
-  const clearingGross = roundToCents(area * clearingRateGrossPerSquareMeter);
-  const gritGross = roundToCents(area * gritRateGross);
-  const deploymentGross = roundToCents(clearingGross + gritGross);
+  const standardDeploymentSubtotalGross = roundToCents(
+    winterPricingConfig.deployment.mobilizationGross + standardAreaServiceGross,
+  );
+  const standardMinimumAdjustmentGross = roundToCents(
+    Math.max(0, winterPricingConfig.deployment.minimumGross - standardDeploymentSubtotalGross),
+  );
+  const standardDeploymentGross = roundToCents(
+    standardDeploymentSubtotalGross + standardMinimumAdjustmentGross,
+  );
+  const deploymentGross = roundToCents(standardDeploymentGross * readiness.multiplier);
+  const mobilizationGross = roundToCents(winterPricingConfig.deployment.mobilizationGross * readiness.multiplier);
+  const areaServiceGross = roundToCents(standardAreaServiceGross * readiness.multiplier);
+  const minimumAdjustmentGross = roundToCents(
+    deploymentGross - mobilizationGross - areaServiceGross,
+  );
+
   const additionalBaseArea = Math.max(0, area - winterPricingConfig.monthlyBase.includedArea);
-  const monthlyBaseGross = roundToIncrement(
+  const standardMonthlyBaseGross = roundToIncrement(
     winterPricingConfig.monthlyBase.minimumGross +
       additionalBaseArea * winterPricingConfig.monthlyBase.grossPerAdditionalSquareMeter,
     winterPricingConfig.monthlyBase.roundingIncrement,
   );
-  const seasonBaseGross = monthlyBaseGross * winterPricingConfig.seasonMonths;
+  const monthlyBaseGross = roundToCents(standardMonthlyBaseGross * readiness.multiplier);
+  const seasonBaseGross = roundToCents(monthlyBaseGross * winterPricingConfig.seasonMonths);
   const monthlyBaseNet = grossToNet(monthlyBaseGross);
+  const discountedDeploymentGross = roundToCents(
+    deploymentGross * (1 - winterPricingConfig.flatRateDeploymentDiscountPercent / 100),
+  );
   const flatRateSeasonGross = roundToCents(
-    seasonBaseGross + deploymentGross * winterPricingConfig.flatRateIncludedDeployments,
+    seasonBaseGross + discountedDeploymentGross * winterPricingConfig.flatRateIncludedDeployments,
   );
   const flatRateMonthlyGross = roundToCents(flatRateSeasonGross / winterPricingConfig.seasonMonths);
 
@@ -309,11 +385,17 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
     seasonBaseGross,
     deploymentGross,
     monthlyBaseNet,
-    seasonBaseNet: Math.round(monthlyBaseNet * winterPricingConfig.seasonMonths * 100) / 100,
+    seasonBaseNet: roundToCents(monthlyBaseNet * winterPricingConfig.seasonMonths),
     deploymentNet: grossToNet(deploymentGross),
     seasonMonths: 5,
     contractPeriod: "1. November bis 31. März",
     vatRate: 19,
+    readiness: input.readiness,
+    readinessSurchargePercent: readiness.surchargePercent,
+    baseBreakdown: {
+      standardMonthlyBaseGross,
+      readinessSurchargeGross: roundToCents(monthlyBaseGross - standardMonthlyBaseGross),
+    },
     pricingOptions: {
       flex: {
         monthlyBaseGross,
@@ -322,9 +404,11 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
       },
       plan: {
         includedDeployments: winterPricingConfig.flatRateIncludedDeployments,
+        deploymentDiscountPercent: winterPricingConfig.flatRateDeploymentDiscountPercent,
+        discountedDeploymentGross,
         monthlyGross: flatRateMonthlyGross,
         seasonGross: flatRateSeasonGross,
-        additionalDeploymentGross: deploymentGross,
+        additionalDeploymentGross: discountedDeploymentGross,
       },
     },
     deploymentBreakdown: {
@@ -332,12 +416,15 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
       appliedSurfaceProfile,
       manualShare,
       machineShare,
-      clearingRateGrossPerSquareMeter,
-      gritReferenceRateGrossPerSquareMeter: gritReferenceRateGross,
-      gritRateGrossPerSquareMeter: gritRateGross,
-      totalRateGrossPerSquareMeter: roundToFourDecimals(clearingRateGrossPerSquareMeter + gritRateGross),
-      clearingGross,
-      gritGross,
+      mobilizationGross,
+      areaServiceGross,
+      minimumAdjustmentGross,
+      areaServiceRateGrossPerSquareMeter: roundToFourDecimals(areaServiceGross / area),
+      standardDeploymentGross,
+      readinessMultiplier: readiness.multiplier,
+      readinessSurchargePercent: readiness.surchargePercent,
+      readinessSurchargeGross: roundToCents(deploymentGross - standardDeploymentGross),
+      effectiveDeploymentRateGrossPerSquareMeter: roundToFourDecimals(deploymentGross / area),
     },
   };
 }
@@ -361,11 +448,13 @@ export function winterSeasonTotal(
 }
 
 export function winterPricingLabels(input: WinterPricingInput) {
+  const readiness = winterPricingConfig.readinessOptions.find((item) => item.id === input.readiness);
   return {
     objectType:
       winterPricingConfig.objectTypes.find((item) => item.id === input.objectType)?.label ?? input.objectType,
     surfaceProfile:
       winterPricingConfig.surfaceProfiles.find((item) => item.id === input.surfaceProfile)?.label ?? input.surfaceProfile,
     access: winterPricingConfig.accessOptions.find((item) => item.id === input.access)?.label ?? input.access,
+    readiness: readiness ? `${readiness.label} · ${readiness.schedule}` : input.readiness,
   };
 }

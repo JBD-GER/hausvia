@@ -20,6 +20,7 @@ export type WinterOfferRequestContext = {
     objectType: string;
     surfaceProfile: string;
     access: string;
+    readiness: string;
   };
 };
 
@@ -132,6 +133,7 @@ export function OfferRequestForm({
                     area: String(requestContext.input.area),
                     surfaceProfile: requestContext.input.surfaceProfile,
                     access: requestContext.input.access,
+                    readiness: requestContext.input.readiness,
                   },
                 }
               : {}),
@@ -197,7 +199,7 @@ export function OfferRequestForm({
               </p>
               <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
                 {requestContext.estimate && requestContext.input && requestContext.labels
-                  ? `${requestContext.input.area.toLocaleString("de-DE")} m² · ${requestContext.labels.objectType} · ${requestContext.labels.surfaceProfile} · ${requestContext.labels.access}`
+                  ? `${requestContext.input.area.toLocaleString("de-DE")} m² · ${requestContext.labels.objectType} · ${requestContext.labels.surfaceProfile} · ${requestContext.labels.access} · ${requestContext.labels.readiness}`
                   : "Ihre Anfrage wird direkt dem Winterdienst zugeordnet."}
               </p>
               {winterDraft?.objectAddress ? (
@@ -212,7 +214,7 @@ export function OfferRequestForm({
           {requestContext.estimate ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-brand/10 bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Saison-Grundbetrag</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Variabel · Grundbetrag</p>
                 <p className="mt-1 text-xl font-extrabold text-slate-950">
                   {formatCurrency(requestContext.estimate.seasonBaseGross)}
                 </p>
@@ -221,11 +223,21 @@ export function OfferRequestForm({
                 </p>
               </div>
               <div className="rounded-lg bg-brand p-4 text-white">
-                <p className="text-xs font-bold uppercase tracking-wide text-blue-100">Je tatsächlichem Einsatz</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-blue-100">Variabel · je Einsatz</p>
                 <p className="mt-1 text-xl font-extrabold">
                   + {formatCurrency(requestContext.estimate.deploymentGross)}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-blue-100">Nur bei tatsächlichem Winterdiensteinsatz</p>
+              </div>
+              <div className="rounded-lg border border-brand/15 bg-white p-4 sm:col-span-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-brand">Pauschal · 10er-Saisonpaket</p>
+                <p className="mt-1 text-xl font-extrabold text-slate-950">
+                  {formatCurrency(requestContext.estimate.pricingOptions.plan.monthlyGross)} / Monat
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  {formatCurrency(requestContext.estimate.pricingOptions.plan.seasonGross)} für November bis März ·
+                  jeder enthaltene und zusätzliche Einsatz {requestContext.estimate.pricingOptions.plan.deploymentDiscountPercent} % günstiger
+                </p>
               </div>
             </div>
           ) : null}

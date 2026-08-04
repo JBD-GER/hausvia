@@ -98,6 +98,7 @@ test("akzeptiert die bestehenden Kostenfunnel- und Winterdienstfelder", () => {
           area: "120",
           surfaceProfile: "manual",
           access: "standard",
+          readiness: "standard",
         },
         privacyAccepted: true,
         termsAccepted: true,
