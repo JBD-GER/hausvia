@@ -34,6 +34,17 @@ type WinterPdfEstimate = {
       additionalDeploymentGross: number;
     };
   };
+  additionalServices: {
+    sundayHoliday: {
+      surchargePercent: number;
+      flexSurchargeGrossPerDeployment: number;
+      planSurchargeGrossPerDeployment: number;
+    };
+    springCleaning: {
+      grossPerSquareMeter: number;
+      estimatedGross: number;
+    };
+  };
 };
 
 const pageWidth = 595;
@@ -204,6 +215,16 @@ function getWinterEstimate(lead: LeadRecord): WinterPdfEstimate | null {
   const planMonthlyGross = valueAsNumber(submittedPlan?.monthlyGross) || planSeasonGross / seasonMonths;
   const additionalDeploymentGross =
     valueAsNumber(submittedPlan?.additionalDeploymentGross) || discountedDeploymentGross;
+  const additionalServices = valueAsRecord(estimate.additionalServices);
+  const submittedSundayHoliday = valueAsRecord(additionalServices?.sundayHoliday);
+  const submittedSpringCleaning = valueAsRecord(additionalServices?.springCleaning);
+  const sundayHolidaySurchargePercent =
+    valueAsNumber(submittedSundayHoliday?.surchargePercent) ||
+    winterPricingConfig.additionalServices.sundayHoliday.surchargePercent;
+  const springCleaningGrossPerSquareMeter =
+    valueAsNumber(submittedSpringCleaning?.grossPerSquareMeter) ||
+    winterPricingConfig.additionalServices.springCleaning.grossPerSquareMeter;
+  const winterArea = valueAsNumber(valueAsRecord(lead.winterPricingInput)?.area ?? lead.winterArea);
 
   return {
     monthlyBaseGross,
@@ -227,6 +248,23 @@ function getWinterEstimate(lead: LeadRecord): WinterPdfEstimate | null {
         monthlyGross: planMonthlyGross,
         seasonGross: planSeasonGross,
         additionalDeploymentGross,
+      },
+    },
+    additionalServices: {
+      sundayHoliday: {
+        surchargePercent: sundayHolidaySurchargePercent,
+        flexSurchargeGrossPerDeployment:
+          valueAsNumber(submittedSundayHoliday?.flexSurchargeGrossPerDeployment) ||
+          Math.round(flexDeploymentGross * (sundayHolidaySurchargePercent / 100) * 100) / 100,
+        planSurchargeGrossPerDeployment:
+          valueAsNumber(submittedSundayHoliday?.planSurchargeGrossPerDeployment) ||
+          Math.round(discountedDeploymentGross * (sundayHolidaySurchargePercent / 100) * 100) / 100,
+      },
+      springCleaning: {
+        grossPerSquareMeter: springCleaningGrossPerSquareMeter,
+        estimatedGross:
+          valueAsNumber(submittedSpringCleaning?.estimatedGross) ||
+          Math.round(winterArea * springCleaningGrossPerSquareMeter * 100) / 100,
       },
     },
   };
@@ -728,6 +766,14 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
         "Weitere Pauschal-Einsätze",
         `${formatEuro(winterEstimate.pricingOptions.plan.additionalDeploymentGross)} je weiterem Einsatz (Rabatt bleibt erhalten)`,
       );
+      addRow(
+        "Sonn- & Feiertagseinsatz (optional)",
+        `+${winterEstimate.additionalServices.sundayHoliday.surchargePercent} % je betroffenem Einsatz: +${formatEuro(winterEstimate.additionalServices.sundayHoliday.flexSurchargeGrossPerDeployment)} variabel bzw. +${formatEuro(winterEstimate.additionalServices.sundayHoliday.planSurchargeGrossPerDeployment)} pauschal`,
+      );
+      addRow(
+        "Frühjahrskehrung (optional)",
+        `${formatEuro(winterEstimate.additionalServices.springCleaning.grossPerSquareMeter)} / m² für Streugutentfernung · kalkulatorisch ${formatEuro(winterEstimate.additionalServices.springCleaning.estimatedGross)} einmalig`,
+      );
       addRow("Vertragslaufzeit", winterEstimate.contractPeriod);
       addRow("Preise", `Beide Varianten inklusive ${winterEstimate.vatRate} % USt.`);
     }
@@ -769,6 +815,11 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   if (winterEstimate) {
     addParagraph(
       `Variabel besteht aus der monatlichen flächenabhängigen Grundgebühr und dem Preis je tatsächlichem Einsatz. Das Pauschalpaket enthält ${winterEstimate.pricingOptions.plan.includedDeployments} Einsätze; jeder enthaltene und zusätzliche Einsatz ist gegenüber Variabel um ${winterEstimate.pricingOptions.plan.deploymentDiscountPercent} % reduziert. Zusätzliche Einsätze kosten ${formatEuro(winterEstimate.pricingOptions.plan.additionalDeploymentGross)}.`,
+    );
+    addParagraph(
+      `Zusatzleistungen sind nicht im Saisonpreis enthalten: Für tatsächlich an Sonn- oder Feiertagen ausgeführte Einsätze gilt ein Zuschlag von ${winterEstimate.additionalServices.sundayHoliday.surchargePercent} %. Die optionale Frühjahrskehrung zur Streugutentfernung wird mit ${formatEuro(winterEstimate.additionalServices.springCleaning.grossPerSquareMeter)} pro m² kalkuliert.`,
+      9.5,
+      muted,
     );
     if (winterEstimate.readiness === "standard") {
       addParagraph(winterPricingConfig.standardCoverageNotice, 9.5, muted);

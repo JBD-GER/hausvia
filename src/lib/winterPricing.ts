@@ -58,6 +58,19 @@ export type WinterPricingEstimate = {
       additionalDeploymentGross: number;
     };
   };
+  additionalServices: {
+    sundayHoliday: {
+      surchargePercent: 50;
+      flexSurchargeGrossPerDeployment: number;
+      planSurchargeGrossPerDeployment: number;
+      included: false;
+    };
+    springCleaning: {
+      grossPerSquareMeter: 1.5;
+      estimatedGross: number;
+      included: false;
+    };
+  };
   deploymentBreakdown: WinterDeploymentBreakdown;
 };
 
@@ -93,9 +106,10 @@ export const winterPricingConfig = {
   automaticMachineArea: 400,
   seasonMonths: 5,
   vatRate: 0.19,
-  modelVersion: "2026-08-hannover-degressive-v2",
+  modelVersion: "2026-08-hannover-degressive-v3",
   referenceSource: "Regionaler Marktvergleich Hannover",
   referenceUpdatedAt: "2026-08-04",
+  generalPriceAdjustmentPercent: 10,
   monthlyBase: {
     minimumGross: 70,
     includedArea: 100,
@@ -170,12 +184,26 @@ export const winterPricingConfig = {
       id: "commercial24h",
       label: "24/7 Gewerbe-Service",
       schedule: "Rund um die Uhr",
-      description: "+20 % auf Grundgebühr und jeden Einsatz.",
-      surchargePercent: 20,
-      multiplier: 1.2,
+      description: "+35 % auf Grundgebühr und jeden Einsatz.",
+      surchargePercent: 35,
+      multiplier: 1.35,
       commercialOnly: true,
     },
   ],
+  additionalServices: {
+    sundayHoliday: {
+      label: "Sonn- & Feiertagseinsatz",
+      description: "Nur bei einem tatsächlich an Sonn- oder Feiertagen ausgeführten Einsatz.",
+      surchargePercent: 50,
+      included: false,
+    },
+    springCleaning: {
+      label: "Frühjahrskehrung (Streugutentfernung)",
+      description: "Einmalige Entfernung des ausgebrachten Streuguts nach der Wintersaison.",
+      grossPerSquareMeter: 1.5,
+      included: false,
+    },
+  },
   standardCoverageNotice:
     "Hinweis für öffentliche Gehwege in Hannover: Die örtliche Räum- und Streupflicht reicht grundsätzlich bis 22:00 Uhr. Die Absicherung nach 20:00 Uhr wird beim Standard-Zeitfenster vor Vertragsschluss separat festgelegt.",
 } as const;
@@ -344,30 +372,43 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
 
   const manualAreaServiceGross = tieredAreaCost(area, "manual");
   const machineAreaServiceGross = tieredAreaCost(area, "machine");
+  const generalPriceMultiplier = 1 + winterPricingConfig.generalPriceAdjustmentPercent / 100;
   const standardAreaServiceGross = roundToCents(
-    manualAreaServiceGross * manualShare + machineAreaServiceGross * machineShare,
+    (manualAreaServiceGross * manualShare + machineAreaServiceGross * machineShare) *
+      generalPriceMultiplier,
+  );
+  const standardMobilizationGross = roundToCents(
+    winterPricingConfig.deployment.mobilizationGross * generalPriceMultiplier,
+  );
+  const adjustedMinimumGross = roundToCents(
+    winterPricingConfig.deployment.minimumGross * generalPriceMultiplier,
   );
   const standardDeploymentSubtotalGross = roundToCents(
-    winterPricingConfig.deployment.mobilizationGross + standardAreaServiceGross,
+    standardMobilizationGross + standardAreaServiceGross,
   );
   const standardMinimumAdjustmentGross = roundToCents(
-    Math.max(0, winterPricingConfig.deployment.minimumGross - standardDeploymentSubtotalGross),
+    Math.max(0, adjustedMinimumGross - standardDeploymentSubtotalGross),
   );
   const standardDeploymentGross = roundToCents(
     standardDeploymentSubtotalGross + standardMinimumAdjustmentGross,
   );
   const deploymentGross = roundToCents(standardDeploymentGross * readiness.multiplier);
-  const mobilizationGross = roundToCents(winterPricingConfig.deployment.mobilizationGross * readiness.multiplier);
-  const areaServiceGross = roundToCents(standardAreaServiceGross * readiness.multiplier);
+  const mobilizationGross = roundToCents(standardMobilizationGross * readiness.multiplier);
   const minimumAdjustmentGross = roundToCents(
-    deploymentGross - mobilizationGross - areaServiceGross,
+    standardMinimumAdjustmentGross * readiness.multiplier,
+  );
+  const areaServiceGross = roundToCents(
+    deploymentGross - mobilizationGross - minimumAdjustmentGross,
   );
 
   const additionalBaseArea = Math.max(0, area - winterPricingConfig.monthlyBase.includedArea);
-  const standardMonthlyBaseGross = roundToIncrement(
+  const monthlyBaseBeforeAdjustmentGross = roundToIncrement(
     winterPricingConfig.monthlyBase.minimumGross +
       additionalBaseArea * winterPricingConfig.monthlyBase.grossPerAdditionalSquareMeter,
     winterPricingConfig.monthlyBase.roundingIncrement,
+  );
+  const standardMonthlyBaseGross = roundToCents(
+    monthlyBaseBeforeAdjustmentGross * generalPriceMultiplier,
   );
   const monthlyBaseGross = roundToCents(standardMonthlyBaseGross * readiness.multiplier);
   const seasonBaseGross = roundToCents(monthlyBaseGross * winterPricingConfig.seasonMonths);
@@ -379,6 +420,10 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
     seasonBaseGross + discountedDeploymentGross * winterPricingConfig.flatRateIncludedDeployments,
   );
   const flatRateMonthlyGross = roundToCents(flatRateSeasonGross / winterPricingConfig.seasonMonths);
+  const sundayHolidaySurchargePercent =
+    winterPricingConfig.additionalServices.sundayHoliday.surchargePercent;
+  const springCleaningGrossPerSquareMeter =
+    winterPricingConfig.additionalServices.springCleaning.grossPerSquareMeter;
 
   return {
     monthlyBaseGross,
@@ -409,6 +454,23 @@ export function calculateWinterPrice(input: WinterPricingInput): WinterPricingEs
         monthlyGross: flatRateMonthlyGross,
         seasonGross: flatRateSeasonGross,
         additionalDeploymentGross: discountedDeploymentGross,
+      },
+    },
+    additionalServices: {
+      sundayHoliday: {
+        surchargePercent: sundayHolidaySurchargePercent,
+        flexSurchargeGrossPerDeployment: roundToCents(
+          deploymentGross * (sundayHolidaySurchargePercent / 100),
+        ),
+        planSurchargeGrossPerDeployment: roundToCents(
+          discountedDeploymentGross * (sundayHolidaySurchargePercent / 100),
+        ),
+        included: false,
+      },
+      springCleaning: {
+        grossPerSquareMeter: springCleaningGrossPerSquareMeter,
+        estimatedGross: roundToCents(area * springCleaningGrossPerSquareMeter),
+        included: false,
       },
     },
     deploymentBreakdown: {

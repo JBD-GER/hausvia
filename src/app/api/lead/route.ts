@@ -11,6 +11,7 @@ import {
   type ServiceId,
 } from "@/lib/pricing";
 import { SITE } from "@/lib/site";
+import { renderHausviaEmail } from "@/lib/hausviaEmail";
 import { markFunnelLeadEmailDeliveryCompleted, persistFunnelLead } from "@/lib/funnelPersistence";
 import {
   LeadPayloadTooLargeError,
@@ -76,19 +77,6 @@ function asNumber(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;",
-    };
-    return entities[character];
-  });
 }
 
 function isSubmissionId(value: string) {
@@ -297,6 +285,7 @@ function enrichWinterServiceLead(lead: Record<string, unknown>, input: WinterPri
       readinessSurchargePercent: estimate.readinessSurchargePercent,
       baseBreakdown: estimate.baseBreakdown,
       pricingOptions: estimate.pricingOptions,
+      additionalServices: estimate.additionalServices,
       deploymentBreakdown: estimate.deploymentBreakdown,
     },
   };
@@ -349,30 +338,6 @@ async function sendResendEmail({
   }
 }
 
-function emailHtml({ headline, intro, note }: { headline: string; intro: string; note: string }) {
-  const safeHeadline = escapeHtml(headline);
-  const safeIntro = escapeHtml(intro);
-  const safeNote = escapeHtml(note);
-
-  return `
-    <div style="font-family:Arial,sans-serif;background:#f7f9fc;padding:24px;color:#172033">
-      <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dfe7f2;border-radius:10px;overflow:hidden">
-        <div style="background:#082b61;color:#ffffff;padding:22px 26px">
-          <div style="font-size:22px;font-weight:800">Hausvia</div>
-          <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#d8e4f5">Hausmeisterservice</div>
-        </div>
-        <div style="border-top:6px solid #f5c542;padding:26px">
-          <h1 style="font-size:22px;line-height:1.25;margin:0 0 12px">${safeHeadline}</h1>
-          <p style="font-size:15px;line-height:1.65;margin:0 0 18px">${safeIntro}</p>
-          <p style="font-size:14px;line-height:1.6;margin:0;color:#526071">
-            ${safeNote}
-          </p>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 const grossCurrencyFormatter = new Intl.NumberFormat("de-DE", {
   style: "currency",
   currency: "EUR",
@@ -380,54 +345,62 @@ const grossCurrencyFormatter = new Intl.NumberFormat("de-DE", {
   maximumFractionDigits: 2,
 });
 
-function winterPricingEmailSummary(lead: Record<string, unknown>) {
+function winterPricingEmailFacts(lead: Record<string, unknown>) {
   const estimate = isRecord(lead.estimate) ? lead.estimate : null;
-  const options = estimate && isRecord(estimate.pricingOptions) ? estimate.pricingOptions : null;
-  const baseBreakdown = estimate && isRecord(estimate.baseBreakdown) ? estimate.baseBreakdown : null;
-  const flex = options && isRecord(options.flex) ? options.flex : null;
-  const plan = options && isRecord(options.plan) ? options.plan : null;
-  if (!flex || !plan) return "";
+  const pricingOptions = estimate && isRecord(estimate.pricingOptions) ? estimate.pricingOptions : null;
+  const flex = pricingOptions && isRecord(pricingOptions.flex) ? pricingOptions.flex : null;
+  const plan = pricingOptions && isRecord(pricingOptions.plan) ? pricingOptions.plan : null;
+  const additionalServices = estimate && isRecord(estimate.additionalServices) ? estimate.additionalServices : null;
+  const sundayHoliday = additionalServices && isRecord(additionalServices.sundayHoliday)
+    ? additionalServices.sundayHoliday
+    : null;
+  const springCleaning = additionalServices && isRecord(additionalServices.springCleaning)
+    ? additionalServices.springCleaning
+    : null;
 
-  const flexMonthly = asNumber(flex.monthlyBaseGross);
-  const flexSeasonBase = asNumber(flex.seasonBaseGross);
-  const flexDeployment = asNumber(flex.deploymentGross);
-  const planMonthly = asNumber(plan.monthlyGross);
-  const planSeason = asNumber(plan.seasonGross);
-  const includedDeployments = asNumber(plan.includedDeployments);
-  const deploymentDiscountPercent = asNumber(plan.deploymentDiscountPercent);
-  const additionalDeployment = asNumber(plan.additionalDeploymentGross);
+  const monthlyBase = asNumber(flex?.monthlyBaseGross);
+  const deployment = asNumber(flex?.deploymentGross);
+  const planMonthly = asNumber(plan?.monthlyGross);
+  const includedDeployments = asNumber(plan?.includedDeployments);
   const readinessSurchargePercent = asNumber(estimate?.readinessSurchargePercent);
-  const monthlyBaseSurcharge = asNumber(baseBreakdown?.readinessSurchargeGross);
-  const readinessSurchargeSummary =
-    readinessSurchargePercent > 0
-      ? ` Der ${readinessSurchargePercent}-%-Aufschlag ist in Grundgebühr und Einsätzen enthalten` +
-        `${monthlyBaseSurcharge > 0 ? ` (${grossCurrencyFormatter.format(monthlyBaseSurcharge)} davon monatlich in der Grundgebühr)` : ""}.`
-      : "";
-  if (
-    flexMonthly <= 0 ||
-    flexSeasonBase <= 0 ||
-    flexDeployment <= 0 ||
-    planMonthly <= 0 ||
-    planSeason <= 0 ||
-    !Number.isInteger(includedDeployments) ||
-    includedDeployments <= 0 ||
-    deploymentDiscountPercent <= 0 ||
-    additionalDeployment <= 0
-  ) {
-    return "";
+  const area = asNumber(lead.winterArea);
+  if (!monthlyBase || !deployment || !planMonthly || !includedDeployments || !area) return undefined;
+
+  const rows = [
+    {
+      label: "Winterdienstfläche",
+      value: `${area.toLocaleString("de-DE")} m²`,
+    },
+    {
+      label: "Variabel",
+      value: `${grossCurrencyFormatter.format(monthlyBase)} Grundbetrag / Monat + ${grossCurrencyFormatter.format(deployment)} / Einsatz`,
+    },
+    {
+      label: "Pauschal",
+      value: `${grossCurrencyFormatter.format(planMonthly)} / Monat inklusive ${includedDeployments} Einsätzen`,
+    },
+    {
+      label: "Einsatzbereitschaft",
+      value:
+        `${asString(lead.winterReadinessLabel) || "Standard"}` +
+        (readinessSurchargePercent > 0
+          ? ` · +${readinessSurchargePercent} % auf Grundgebühr und Einsatz`
+          : ""),
+    },
+  ];
+  const sundayHolidayPercent = asNumber(sundayHoliday?.surchargePercent);
+  const springCleaningRate = asNumber(springCleaning?.grossPerSquareMeter);
+  if (sundayHolidayPercent > 0 && springCleaningRate > 0) {
+    rows.push({
+      label: "Optionale Extras",
+      value: `Sonn-/Feiertagseinsatz +${sundayHolidayPercent} % · Frühjahrskehrung ${grossCurrencyFormatter.format(springCleaningRate)} / m²`,
+    });
   }
 
-  return (
-    `Variabel: ${grossCurrencyFormatter.format(flexMonthly)} Grundgebühr pro Monat plus ` +
-    `${grossCurrencyFormatter.format(flexDeployment)} je tatsächlichem Einsatz ` +
-    `(Saison-Grundgebühr ${grossCurrencyFormatter.format(flexSeasonBase)}). ` +
-    `Pauschal: ${grossCurrencyFormatter.format(planMonthly)} monatliches 10er-Saisonpaket mit ` +
-    `${includedDeployments} enthaltenen Einsätzen (Saison ${grossCurrencyFormatter.format(planSeason)}). ` +
-    `Jeder enthaltene und zusätzliche Einsatz erhält ${deploymentDiscountPercent} % Preisvorteil; ` +
-    `zusätzliche Einsätze kosten ${grossCurrencyFormatter.format(additionalDeployment)}. ` +
-    `Einsatzbereitschaft: ${asString(lead.winterReadinessLabel) || "Standard"}.` +
-    readinessSurchargeSummary
-  );
+  return {
+    title: "Ihre Preisübersicht",
+    rows,
+  };
 }
 
 export async function POST(request: Request) {
@@ -609,7 +582,7 @@ export async function POST(request: Request) {
     enrichedLead.estimate.pricingModel === "winter-season-plus-deployment";
   const winterResponseEstimate = hasWinterEstimate ? enrichedLead.estimate : undefined;
   const isWinterServiceRequest = requestsWinterService || hasWinterEstimate;
-  const winterEmailPricing = hasWinterEstimate ? winterPricingEmailSummary(enrichedLead) : "";
+  const winterEmailFacts = hasWinterEstimate ? winterPricingEmailFacts(enrichedLead) : undefined;
   const headerSubmissionId = asString(request.headers.get("idempotency-key"));
   const payloadSubmissionId = asString(payload.submissionId);
   if (headerSubmissionId && payloadSubmissionId && headerSubmissionId !== payloadSubmissionId) {
@@ -639,6 +612,7 @@ export async function POST(request: Request) {
       ok: true,
       submissionId,
       duplicate: true,
+      emailDelivered: true,
       ...(winterResponseEstimate ? { estimate: winterResponseEstimate } : {}),
     });
   }
@@ -678,6 +652,7 @@ export async function POST(request: Request) {
       ok: true,
       submissionId,
       duplicate: true,
+      emailDelivered: true,
       ...(winterResponseEstimate ? { estimate: winterResponseEstimate } : {}),
     });
   }
@@ -722,49 +697,88 @@ export async function POST(request: Request) {
   const customerEmail = email;
   const customerName = name.replace(/[\r\n]+/g, " ").slice(0, 160);
   const replyTo = customerEmail;
+  const customerSubject =
+    source === "cost-funnel"
+      ? "Ihre Hausvia Einschätzung als PDF"
+      : isWinterServiceRequest
+        ? "Ihre Winterdienst Preiseinschätzung"
+        : "Ihre Hausvia Anfrage als PDF";
+  const customerHeadline =
+    source === "cost-funnel"
+      ? "Ihre unverbindliche Hausvia Einschätzung"
+      : isWinterServiceRequest
+        ? "Ihre Winterdienst Preiseinschätzung"
+        : "Ihre Anfrage bei Hausvia";
+  const customerIntro =
+    source === "cost-funnel"
+      ? "Vielen Dank für Ihre Angaben. Ihre unverbindliche Ersteinschätzung wurde vorbereitet und ist dieser E-Mail als PDF beigefügt."
+      : isWinterServiceRequest
+        ? hasWinterEstimate
+          ? "Vielen Dank für Ihre Angaben. Ihre Objekt- und Flächendaten wurden serverseitig geprüft. Beide Tarifvarianten und die optionalen Zusatzleistungen finden Sie unten sowie vollständig im PDF."
+          : "Vielen Dank für Ihre Winterdienst-Anfrage. Ihre Angaben wurden geprüft und im beigefügten PDF zusammengefasst."
+        : "Vielen Dank für Ihre Anfrage. Die übermittelten Angaben wurden im beigefügten PDF übersichtlich zusammengefasst.";
+  const customerNote =
+    source === "cost-funnel"
+      ? "Die Einschätzung ist unverbindlich. Für ein finales Angebot prüfen wir die Objekt- und Leistungsdaten persönlich."
+      : isWinterServiceRequest
+        ? hasWinterEstimate
+          ? "Diese Online-Preiseinschätzung stellt ausdrücklich kein Angebot dar. Die finale Kalkulation und ein Angebot erfolgen erst nach Prüfung durch Hausvia und, falls erforderlich, nach einem Vor-Ort-Termin."
+          : "Das PDF enthält Ihre Objekt- und Kontaktdaten für die persönliche Angebotserstellung."
+        : "Wir prüfen Ihre Angaben und melden uns persönlich bei Ihnen. Das PDF dient Ihnen als vollständige Kopie Ihrer Anfrage.";
+  const customerRenderedEmail = renderHausviaEmail({
+    preheader: `${customerHeadline} – PDF von Hausvia`,
+    eyebrow: isWinterServiceRequest ? "Winterdienst Hannover" : "Ihre Anfrage bei Hausvia",
+    headline: customerHeadline,
+    intro: `${firstName ? `Hallo ${firstName},\n\n` : ""}${customerIntro}`,
+    summary: winterEmailFacts,
+    note: customerNote,
+    attachment: {
+      filename,
+      description: "Ihre Angaben und die geprüfte Preiseinschätzung finden Sie vollständig im PDF-Anhang.",
+    },
+    action: {
+      label: "Hausvia kontaktieren",
+      href: `${SITE.url}/kontakt`,
+    },
+  });
+  const adminHeadline = isWinterServiceRequest
+    ? "Neue Winterdienst-Preiseinschätzung"
+    : "Neue Hausvia Anfrage";
+  const adminIntro =
+    source === "cost-funnel"
+      ? `Eine neue Kostencheck-Anfrage von ${customerName || "unbekannt"} ist eingegangen. Das PDF enthält alle Angaben und die serverseitige Einschätzung.`
+      : isWinterServiceRequest
+        ? hasWinterEstimate
+          ? `Eine neue Winterdienst-Preiseinschätzung von ${customerName || "unbekannt"} ist eingegangen. Die serverseitig geprüften Eckwerte stehen in der Übersicht.`
+          : `Eine neue Winterdienst-Anfrage von ${customerName || "unbekannt"} ist eingegangen. Die Objektangaben befinden sich im PDF.`
+        : `Eine neue Kontaktanfrage von ${customerName || "unbekannt"} ist eingegangen. Das PDF enthält alle übermittelten Angaben.`;
+  const adminRenderedEmail = renderHausviaEmail({
+    preheader: `${adminHeadline} von ${customerName || "unbekannt"}`,
+    eyebrow: "Interne Lead-Benachrichtigung",
+    headline: adminHeadline,
+    intro: adminIntro,
+    summary: winterEmailFacts,
+    note:
+      isWinterServiceRequest && hasWinterEstimate
+        ? "Variable Abrechnung, Pauschalpaket und optionale Zusatzleistungen wurden serverseitig neu berechnet. Die Online-Einschätzung ist noch kein Angebot."
+        : "Bitte die Anfrage prüfen und den nächsten Bearbeitungsschritt im Hausvia-System dokumentieren.",
+    attachment: {
+      filename,
+      description: "Interne PDF-Kopie mit Kontakt-, Objekt- und Preisdaten.",
+    },
+    action: {
+      label: "Anfragen im Adminbereich öffnen",
+      href: `${SITE.url}/admin/leads`,
+    },
+  });
 
   try {
     await Promise.all([
       sendResendEmail({
         to: customerEmail,
-        subject:
-          source === "cost-funnel"
-            ? "Ihre Hausvia Einschätzung als PDF"
-            : isWinterServiceRequest
-              ? "Ihre Winterdienst Preiseinschätzung"
-            : "Ihre Hausvia Anfrage als PDF",
-        html: emailHtml({
-          headline:
-            source === "cost-funnel"
-              ? "Ihre unverbindliche Hausvia Einschätzung"
-              : isWinterServiceRequest
-                ? "Ihre Winterdienst Preiseinschätzung"
-              : "Ihre Anfrage bei Hausvia",
-          intro:
-            source === "cost-funnel"
-              ? "Vielen Dank für Ihre Angaben. Ihre unverbindliche Ersteinschätzung wurde als PDF vorbereitet und ist dieser E-Mail beigefügt."
-              : isWinterServiceRequest
-                ? hasWinterEstimate
-                  ? `Vielen Dank für Ihre Angaben. Ihre Objekt- und Flächendaten wurden serverseitig geprüft. ${winterEmailPricing}`
-                  : "Vielen Dank für Ihre Winterdienst-Anfrage. Ihre Angaben wurden geprüft und im beigefügten PDF zusammengefasst."
-              : "Vielen Dank für Ihre Anfrage. Die übermittelten Angaben wurden als PDF zusammengefasst und sind dieser E-Mail beigefügt.",
-          note:
-            source === "cost-funnel"
-              ? "Das PDF enthält die Anfrage, die angegebenen Objekt- und Leistungsdaten sowie die unverbindliche Einschätzung."
-              : isWinterServiceRequest
-                ? hasWinterEstimate
-                  ? "Diese Online-Preiseinschätzung stellt ausdrücklich kein Angebot dar. Die finale Kalkulation und ein Angebot erfolgen erst nach Prüfung durch Hausvia und, falls erforderlich, nach einem Vor-Ort-Termin. Beide Tarifvarianten finden Sie zusätzlich im beigefügten PDF."
-                  : "Das PDF enthält die übermittelten Objekt- und Kontaktdaten für die persönliche Angebotserstellung."
-              : "Das PDF enthält die Anfrage sowie die angegebenen Kontakt-, Objekt- und Leistungsdaten.",
-        }),
-        text:
-          source === "cost-funnel"
-              ? "Vielen Dank für Ihre Angaben. Ihre unverbindliche Hausvia Einschätzung befindet sich als PDF im Anhang."
-            : isWinterServiceRequest
-              ? hasWinterEstimate
-                ? `Vielen Dank für Ihre Angaben. ${winterEmailPricing} Diese Online-Preiseinschätzung stellt kein Angebot dar. Die finale Kalkulation und ein Angebot erfolgen erst nach Prüfung durch Hausvia und gegebenenfalls nach einem Vor-Ort-Termin. Das PDF befindet sich im Anhang.`
-                : "Vielen Dank für Ihre Winterdienst-Anfrage. Ihre Angaben befinden sich als PDF im Anhang."
-              : "Vielen Dank für Ihre Anfrage. Ihre Angaben befinden sich als PDF im Anhang.",
+        subject: customerSubject,
+        html: customerRenderedEmail.html,
+        text: customerRenderedEmail.text,
         attachment,
         replyTo: SITE.email,
         idempotencyKey: `hausvia-lead/customer/${submissionId}`,
@@ -772,25 +786,8 @@ export async function POST(request: Request) {
       sendResendEmail({
         to: internalLeadEmail,
         subject: `${isWinterServiceRequest ? "Neue Winterdienst Preiseinschätzung" : "Neue Hausvia Anfrage"} von ${customerName || "unbekannt"}`,
-        html: emailHtml({
-          headline: "Neue Hausvia Anfrage",
-          intro:
-            source === "cost-funnel"
-              ? `Es ist eine neue Kostencheck-Anfrage von ${customerName || "unbekannt"} eingegangen. Das PDF mit allen Angaben und der serverseitigen Einschätzung ist beigefügt.`
-              : isWinterServiceRequest
-                ? hasWinterEstimate
-                  ? `Es ist eine neue Winterdienst-Preiseinschätzung von ${customerName || "unbekannt"} eingegangen. ${winterEmailPricing}`
-                  : `Es ist eine neue Winterdienst-Anfrage von ${customerName || "unbekannt"} eingegangen. Die übermittelten Objektangaben befinden sich im PDF.`
-              : `Es ist eine neue Kontaktanfrage von ${customerName || "unbekannt"} eingegangen. Das PDF mit allen Angaben ist beigefügt.`,
-          note:
-            isWinterServiceRequest && hasWinterEstimate
-              ? "Variable Abrechnung und Pauschalpaket wurden serverseitig neu berechnet. Die Online-Preiseinschätzung ist kein Angebot; die finale Kalkulation und ein Angebot erfolgen erst nach Hausvia-Prüfung und gegebenenfalls einem Vor-Ort-Termin."
-              : "Die interne Kopie enthält alle übermittelten Daten und, falls vorhanden, die berechnete Ersteinschätzung.",
-        }),
-        text:
-          isWinterServiceRequest && hasWinterEstimate
-            ? `Neue Winterdienst-Preiseinschätzung von ${customerName || "unbekannt"}. ${winterEmailPricing} Dies ist kein Angebot. Die finale Kalkulation erfolgt nach Prüfung und gegebenenfalls einem Vor-Ort-Termin. Das PDF ist im Anhang.`
-            : `Neue Hausvia Anfrage von ${customerName || "unbekannt"}. Das PDF mit allen Angaben ist im Anhang.`,
+        html: adminRenderedEmail.html,
+        text: adminRenderedEmail.text,
         attachment,
         replyTo,
         idempotencyKey: `hausvia-lead/admin/${submissionId}`,
@@ -827,6 +824,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     submissionId,
+    emailDelivered: true,
     ...(winterResponseEstimate ? { estimate: winterResponseEstimate } : {}),
   });
 }

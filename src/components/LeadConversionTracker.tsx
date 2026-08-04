@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { getCookieConsentRaw, parseCookieConsent, subscribeCookieConsentChange } from "@/lib/cookieConsent";
-import { getGoogleAdsConfig, initializeGtag } from "@/components/GoogleAdsTag";
+import {
+  flushPendingWinterdienstConversions,
+  getGoogleAdsConfig,
+  initializeGtag,
+  markWinterdienstConversionPending,
+} from "@/components/GoogleAdsTag";
 
 const pendingConversionKey = "hausvia-pending-lead-conversion";
-const winterdienstConversionStoragePrefix = "hausvia-google-ads-winterdienst:";
 
 function useMarketingConsent() {
   const rawConsent = useSyncExternalStore(subscribeCookieConsentChange, getCookieConsentRaw, () => "");
@@ -56,39 +60,13 @@ export function LeadConversionTracker() {
 
 export function WinterdienstConversionTracker({ submissionId }: { submissionId: string }) {
   const consent = useMarketingConsent();
-  const firedSubmissionRef = useRef("");
 
   useEffect(() => {
     const normalizedSubmissionId = submissionId.trim();
-    if (!normalizedSubmissionId || consent?.marketing !== true) return;
-    if (firedSubmissionRef.current === normalizedSubmissionId) return;
+    if (!normalizedSubmissionId) return;
 
-    const storageKey = `${winterdienstConversionStoragePrefix}${normalizedSubmissionId}`;
-    try {
-      if (window.sessionStorage.getItem(storageKey) === "sent") {
-        firedSubmissionRef.current = normalizedSubmissionId;
-        return;
-      }
-    } catch {
-      // Das Ref verhindert weiterhin doppelte Events, falls Session Storage blockiert ist.
-    }
-
-    const { googleAdsId, winterdienstConversionLabel } = getGoogleAdsConfig();
-    if (!googleAdsId || !winterdienstConversionLabel) return;
-
-    initializeGtag();
-    window.gtag?.("config", googleAdsId);
-    window.gtag?.("event", "conversion", {
-      send_to: `${googleAdsId}/${winterdienstConversionLabel}`,
-      transaction_id: normalizedSubmissionId,
-    });
-
-    firedSubmissionRef.current = normalizedSubmissionId;
-    try {
-      window.sessionStorage.setItem(storageKey, "sent");
-    } catch {
-      // Tracking bleibt auch ohne Session Storage funktionsfähig.
-    }
+    markWinterdienstConversionPending(normalizedSubmissionId);
+    if (consent?.marketing === true) flushPendingWinterdienstConversions();
   }, [consent?.marketing, submissionId]);
 
   return null;

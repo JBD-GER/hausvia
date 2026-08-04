@@ -71,7 +71,7 @@ const faqs: FaqItem[] = [
   {
     question: "Was ist im monatlichen Grundbetrag enthalten?",
     answer:
-      "Der Grundbetrag startet bei 70 Euro inklusive Mehrwertsteuer pro Monat für bis zu 100 m² Winterdienstfläche. Für größere Flächen steigt er anteilig um 10 Euro je weitere 100 m² und wird auf 5 Euro gerundet. Er reserviert die passende Einsatzkapazität und wird ausschließlich von November bis März berechnet.",
+      "Der Grundbetrag startet bei 77 Euro inklusive Mehrwertsteuer pro Monat für bis zu 100 m² Winterdienstfläche. Für größere Flächen steigt er stufenweise mit der zu betreuenden Fläche. Er reserviert die passende Einsatzkapazität und wird ausschließlich von November bis März berechnet.",
   },
   {
     question: "Wann wird ein tatsächlicher Einsatz berechnet?",
@@ -86,7 +86,12 @@ const faqs: FaqItem[] = [
   {
     question: "Welche Einsatzbereitschaft kann ich auswählen?",
     answer:
-      "Standard umfasst die Hausvia-Einsatzplanung montags bis samstags von 7:00 bis 20:00 Uhr sowie sonn- und feiertags von 8:00 bis 20:00 Uhr. Für Gewerbeobjekte ist ein 24/7-Service mit 20 Prozent Aufschlag auf Grundgebühr und Einsätze kalkulierbar. Wichtig: Für öffentliche Gehwege reicht die örtliche Räum- und Streupflicht in Hannover grundsätzlich bis 22:00 Uhr; die Absicherung nach 20:00 Uhr wird beim Standardmodell im finalen Angebot separat festgelegt.",
+      "Standard umfasst die Hausvia-Einsatzplanung montags bis samstags von 7:00 bis 20:00 Uhr sowie sonn- und feiertags von 8:00 bis 20:00 Uhr. Für Gewerbeobjekte ist ein 24/7-Service mit 35 Prozent Aufschlag auf Grundgebühr und jeden Einsatz kalkulierbar. Wichtig: Für öffentliche Gehwege reicht die örtliche Räum- und Streupflicht in Hannover grundsätzlich bis 22:00 Uhr; die Absicherung nach 20:00 Uhr wird beim Standardmodell im finalen Angebot separat festgelegt.",
+  },
+  {
+    question: "Welche Zusatzkosten können entstehen?",
+    answer:
+      "Ein tatsächlich an Sonn- oder Feiertagen ausgeführter Einsatz erhält einen Zuschlag von 50 Prozent auf den jeweiligen Einsatzpreis. Die optionale Frühjahrskehrung zur Streugutentfernung kostet 1,50 Euro inklusive Mehrwertsteuer pro Quadratmeter. Beide Zusatzleistungen zeigt der Rechner separat an; sie sind nicht automatisch im Saisonpreis enthalten.",
   },
   {
     question: "Zählt ein weiterer Durchgang am selben Tag als neuer Einsatz?",
@@ -117,7 +122,7 @@ const faqs: FaqItem[] = [
 
 const trustItems = [
   { icon: CalendarRange, text: "Saisonvertrag November bis März" },
-  { icon: Euro, text: "Grundbetrag ab 70 € pro Monat" },
+  { icon: Euro, text: "Grundbetrag ab 77 € pro Monat" },
   { icon: ClipboardCheck, text: "10 % Einsatzvorteil im Pauschalpaket" },
   { icon: MapPin, text: "Für Objekte im Tourengebiet Hannover" },
 ];
@@ -346,7 +351,7 @@ export default function WinterdienstHannoverPage() {
               <p className="mt-6 text-xs font-extrabold uppercase tracking-[0.16em] text-brand">01. November bis 31. März</p>
               <h3 className="mt-2 text-2xl font-extrabold text-slate-950">Der monatliche Grundbetrag</h3>
               <p className="mt-4 text-base leading-7 text-slate-700">
-                Er startet bei 70 € inklusive Mehrwertsteuer für bis zu 100 m². Oberhalb davon steigt er anteilig um 10 € je weitere 100 m² und wird auf 5 € gerundet. So wächst die reservierte Einsatzkapazität nachvollziehbar mit Ihrer Fläche; berechnet wird sie nur von November bis März.
+                Er startet bei 77 € inklusive Mehrwertsteuer für bis zu 100 m². Oberhalb davon steigt er stufenweise mit der betreuten Fläche. So wächst die reservierte Einsatzkapazität nachvollziehbar mit Ihrem Objekt; berechnet wird sie nur von November bis März.
               </p>
             </article>
 

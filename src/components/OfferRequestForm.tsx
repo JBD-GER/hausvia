@@ -239,6 +239,14 @@ export function OfferRequestForm({
                   jeder enthaltene und zusätzliche Einsatz {requestContext.estimate.pricingOptions.plan.deploymentDiscountPercent} % günstiger
                 </p>
               </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-brand">Optionale Zusatzleistungen</p>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  Sonn- &amp; Feiertagseinsatz: +{requestContext.estimate.additionalServices.sundayHoliday.surchargePercent} % je betroffenem Einsatz ·
+                  Frühjahrskehrung: {formatCurrency(requestContext.estimate.additionalServices.springCleaning.grossPerSquareMeter)} / m²
+                  ({formatCurrency(requestContext.estimate.additionalServices.springCleaning.estimatedGross)} für die angegebene Fläche). Nicht im Saisonpreis enthalten.
+                </p>
+              </div>
             </div>
           ) : null}
 

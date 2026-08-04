@@ -82,6 +82,9 @@ function parseServerWinterEstimate(value: unknown): WinterPricingEstimate | null
   const pricingOptions = estimate.pricingOptions as Record<string, unknown> | undefined;
   const flex = pricingOptions?.flex as Record<string, unknown> | undefined;
   const plan = pricingOptions?.plan as Record<string, unknown> | undefined;
+  const additionalServices = estimate.additionalServices as Record<string, unknown> | undefined;
+  const sundayHoliday = additionalServices?.sundayHoliday as Record<string, unknown> | undefined;
+  const springCleaning = additionalServices?.springCleaning as Record<string, unknown> | undefined;
   const baseBreakdown = estimate.baseBreakdown as Record<string, unknown> | undefined;
   const breakdown = estimate.deploymentBreakdown as Record<string, unknown> | undefined;
   const estimateNumbers = [
@@ -106,6 +109,13 @@ function parseServerWinterEstimate(value: unknown): WinterPricingEstimate | null
     baseBreakdown?.standardMonthlyBaseGross,
     baseBreakdown?.readinessSurchargeGross,
   ];
+  const additionalServiceNumbers = [
+    sundayHoliday?.surchargePercent,
+    sundayHoliday?.flexSurchargeGrossPerDeployment,
+    sundayHoliday?.planSurchargeGrossPerDeployment,
+    springCleaning?.grossPerSquareMeter,
+    springCleaning?.estimatedGross,
+  ];
   const breakdownNumbers = [
     breakdown?.areaSquareMeters,
     breakdown?.manualShare,
@@ -125,6 +135,10 @@ function parseServerWinterEstimate(value: unknown): WinterPricingEstimate | null
     estimate.seasonMonths !== 5 ||
     estimate.contractPeriod !== "1. November bis 31. März" ||
     estimate.vatRate !== 19 ||
+    sundayHoliday?.included !== false ||
+    springCleaning?.included !== false ||
+    sundayHoliday?.surchargePercent !== 50 ||
+    springCleaning?.grossPerSquareMeter !== 1.5 ||
     !["standard", "commercial24h"].includes(String(estimate.readiness)) ||
     !["manual", "mixed", "machine"].includes(String(breakdown?.appliedSurfaceProfile)) ||
     ![
@@ -132,6 +146,7 @@ function parseServerWinterEstimate(value: unknown): WinterPricingEstimate | null
       ...flexNumbers,
       ...planNumbers,
       ...baseBreakdownNumbers,
+      ...additionalServiceNumbers,
       ...breakdownNumbers,
     ].every(isFinitePrice)
   ) {
@@ -907,7 +922,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
               </fieldset>
 
               <p className="rounded-xl border border-brand/15 bg-brand-soft p-4 text-xs font-semibold leading-5 text-slate-650">
-                Die voraussichtliche Bearbeitung – Handarbeit, gemischt oder maschinell – wird anhand von Fläche und Zugänglichkeit automatisch berücksichtigt. Beim 24/7 Gewerbe-Service werden Grundgebühr und jeder Einsatz um 20 % erhöht.
+                Die voraussichtliche Bearbeitung – Handarbeit, gemischt oder maschinell – wird anhand von Fläche und Zugänglichkeit automatisch berücksichtigt. Beim 24/7 Gewerbe-Service werden Grundgebühr und jeder Einsatz um 35 % erhöht.
               </p>
             </div>
 
@@ -1232,6 +1247,40 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                   ) : null}
                 </div>
               ) : null}
+
+              <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6" aria-labelledby="winter-addons-title">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand">Optional, nicht eingerechnet</p>
+                    <h5 id="winter-addons-title" className="mt-1 text-lg font-extrabold text-slate-950">Zusatzleistungen mit klarem Preis</h5>
+                  </div>
+                  <p className="text-xs font-semibold leading-5 text-slate-600">Nur wenn die jeweilige Leistung tatsächlich anfällt.</p>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-brand/15 bg-brand-soft p-4">
+                    <p className="text-xs font-extrabold uppercase tracking-wide text-brand">Sonn- &amp; Feiertagseinsatz</p>
+                    <p className="mt-1 text-2xl font-extrabold text-slate-950">
+                      +{confirmedEstimate.additionalServices.sundayHoliday.surchargePercent} %
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-650">
+                      Aktuell {currency.format(
+                        selectedPriceModel === "plan"
+                          ? confirmedEstimate.additionalServices.sundayHoliday.planSurchargeGrossPerDeployment
+                          : confirmedEstimate.additionalServices.sundayHoliday.flexSurchargeGrossPerDeployment,
+                      )} Zuschlag je betroffenem Einsatz im gewählten Tarif. Der Zuschlag gilt auch für enthaltene Pauschaleinsätze.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-extrabold uppercase tracking-wide text-brand">Frühjahrskehrung</p>
+                    <p className="mt-1 text-2xl font-extrabold text-slate-950">
+                      {currency.format(confirmedEstimate.additionalServices.springCleaning.grossPerSquareMeter)} / m²
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-slate-650">
+                      Streugutentfernung nach der Saison: für Ihre Fläche voraussichtlich {currency.format(confirmedEstimate.additionalServices.springCleaning.estimatedGross)} einmalig.
+                    </p>
+                  </div>
+                </div>
+              </section>
 
               <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <CircleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 flex-none" />

@@ -2,28 +2,60 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
-import { getCookieConsentRaw, saveCookieConsent, subscribeCookieConsentChange } from "@/lib/cookieConsent";
+import {
+  getCookieConsentRaw,
+  parseCookieConsent,
+  saveCookieConsent,
+  subscribeCookieConsentChange,
+} from "@/lib/cookieConsent";
 
 export function CookieBanner() {
   const [showDetails, setShowDetails] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [editingSavedConsent, setEditingSavedConsent] = useState(false);
   const rawConsent = useSyncExternalStore(subscribeCookieConsentChange, getCookieConsentRaw, () => "server");
   const hasConsent = Boolean(rawConsent);
 
+  function closeSettings() {
+    setEditingSavedConsent(false);
+    setShowDetails(false);
+  }
+
+  function openSettings() {
+    const consent = parseCookieConsent(rawConsent);
+    setAnalytics(consent?.analytics === true);
+    setMarketing(consent?.marketing === true);
+    setShowDetails(true);
+    setEditingSavedConsent(true);
+  }
+
   function acceptSelection() {
     saveCookieConsent({ analytics, marketing });
+    closeSettings();
   }
 
   function acceptNecessaryOnly() {
     saveCookieConsent({ analytics: false, marketing: false });
+    closeSettings();
   }
 
   function acceptAll() {
     saveCookieConsent({ analytics: true, marketing: true });
+    closeSettings();
   }
 
-  if (hasConsent) return null;
+  if (hasConsent && !editingSavedConsent) {
+    return (
+      <button
+        type="button"
+        onClick={openSettings}
+        className="fixed bottom-20 left-3 z-40 min-h-10 rounded-full border border-slate-300 bg-white/95 px-4 py-2 text-xs font-bold text-slate-700 shadow-lg shadow-slate-950/10 backdrop-blur transition hover:border-brand hover:text-brand focus:outline-none focus:ring-4 focus:ring-brand/20 md:bottom-3"
+      >
+        Cookie-Einstellungen
+      </button>
+    );
+  }
 
   return (
     <div
@@ -54,7 +86,7 @@ export function CookieBanner() {
               {[
                 "Auswahl erforderlich, bevor es weitergeht",
                 "Google Ads Conversion-Messung nur mit Zustimmung",
-                "Auswahl jederzeit im Browser löschbar",
+                "Auswahl jederzeit über Cookie-Einstellungen änderbar",
               ].map((item) => (
                 <div key={item} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-bold leading-5 text-slate-800">
                   {item}
@@ -140,6 +172,15 @@ export function CookieBanner() {
               >
                 Nur notwendige Cookies
               </button>
+              {editingSavedConsent ? (
+                <button
+                  type="button"
+                  onClick={closeSettings}
+                  className="min-h-10 px-4 py-2 text-xs font-bold text-slate-600 underline underline-offset-4 transition hover:text-brand"
+                >
+                  Ohne Änderungen schließen
+                </button>
+              ) : null}
             </div>
             <Link href="/datenschutz" className="mt-4 block text-center text-xs font-bold text-slate-500 underline">
               Datenschutzhinweise öffnen

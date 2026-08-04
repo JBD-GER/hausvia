@@ -34,6 +34,13 @@ type OfferRow = {
 
 function estimateText(estimate: Record<string, unknown> | null) {
   if (!estimate) return "-";
+  if (estimate.pricingModel === "winter-season-plus-deployment") {
+    const monthlyBase = Number(estimate.monthlyBaseGross ?? 0);
+    const deployment = Number(estimate.deploymentGross ?? 0);
+    if (monthlyBase > 0 && deployment > 0) {
+      return `${formatEuro(monthlyBase)} Grundbetrag / Monat + ${formatEuro(deployment)} / Einsatz`;
+    }
+  }
   const lower = typeof estimate.lower === "number" ? estimate.lower : Number(estimate.lower ?? 0);
   const upper = typeof estimate.upper === "number" ? estimate.upper : Number(estimate.upper ?? 0);
   if (lower > 0 && upper > 0) return `${formatEuro(lower)} bis ${formatEuro(upper)} / Monat`;

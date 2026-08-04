@@ -19,7 +19,7 @@ const manualExample = {
 };
 
 test("verwendet ein regional kalibriertes und degressives Preisraster", () => {
-  assert.equal(winterPricingConfig.modelVersion, "2026-08-hannover-degressive-v2");
+  assert.equal(winterPricingConfig.modelVersion, "2026-08-hannover-degressive-v3");
   assert.equal(winterPricingConfig.referenceSource, "Regionaler Marktvergleich Hannover");
   assert.equal(winterPricingConfig.referenceUpdatedAt, "2026-08-04");
   assert.deepEqual(winterPricingConfig.monthlyBase, {
@@ -41,27 +41,28 @@ test("verwendet ein regional kalibriertes und degressives Preisraster", () => {
   });
   assert.equal(winterPricingConfig.flatRateIncludedDeployments, 10);
   assert.equal(winterPricingConfig.flatRateDeploymentDiscountPercent, 10);
+  assert.equal(winterPricingConfig.generalPriceAdjustmentPercent, 10);
 });
 
 test("berechnet 100 m² Handfläche inklusive Einsatzstart und Flächenleistung", () => {
   const estimate = calculateWinterPrice(manualExample);
 
-  assert.equal(estimate.monthlyBaseGross, 70);
-  assert.equal(estimate.seasonBaseGross, 350);
-  assert.equal(estimate.deploymentGross, 79);
+  assert.equal(estimate.monthlyBaseGross, 77);
+  assert.equal(estimate.seasonBaseGross, 385);
+  assert.equal(estimate.deploymentGross, 86.9);
   assert.deepEqual(estimate.pricingOptions, {
     flex: {
-      monthlyBaseGross: 70,
-      seasonBaseGross: 350,
-      deploymentGross: 79,
+      monthlyBaseGross: 77,
+      seasonBaseGross: 385,
+      deploymentGross: 86.9,
     },
     plan: {
       includedDeployments: 10,
       deploymentDiscountPercent: 10,
-      discountedDeploymentGross: 71.1,
-      monthlyGross: 212.2,
-      seasonGross: 1_061,
-      additionalDeploymentGross: 71.1,
+      discountedDeploymentGross: 78.21,
+      monthlyGross: 233.42,
+      seasonGross: 1_167.1,
+      additionalDeploymentGross: 78.21,
     },
   });
   assert.deepEqual(estimate.deploymentBreakdown, {
@@ -69,25 +70,25 @@ test("berechnet 100 m² Handfläche inklusive Einsatzstart und Flächenleistung"
     appliedSurfaceProfile: "manual",
     manualShare: 1,
     machineShare: 0,
-    mobilizationGross: 29,
-    areaServiceGross: 50,
+    mobilizationGross: 31.9,
+    areaServiceGross: 55,
     minimumAdjustmentGross: 0,
-    areaServiceRateGrossPerSquareMeter: 0.5,
-    standardDeploymentGross: 79,
+    areaServiceRateGrossPerSquareMeter: 0.55,
+    standardDeploymentGross: 86.9,
     readinessMultiplier: 1,
     readinessSurchargePercent: 0,
     readinessSurchargeGross: 0,
-    effectiveDeploymentRateGrossPerSquareMeter: 0.79,
+    effectiveDeploymentRateGrossPerSquareMeter: 0.869,
   });
 });
 
 test("weist den Mindestansatz für sehr kleine Flächen transparent aus", () => {
   const estimate = calculateWinterPrice({ ...manualExample, area: 30 });
 
-  assert.equal(estimate.deploymentGross, 49);
-  assert.equal(estimate.deploymentBreakdown.mobilizationGross, 29);
-  assert.equal(estimate.deploymentBreakdown.areaServiceGross, 15);
-  assert.equal(estimate.deploymentBreakdown.minimumAdjustmentGross, 5);
+  assert.equal(estimate.deploymentGross, 53.9);
+  assert.equal(estimate.deploymentBreakdown.mobilizationGross, 31.9);
+  assert.equal(estimate.deploymentBreakdown.areaServiceGross, 16.5);
+  assert.equal(estimate.deploymentBreakdown.minimumAdjustmentGross, 5.5);
   assert.equal(
     estimate.deploymentBreakdown.mobilizationGross +
       estimate.deploymentBreakdown.areaServiceGross +
@@ -112,13 +113,13 @@ test("staffelt große maschinelle Flächen statt sie linear hochzurechnen", () =
     readiness: "standard",
   });
 
-  assert.equal(at500.deploymentGross, 169);
-  assert.equal(at500.deploymentBreakdown.areaServiceGross, 140);
-  assert.equal(at500.pricingOptions.plan.seasonGross, 2_071);
-  assert.equal(at844.deploymentGross, 220.6);
-  assert.equal(at844.deploymentBreakdown.areaServiceGross, 191.6);
-  assert.equal(at844.pricingOptions.plan.seasonGross, 2_710.4);
-  assert.ok(at844.deploymentBreakdown.effectiveDeploymentRateGrossPerSquareMeter < 0.27);
+  assert.equal(at500.deploymentGross, 185.9);
+  assert.equal(at500.deploymentBreakdown.areaServiceGross, 154);
+  assert.equal(at500.pricingOptions.plan.seasonGross, 2_278.1);
+  assert.equal(at844.deploymentGross, 242.66);
+  assert.equal(at844.deploymentBreakdown.areaServiceGross, 210.76);
+  assert.equal(at844.pricingOptions.plan.seasonGross, 2_981.4);
+  assert.ok(at844.deploymentBreakdown.effectiveDeploymentRateGrossPerSquareMeter < 0.29);
 });
 
 test("gewichtet Mischflächen kontinuierlich Richtung maschineller Bearbeitung", () => {
@@ -132,8 +133,8 @@ test("gewichtet Mischflächen kontinuierlich Richtung maschineller Bearbeitung",
 
   assert.equal(estimate.deploymentBreakdown.manualShare, 0.8);
   assert.equal(estimate.deploymentBreakdown.machineShare, 0.2);
-  assert.equal(estimate.deploymentBreakdown.areaServiceGross, 84.4);
-  assert.equal(estimate.deploymentGross, 113.4);
+  assert.equal(estimate.deploymentBreakdown.areaServiceGross, 92.84);
+  assert.equal(estimate.deploymentGross, 124.74);
 });
 
 test("setzt erschwerte Ausführung als Handprofil an", () => {
@@ -153,7 +154,7 @@ test("setzt erschwerte Ausführung als Handprofil an", () => {
   });
 
   assert.equal(difficult.deploymentBreakdown.appliedSurfaceProfile, "manual");
-  assert.equal(difficult.deploymentGross, 206);
+  assert.equal(difficult.deploymentGross, 226.6);
   assert.equal(difficult.deploymentGross, manual.deploymentGross);
 });
 
@@ -163,20 +164,20 @@ test("verwendet im Standardmodell bei gleicher Fläche dieselben Preise je Objek
   );
 
   for (const estimate of estimates) {
-    assert.equal(estimate.monthlyBaseGross, 70);
-    assert.equal(estimate.deploymentGross, 79);
+    assert.equal(estimate.monthlyBaseGross, 77);
+    assert.equal(estimate.deploymentGross, 86.9);
   }
 });
 
 test("staffelt den monatlichen Grundbetrag nach der Fläche", () => {
   const cases = [
-    { area: 10, monthly: 70 },
-    { area: 100, monthly: 70 },
-    { area: 150, monthly: 75 },
-    { area: 200, monthly: 80 },
-    { area: 275, monthly: 90 },
-    { area: 500, monthly: 110 },
-    { area: 1_000, monthly: 160 },
+    { area: 10, monthly: 77 },
+    { area: 100, monthly: 77 },
+    { area: 150, monthly: 82.5 },
+    { area: 200, monthly: 88 },
+    { area: 275, monthly: 99 },
+    { area: 500, monthly: 121 },
+    { area: 1_000, monthly: 176 },
   ];
 
   for (const { area, monthly } of cases) {
@@ -204,14 +205,17 @@ test("reduziert jeden pauschalen Einsatz einschließlich weiterer Einsätze um z
   const plan = estimate.pricingOptions.plan;
 
   assert.equal(plan.deploymentDiscountPercent, 10);
-  assert.equal(plan.discountedDeploymentGross, 152.1);
-  assert.equal(plan.additionalDeploymentGross, 152.1);
-  assert.equal(plan.seasonGross, estimate.seasonBaseGross + 10 * 152.1);
-  assert.equal(winterSeasonTotal(estimate, 15, "plan"), plan.seasonGross + 5 * 152.1);
+  assert.equal(plan.discountedDeploymentGross, 167.31);
+  assert.equal(plan.additionalDeploymentGross, 167.31);
+  assert.equal(plan.seasonGross, Math.round((estimate.seasonBaseGross + 10 * 167.31) * 100) / 100);
+  assert.equal(
+    winterSeasonTotal(estimate, 15, "plan"),
+    Math.round((plan.seasonGross + 5 * 167.31) * 100) / 100,
+  );
   assert.ok(winterSeasonTotal(estimate, 10, "plan") < winterSeasonTotal(estimate, 10, "flex"));
 });
 
-test("berechnet den 24/7 Gewerbe-Service mit 20 Prozent auf Grund- und Einsatzpreis", () => {
+test("berechnet den 24/7 Gewerbe-Service mit 35 Prozent auf Grund- und Einsatzpreis", () => {
   const standard = calculateWinterPrice({
     objectType: "commercial",
     area: 500,
@@ -227,12 +231,41 @@ test("berechnet den 24/7 Gewerbe-Service mit 20 Prozent auf Grund- und Einsatzpr
     readiness: "commercial24h",
   });
 
-  assert.equal(aroundTheClock.monthlyBaseGross, standard.monthlyBaseGross * 1.2);
-  assert.equal(aroundTheClock.deploymentGross, Math.round(standard.deploymentGross * 1.2 * 100) / 100);
-  assert.equal(aroundTheClock.readinessSurchargePercent, 20);
-  assert.equal(aroundTheClock.baseBreakdown.readinessSurchargeGross, 22);
-  assert.equal(aroundTheClock.deploymentBreakdown.readinessSurchargeGross, 33.8);
-  assert.equal(aroundTheClock.pricingOptions.plan.discountedDeploymentGross, 182.52);
+  assert.equal(
+    aroundTheClock.monthlyBaseGross,
+    Math.round(standard.monthlyBaseGross * 1.35 * 100) / 100,
+  );
+  assert.equal(aroundTheClock.deploymentGross, Math.round(standard.deploymentGross * 1.35 * 100) / 100);
+  assert.equal(aroundTheClock.readinessSurchargePercent, 35);
+  assert.equal(aroundTheClock.baseBreakdown.readinessSurchargeGross, 42.35);
+  assert.equal(aroundTheClock.deploymentBreakdown.readinessSurchargeGross, 65.07);
+  assert.equal(aroundTheClock.pricingOptions.plan.discountedDeploymentGross, 225.87);
+});
+
+test("weist Sonn- und Feiertage sowie Frühjahrskehrung als optionale Zusatzleistungen aus", () => {
+  const estimate = calculateWinterPrice({ ...manualExample, area: 100 });
+
+  assert.deepEqual(estimate.additionalServices, {
+    sundayHoliday: {
+      surchargePercent: 50,
+      flexSurchargeGrossPerDeployment: 43.45,
+      planSurchargeGrossPerDeployment: 39.1,
+      included: false,
+    },
+    springCleaning: {
+      grossPerSquareMeter: 1.5,
+      estimatedGross: 150,
+      included: false,
+    },
+  });
+  assert.equal(
+    Math.round(
+      (estimate.deploymentGross +
+        estimate.additionalServices.sundayHoliday.flexSurchargeGrossPerDeployment) *
+        100,
+    ) / 100,
+    130.35,
+  );
 });
 
 test("beschränkt den 24/7 Gewerbe-Service serverseitig auf Gewerbeobjekte", () => {
@@ -263,14 +296,14 @@ test("weist die feste Vertragslaufzeit November bis März aus", () => {
 test("berechnet Saisonbeispiele für variable und pauschale Abrechnung", () => {
   const estimate = calculateWinterPrice(manualExample);
 
-  assert.equal(winterSeasonTotal(estimate, 0), 350);
-  assert.equal(winterSeasonTotal(estimate, 5), 745);
-  assert.equal(winterSeasonTotal(estimate, 10), 1_140);
-  assert.equal(winterSeasonTotal(estimate, 15), 1_535);
+  assert.equal(winterSeasonTotal(estimate, 0), 385);
+  assert.equal(winterSeasonTotal(estimate, 5), 819.5);
+  assert.equal(winterSeasonTotal(estimate, 10), 1_254);
+  assert.equal(winterSeasonTotal(estimate, 15), 1_688.5);
 
-  assert.equal(winterSeasonTotal(estimate, 5, "plan"), 1_061);
-  assert.equal(winterSeasonTotal(estimate, 10, "plan"), 1_061);
-  assert.equal(winterSeasonTotal(estimate, 15, "plan"), 1_416.5);
+  assert.equal(winterSeasonTotal(estimate, 5, "plan"), 1_167.1);
+  assert.equal(winterSeasonTotal(estimate, 10, "plan"), 1_167.1);
+  assert.equal(winterSeasonTotal(estimate, 15, "plan"), 1_558.15);
 });
 
 test("bleibt über Profilwechsel, Bereitschaften und Objektarten monoton", () => {
@@ -316,7 +349,7 @@ test("bleibt an den automatischen Profilgrenzen ohne Preissturz", () => {
 
   assert.deepEqual(
     estimates.map((estimate) => estimate.deploymentGross),
-    [97.62, 98, 98.32, 146.9, 147, 147.22],
+    [107.38, 107.8, 108.16, 161.59, 161.7, 161.94],
   );
 });
 
@@ -331,6 +364,7 @@ test("hält alle Einsatzbestandteile centgenau zum Gesamtpreis konsistent", () =
     });
     const { mobilizationGross, areaServiceGross, minimumAdjustmentGross } = estimate.deploymentBreakdown;
 
+    assert.ok(minimumAdjustmentGross >= 0, `Negativer Mindestansatz bei ${area} m²`);
     assert.equal(
       Math.round((mobilizationGross + areaServiceGross + minimumAdjustmentGross) * 100) / 100,
       estimate.deploymentGross,
@@ -452,8 +486,8 @@ test("normalisiert Dezimalflächen vor der Tarifberechnung", () => {
 test("hält die Netto-Saisonsumme konsistent mit fünf Monatsbeträgen", () => {
   const estimate = calculateWinterPrice(manualExample);
 
-  assert.equal(estimate.monthlyBaseNet, 58.82);
-  assert.equal(estimate.seasonBaseNet, 294.1);
-  assert.equal(estimate.deploymentNet, 66.39);
+  assert.equal(estimate.monthlyBaseNet, 64.71);
+  assert.equal(estimate.seasonBaseNet, 323.55);
+  assert.equal(estimate.deploymentNet, 73.03);
   assert.equal(estimate.seasonBaseNet, Math.round(estimate.monthlyBaseNet * 5 * 100) / 100);
 });
