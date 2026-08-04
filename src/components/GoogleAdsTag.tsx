@@ -7,6 +7,8 @@ import { getCookieConsentRaw, parseCookieConsent, subscribeCookieConsentChange }
 const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "AW-18131829931";
 const leadConversionLabel =
   process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL || "p6rgCLT7yr0cEKuJ98VD";
+const winterdienstConversionLabel =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_WINTERDIENST_CONVERSION_LABEL || "VMaTCOa13tscEKuJ98VD";
 
 declare global {
   interface Window {
@@ -52,5 +54,6 @@ export function getGoogleAdsConfig() {
   return {
     googleAdsId,
     leadConversionLabel,
+    winterdienstConversionLabel,
   };
 }

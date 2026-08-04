@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
+import { WinterdienstConversionTracker } from "@/components/LeadConversionTracker";
 import type { WinterAddressSelection } from "@/components/WinterAddressSearch";
 import { loadGoogleGeocoding } from "@/lib/googleMapsClient";
 import type { WinterMapPoint } from "@/lib/winterMap";
@@ -246,6 +247,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
   const [emailDelivered, setEmailDelivered] = useState<boolean | null>(null);
   const [deliveryWarning, setDeliveryWarning] = useState("");
   const [confirmedEmail, setConfirmedEmail] = useState("");
+  const [confirmedSubmissionId, setConfirmedSubmissionId] = useState("");
   const [error, setError] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   const areaInputRef = useRef<HTMLInputElement>(null);
@@ -472,6 +474,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
         emailDelivered?: boolean;
         deliveryWarning?: string;
         estimate?: unknown;
+        submissionId?: string;
       } | null;
       if (!response.ok || !result?.ok) {
         throw new Error(result?.message || "Die Preiseinschätzung konnte gerade nicht versendet werden.");
@@ -485,6 +488,11 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
       setEmailDelivered(result.emailDelivered !== false);
       setDeliveryWarning(result.deliveryWarning || "");
       setConfirmedEmail(email);
+      setConfirmedSubmissionId(
+        typeof result.submissionId === "string" && result.submissionId
+          ? result.submissionId
+          : submissionIdRef.current,
+      );
       setConfirmedEstimate(serverEstimate);
       goToStep(4);
     } catch (caughtError) {
@@ -1024,6 +1032,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
 
         {step === 4 && confirmedEstimate ? (
           <div className="bg-gradient-to-b from-brand-soft/60 to-white p-5 sm:p-8 lg:p-10">
+            <WinterdienstConversionTracker submissionId={confirmedSubmissionId} />
             <div className="mx-auto max-w-5xl">
               <div className="flex items-center gap-2 text-brand">
                 <CheckCircle2 aria-hidden="true" className="h-5 w-5 text-emerald-600" />
@@ -1237,6 +1246,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                     setEmailDelivered(null);
                     setDeliveryWarning("");
                     setConfirmedEmail("");
+                    setConfirmedSubmissionId("");
                     goToStep(2);
                   }}
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-brand underline decoration-brand/30 underline-offset-4"
