@@ -4,7 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/supabase/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { siteUrl } from "@/lib/supabase/config";
+import {
+  latestInvitationIdForEmail,
+  revokeInvitationById,
+  sendInvitationById,
+} from "@/lib/invitationLifecycle";
+import {
+  isValidInvitationEmail,
+  normalizeInvitationEmail,
+} from "@/lib/invitations";
 import {
   calculateTotals,
   createDocumentNumber,
@@ -19,7 +27,19 @@ import {
 import { sendPortalDocumentEmail } from "@/lib/mail";
 import { acceptOfferAndActivateCustomer } from "@/lib/offerAcceptance";
 import { getInvoiceDocument, getOfferDocument } from "@/lib/portalDocuments";
-import type { AppRole, MaterialRequestStatus, ProjectStatus, ShiftStatus } from "@/lib/supabase/types";
+import {
+  canCancelInvoice,
+  canMarkInvoicePaid,
+  hasPartialStoredInvoiceOriginal,
+  hasStoredInvoiceOriginal,
+  invoicePdfSha256,
+  invoiceRecipientEmail,
+  isInvoiceContentImmutable,
+  normalizeInvoiceCancellationReason,
+  safeInvoicePdfFilename,
+  verifyInvoicePdfSha256,
+} from "@/lib/invoiceIntegrity";
+import type { MaterialRequestStatus, ProjectStatus, ShiftStatus } from "@/lib/supabase/types";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -32,6 +52,40 @@ function numberValue(formData: FormData, key: string) {
 function required(value: string, fallback = "/admin?error=missing") {
   if (!value) redirect(fallback);
   return value;
+}
+
+async function ensureInvoiceLifecycleAudit({
+  admin,
+  actorId,
+  action,
+  invoiceId,
+  metadata,
+}: {
+  admin: ReturnType<typeof createSupabaseAdminClient>;
+  actorId: string;
+  action: string;
+  invoiceId: string;
+  metadata: Record<string, unknown>;
+}) {
+  const { data: existingAudit, error: lookupError } = await admin
+    .from("audit_logs")
+    .select("id")
+    .eq("action", action)
+    .eq("entity_table", "invoices")
+    .eq("entity_id", invoiceId)
+    .limit(1)
+    .maybeSingle();
+  if (lookupError) return false;
+  if (existingAudit) return true;
+
+  const { error: insertError } = await admin.from("audit_logs").insert({
+    actor_id: actorId,
+    action,
+    entity_table: "invoices",
+    entity_id: invoiceId,
+    metadata,
+  });
+  return !insertError;
 }
 
 function list(formData: FormData, key: string) {
@@ -57,153 +111,154 @@ function lineItemsFromForm(formData: FormData) {
   );
 }
 
-function valueAsNumber(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") return parseDecimal(value);
-  return 0;
-}
-
-function valueAsStringList(value: unknown) {
-  return Array.isArray(value) ? value.map((item) => String(item ?? "").trim()).filter(Boolean) : [];
-}
-
-function billingModeForLeadFrequency(frequency: string) {
-  const normalized = frequency.toLowerCase();
-  if (normalized.includes("einmal")) return "one_time";
-  if (normalized.includes("quartal")) return "quarterly";
-  if (normalized.includes("jahr")) return "yearly";
-  if (
-    normalized.includes("monat") ||
-    normalized.includes("woche") ||
-    normalized.includes("täglich") ||
-    normalized.includes("werktäglich")
-  ) {
-    return "monthly";
-  }
-  return "custom";
-}
-
-function estimateGrossFromLead(estimate: unknown) {
-  if (!estimate || typeof estimate !== "object") return 0;
-  const record = estimate as Record<string, unknown>;
-  const lower = valueAsNumber(record.lower);
-  const upper = valueAsNumber(record.upper);
-  if (lower > 0 && upper > 0) return (lower + upper) / 2;
-  return lower || upper || valueAsNumber(record.estimatedMonthlyPrice);
-}
-
-async function invitePortalUser({
-  email,
-  fullName,
-  role,
-  invitedBy,
-}: {
-  email: string;
-  fullName: string;
-  role: AppRole;
-  invitedBy: string;
-}) {
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
-    data: { role, full_name: fullName },
-  });
-
-  if (error || !data.user) {
-    throw new Error(error?.message || "Invite failed");
-  }
-
-  const userId = data.user.id;
-  await admin.from("user_profiles").upsert({
-    id: userId,
-    role,
-    email,
-    full_name: fullName,
-    status: "invited",
-    invited_by: invitedBy,
-  });
-  await admin.from("invitations").insert({
-    email,
-    role,
-    profile_id: userId,
-    status: "pending",
-    invited_by: invitedBy,
-    sent_at: new Date().toISOString(),
-  });
-
-  return userId;
-}
-
 export async function inviteEmployeeAction(formData: FormData) {
   const profile = await requireProfile(["admin"]);
-  const email = required(text(formData, "email"), "/admin/employees?error=email");
+  const email = normalizeInvitationEmail(required(text(formData, "email"), "/admin/employees?error=email"));
+  if (!isValidInvitationEmail(email)) redirect("/admin/employees?error=email");
   const fullName = required(text(formData, "fullName"), "/admin/employees?error=name");
   const phone = text(formData, "phone");
   const notes = text(formData, "notes");
+  const category = text(formData, "category") || "minijob";
   const admin = createSupabaseAdminClient();
 
-  const userId = await invitePortalUser({ email, fullName, role: "employee", invitedBy: profile.id });
-  await admin.from("employee_profiles").upsert({
-    user_id: userId,
-    full_name: fullName,
+  const { data: employee, error: employeeError } = await admin
+    .from("employee_profiles")
+    .insert({
+      user_id: null,
+      full_name: fullName,
+      email,
+      phone,
+      category,
+      status: "invited",
+      notes,
+    })
+    .select("id")
+    .single();
+  if (employeeError || !employee) redirect("/admin/employees?error=create");
+
+  const { error: invitationError } = await admin.from("invitations").insert({
     email,
-    phone,
-    status: "invited",
-    notes,
+    role: "employee",
+    category,
+    employee_id: employee.id,
+    status: "draft",
+    invited_by: profile.id,
   });
+  if (invitationError) redirect("/admin/employees?error=invitation");
 
   revalidatePath("/admin/employees");
-  redirect("/admin/employees?status=invited");
+  redirect("/admin/employees?status=draft");
 }
 
 export async function inviteCustomerAction(formData: FormData) {
   const profile = await requireProfile(["admin"]);
-  const email = required(text(formData, "email"), "/admin/customers?error=email");
+  const email = normalizeInvitationEmail(required(text(formData, "email"), "/admin/customers?error=email"));
+  if (!isValidInvitationEmail(email)) redirect("/admin/customers?error=email");
   const fullName = required(text(formData, "contactName"), "/admin/customers?error=name");
   const companyName = text(formData, "companyName");
   const phone = text(formData, "phone");
   const billingAddress = text(formData, "billingAddress");
   const customerId = text(formData, "customerId");
+  const category = text(formData, "category") || "private";
   const admin = createSupabaseAdminClient();
 
-  const userId = await invitePortalUser({ email, fullName, role: "customer", invitedBy: profile.id });
-
+  let linkedCustomerId: string;
   if (customerId) {
-    await admin
+    const { data: customer, error } = await admin
       .from("customers")
       .update({
-        portal_user_id: userId,
+        contact_name: fullName,
+        company_name: companyName,
+        category,
+        email,
+        phone,
+        billing_address: billingAddress,
+      })
+      .eq("id", customerId)
+      .select("id")
+      .single();
+    if (error || !customer) redirect("/admin/customers?error=create");
+    linkedCustomerId = customer.id;
+  } else {
+    const { data: customer, error } = await admin
+      .from("customers")
+      .insert({
+        portal_user_id: null,
+        status: "inactive",
+        category,
         contact_name: fullName,
         company_name: companyName,
         email,
         phone,
         billing_address: billingAddress,
       })
-      .eq("id", customerId);
-  } else {
-    await admin.from("customers").insert({
-      portal_user_id: userId,
-      status: "lead",
-      contact_name: fullName,
-      company_name: companyName,
-      email,
-      phone,
-      billing_address: billingAddress,
-    });
+      .select("id")
+      .single();
+    if (error || !customer) redirect("/admin/customers?error=create");
+    linkedCustomerId = customer.id;
   }
 
+  const { error: invitationError } = await admin.from("invitations").insert({
+    email,
+    role: "customer",
+    category,
+    customer_id: linkedCustomerId,
+    status: "draft",
+    invited_by: profile.id,
+  });
+  if (invitationError) redirect("/admin/customers?error=invitation");
+
   revalidatePath("/admin/customers");
-  redirect("/admin/customers?status=invited");
+  redirect("/admin/customers?status=draft");
+}
+
+async function invitationIdFromForm(formData: FormData) {
+  const invitationId = text(formData, "invitationId");
+  if (invitationId) return invitationId;
+  return latestInvitationIdForEmail(text(formData, "email"), text(formData, "role"));
+}
+
+async function sendInvitationFromForm(formData: FormData) {
+  const profile = await requireProfile(["admin"]);
+  const invitationId = await invitationIdFromForm(formData);
+  if (!invitationId) redirect("/admin/invitations?error=invitation");
+
+  try {
+    await sendInvitationById(invitationId, profile.id);
+  } catch {
+    redirect("/admin/invitations?error=send");
+  }
+
+  revalidatePath("/admin/invitations");
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin/employees");
+  redirect("/admin/invitations?status=sent");
+}
+
+export async function sendInvitationAction(formData: FormData) {
+  return sendInvitationFromForm(formData);
 }
 
 export async function resendInvitationAction(formData: FormData) {
-  const profile = await requireProfile(["admin"]);
-  const email = required(text(formData, "email"));
-  const fullName = text(formData, "fullName") || email;
-  const role = (text(formData, "role") || "customer") as AppRole;
+  return sendInvitationFromForm(formData);
+}
 
-  await invitePortalUser({ email, fullName, role, invitedBy: profile.id });
+export async function renewInvitationAction(formData: FormData) {
+  return sendInvitationFromForm(formData);
+}
+
+export async function revokeInvitationAction(formData: FormData) {
+  const profile = await requireProfile(["admin"]);
+  const invitationId = required(text(formData, "invitationId"), "/admin/invitations?error=invitation");
+  try {
+    await revokeInvitationById(invitationId, profile.id);
+  } catch {
+    redirect("/admin/invitations?error=revoke");
+  }
   revalidatePath("/admin/invitations");
+  revalidatePath("/admin/customers");
+  revalidatePath("/admin/employees");
+  redirect("/admin/invitations?status=revoked");
 }
 
 export async function deactivateUserAction(formData: FormData) {
@@ -355,69 +410,9 @@ export async function createOfferFromLeadAction(formData: FormData) {
     redirect(`/admin/offers/${existingOffers[0].id}`);
   }
 
-  const requestedServices = valueAsStringList(lead.requested_services).length
-    ? valueAsStringList(lead.requested_services)
-    : valueAsStringList((lead.payload as Record<string, unknown> | null)?.selectedServiceLabels);
-  const services = requestedServices.length ? requestedServices : ["Hausmeisterservice / Objektbetreuung"];
-  const frequency = String(lead.frequency || "nach Vereinbarung");
-  const billingMode = billingModeForLeadFrequency(frequency);
-  const grossTotal = estimateGrossFromLead(lead.estimate);
-  const netTotal = grossTotal ? grossTotal / 1.19 : 0;
-  const taxTotal = grossTotal - netTotal;
-  const unitNet = services.length ? netTotal / services.length : netTotal;
-  const unit = billingMode === "one_time" ? "Pauschale" : "Monat";
-
-  const { data: offer } = await admin
-    .from("offers")
-    .insert({
-      customer_id: customerId,
-      project_id: null,
-      status: "draft",
-      offer_number: createDocumentNumber("ANG", lead.id),
-      title: `Angebot für ${lead.object_type || "Hausmeisterservice und Objektbetreuung"}`,
-      intro:
-        "Vielen Dank für Ihre Anfrage. Auf Grundlage der übermittelten Objekt- und Leistungsdaten haben wir folgendes Angebot für die Betreuung vorbereitet.",
-      closing_text:
-        "Nach Annahme des Angebots stimmen wir Objektzugang, Starttermin, feste Ansprechpartner und die operative Übergabe gemeinsam ab.",
-      net_total: netTotal,
-      tax_rate: 19,
-      tax_total: taxTotal,
-      gross_total: grossTotal,
-      billing_mode: billingMode,
-      billing_interval_label: frequency,
-      billing_in_advance: billingMode !== "one_time",
-      payment_due_days_before_month_end: 15,
-      admin_notes: [
-        "Aus Lead/Funnel-Anfrage erstellt.",
-        lead.message ? `Kundennachricht: ${lead.message}` : "",
-        lead.desired_start_date ? `Gewünschter Start: ${lead.desired_start_date}` : "",
-        lead.preferred_callback_time ? `Rückrufzeit: ${lead.preferred_callback_time}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    })
-    .select("id")
-    .single();
-
-  if (offer?.id) {
-    await admin.from("offer_items").insert(
-      services.map((service, index) => ({
-        offer_id: offer.id,
-        title: service,
-        description: `${frequency} · aus Funnel-Anfrage vorbereitet · Objekt: ${lead.object_address || "Adresse prüfen"}`,
-        quantity: 1,
-        unit,
-        unit_net: unitNet,
-        total_net: unitNet,
-        sort_order: index,
-      })),
-    );
-    await admin.from("leads").update({ status: "qualified" }).eq("id", lead.id);
-  }
-
+  await admin.from("leads").update({ status: "qualified" }).eq("id", lead.id);
   revalidatePath("/admin/leads");
-  revalidatePath("/admin/offers");
-  redirect(offer?.id ? `/admin/offers/${offer.id}?status=from-lead` : "/admin/leads?error=offer");
+  redirect(`/admin/offers/new?customerId=${encodeURIComponent(customerId)}&leadId=${encodeURIComponent(lead.id)}`);
 }
 
 export async function createOfferAction(formData: FormData) {
@@ -653,6 +648,23 @@ export async function saveInvoiceAction(formData: FormData) {
 
   const totals = calculateTotals(items);
   const admin = createSupabaseAdminClient();
+
+  if (invoiceId) {
+    const { data: existingInvoice, error: existingInvoiceError } = await admin
+      .from("invoices")
+      .select(
+        "id,status,invoice_kind,invoice_cycle_id,billing_month,immutable_at,original_pdf_bucket,original_pdf_path",
+      )
+      .eq("id", invoiceId)
+      .maybeSingle();
+    if (existingInvoiceError || !existingInvoice) {
+      redirect(`/admin/invoices/${invoiceId}?error=load`);
+    }
+    if (isInvoiceContentImmutable(existingInvoice)) {
+      redirect(`/admin/invoices/${invoiceId}?error=immutable`);
+    }
+  }
+
   const payload = {
     customer_id: customerId,
     project_id: projectId,
@@ -705,35 +717,162 @@ export async function sendInvoiceAction(formData: FormData) {
   const invoiceId = required(text(formData, "invoiceId"));
   const admin = createSupabaseAdminClient();
 
-  const { data: invoice } = await admin.from("invoices").select("invoice_number").eq("id", invoiceId).single();
-  if (!invoice?.invoice_number) {
-    await admin.from("invoices").update({ invoice_number: createDocumentNumber("RE", invoiceId) }).eq("id", invoiceId);
+  const { data: invoice, error: invoiceError } = await admin
+    .from("invoices")
+    .select(
+      "id,status,invoice_number,invoice_kind,invoice_cycle_id,billing_month,immutable_at,sent_at,processing_token,recipient_snapshot,original_pdf_bucket,original_pdf_path,original_pdf_sha256",
+    )
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (invoiceError || !invoice) {
+    redirect(`/admin/invoices/${invoiceId}?error=load`);
   }
 
-  const document = await getInvoiceDocument(admin, invoiceId);
-  if (!document.customerEmail) redirect(`/admin/invoices/${invoiceId}?error=email`);
+  if (hasPartialStoredInvoiceOriginal(invoice)) {
+    redirect(`/admin/invoices/${invoiceId}?error=integrity`);
+  }
 
-  await sendPortalDocumentEmail({
-    to: document.customerEmail,
-    subject: `Ihre Hausvia Rechnung ${document.number}`,
-    headline: "Ihre Hausvia Rechnung ist erstellt",
-    intro: "Ihre Rechnung wurde erstellt. Das Dokument befindet sich im Anhang und ist zusätzlich in Ihrem Hausvia Portal sichtbar.",
-    note: "Bitte beachten Sie das Fälligkeitsdatum und den angegebenen Leistungszeitraum. Bei Rückfragen melden Sie sich direkt bei Hausvia.",
-    attachment: {
-      filename: document.filename,
-      content: document.pdf.toString("base64"),
-    },
-  });
+  if (hasStoredInvoiceOriginal(invoice)) {
+    if (invoice.status === "canceled") {
+      redirect(`/admin/invoices/${invoiceId}?error=canceled`);
+    }
+    if (invoice.processing_token) {
+      redirect(`/admin/invoices/${invoiceId}?error=processing`);
+    }
+    if (!invoice.invoice_number) {
+      redirect(`/admin/invoices/${invoiceId}?error=number`);
+    }
 
-  await admin
+    const recipientEmail = invoiceRecipientEmail(invoice.recipient_snapshot);
+    if (!recipientEmail) {
+      redirect(`/admin/invoices/${invoiceId}?error=email`);
+    }
+
+    const { data: storedPdf, error: storedPdfError } = await admin.storage
+      .from(invoice.original_pdf_bucket!)
+      .download(invoice.original_pdf_path!);
+    if (storedPdfError || !storedPdf) {
+      redirect(`/admin/invoices/${invoiceId}?error=original`);
+    }
+    let pdf: Buffer;
+    try {
+      pdf = Buffer.from(await storedPdf.arrayBuffer());
+    } catch {
+      redirect(`/admin/invoices/${invoiceId}?error=original`);
+    }
+    if (!verifyInvoicePdfSha256(pdf, invoice.original_pdf_sha256)) {
+      redirect(`/admin/invoices/${invoiceId}?error=integrity`);
+    }
+
+    try {
+      await sendPortalDocumentEmail({
+        to: recipientEmail,
+        idempotencyKey:
+          invoice.invoice_kind === "regular" && !invoice.sent_at
+            ? `hausvia-monthly-invoice-${invoice.id}`
+            : `hausvia-admin-invoice-resend-${invoice.id}-${invoice.original_pdf_sha256}`,
+        subject: `Ihre Hausvia Rechnung ${invoice.invoice_number}`,
+        headline: `Rechnung ${invoice.invoice_number}`,
+        intro: "Ihre Rechnung befindet sich als unverändertes Original im Anhang und ist zusätzlich in Ihrem Hausvia Portal sichtbar.",
+        note: "Bitte beachten Sie das Fälligkeitsdatum und den angegebenen Leistungszeitraum. Bei Rückfragen melden Sie sich direkt bei Hausvia.",
+        attachment: {
+          filename: safeInvoicePdfFilename(invoice.invoice_number),
+          content: pdf.toString("base64"),
+        },
+      });
+    } catch {
+      redirect(`/admin/invoices/${invoiceId}?error=mail`);
+    }
+
+    if (invoice.status === "released" || invoice.status === "draft") {
+      const { data: updatedInvoice, error: updateError } = await admin
+        .from("invoices")
+        .update({
+          status: "open",
+          sent_at: invoice.sent_at || new Date().toISOString(),
+        })
+        .eq("id", invoiceId)
+        .eq("status", invoice.status)
+        .is("processing_token", null)
+        .select("id")
+        .maybeSingle();
+      if (updateError || !updatedInvoice) {
+        redirect(`/admin/invoices/${invoiceId}?error=state`);
+      }
+    }
+
+    revalidatePath("/admin/invoices");
+    revalidatePath(`/admin/invoices/${invoiceId}`);
+    revalidatePath("/portal/invoices");
+    redirect(
+      `/admin/invoices/${invoiceId}?status=${invoice.sent_at ? "resent" : "sent"}`,
+    );
+  }
+
+  if (isInvoiceContentImmutable(invoice) || invoice.status !== "draft") {
+    redirect(`/admin/invoices/${invoiceId}?error=immutable`);
+  }
+
+  let invoiceNumber = invoice.invoice_number;
+  if (!invoiceNumber) {
+    invoiceNumber = createDocumentNumber("RE", invoiceId);
+    const { data: numberedInvoice, error: numberError } = await admin
+      .from("invoices")
+      .update({ invoice_number: invoiceNumber })
+      .eq("id", invoiceId)
+      .eq("status", "draft")
+      .is("immutable_at", null)
+      .select("id")
+      .maybeSingle();
+    if (numberError || !numberedInvoice) {
+      redirect(`/admin/invoices/${invoiceId}?error=number`);
+    }
+  }
+
+  let document: Awaited<ReturnType<typeof getInvoiceDocument>>;
+  try {
+    document = await getInvoiceDocument(admin, invoiceId);
+  } catch {
+    redirect(`/admin/invoices/${invoiceId}?error=document`);
+  }
+  if (!document.customerEmail) {
+    redirect(`/admin/invoices/${invoiceId}?error=email`);
+  }
+
+  try {
+    await sendPortalDocumentEmail({
+      to: document.customerEmail,
+      idempotencyKey: `hausvia-legacy-invoice-${invoiceId}-${invoicePdfSha256(document.pdf)}`,
+      subject: `Ihre Hausvia Rechnung ${document.number}`,
+      headline: "Ihre Hausvia Rechnung ist erstellt",
+      intro: "Ihre Rechnung wurde erstellt. Das Dokument befindet sich im Anhang und ist zusätzlich in Ihrem Hausvia Portal sichtbar.",
+      note: "Bitte beachten Sie das Fälligkeitsdatum und den angegebenen Leistungszeitraum. Bei Rückfragen melden Sie sich direkt bei Hausvia.",
+      attachment: {
+        filename: document.filename,
+        content: document.pdf.toString("base64"),
+      },
+    });
+  } catch {
+    redirect(`/admin/invoices/${invoiceId}?error=mail`);
+  }
+
+  const now = new Date().toISOString();
+  const { data: releasedInvoice, error: releaseError } = await admin
     .from("invoices")
     .update({
       status: "released",
-      released_at: new Date().toISOString(),
-      sent_at: new Date().toISOString(),
+      released_at: now,
+      sent_at: now,
       document_path: `generated://invoices/${invoiceId}.pdf`,
     })
-    .eq("id", invoiceId);
+    .eq("id", invoiceId)
+    .eq("status", "draft")
+    .is("immutable_at", null)
+    .select("id")
+    .maybeSingle();
+  if (releaseError || !releasedInvoice) {
+    redirect(`/admin/invoices/${invoiceId}?error=state`);
+  }
 
   revalidatePath("/admin/invoices");
   revalidatePath(`/admin/invoices/${invoiceId}`);
@@ -743,6 +882,160 @@ export async function sendInvoiceAction(formData: FormData) {
 
 export async function releaseInvoiceAction(formData: FormData) {
   await sendInvoiceAction(formData);
+}
+
+export async function markInvoicePaidAction(formData: FormData) {
+  const profile = await requireProfile(["admin"]);
+  const invoiceId = required(
+    text(formData, "invoiceId"),
+    "/admin/invoices?error=invoice",
+  );
+  const fallback = `/admin/invoices/${invoiceId}`;
+  const admin = createSupabaseAdminClient();
+  const { data: invoice, error: invoiceError } = await admin
+    .from("invoices")
+    .select("id,status,invoice_number,paid_at,processing_token")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (invoiceError || !invoice) redirect(`${fallback}?error=load`);
+  if (invoice.processing_token) redirect(`${fallback}?error=processing`);
+  if (invoice.status === "paid") {
+    const auditWritten = await ensureInvoiceLifecycleAudit({
+      admin,
+      actorId: profile.id,
+      action: "invoice.manually_marked_paid",
+      invoiceId,
+      metadata: {
+        invoice_number: invoice.invoice_number,
+        previous_status: "paid",
+        new_status: "paid",
+        paid_at: invoice.paid_at,
+        reconciled: true,
+      },
+    });
+    if (!auditWritten) redirect(`${fallback}?error=audit`);
+    redirect(`${fallback}?status=paid`);
+  }
+  if (!canMarkInvoicePaid(invoice.status)) {
+    redirect(`${fallback}?error=paid-transition`);
+  }
+
+  const paidAt = new Date().toISOString();
+  const { data: updatedInvoice, error: updateError } = await admin
+    .from("invoices")
+    .update({ status: "paid", paid_at: paidAt })
+    .eq("id", invoiceId)
+    .eq("status", invoice.status)
+    .is("processing_token", null)
+    .select("id")
+    .maybeSingle();
+  if (updateError || !updatedInvoice) {
+    redirect(`${fallback}?error=state`);
+  }
+
+  const auditWritten = await ensureInvoiceLifecycleAudit({
+    admin,
+    actorId: profile.id,
+    action: "invoice.manually_marked_paid",
+    invoiceId,
+    metadata: {
+      invoice_number: invoice.invoice_number,
+      previous_status: invoice.status,
+      new_status: "paid",
+      paid_at: paidAt,
+    },
+  });
+
+  revalidatePath("/admin/invoices");
+  revalidatePath(fallback);
+  revalidatePath("/portal/invoices");
+  if (!auditWritten) redirect(`${fallback}?error=audit`);
+  redirect(`${fallback}?status=paid`);
+}
+
+export async function cancelInvoiceAction(formData: FormData) {
+  const profile = await requireProfile(["admin"]);
+  const invoiceId = required(
+    text(formData, "invoiceId"),
+    "/admin/invoices?error=invoice",
+  );
+  const fallback = `/admin/invoices/${invoiceId}`;
+  const reason = normalizeInvoiceCancellationReason(
+    formData.get("cancellationReason"),
+  );
+  if (!reason) redirect(`${fallback}?error=cancel-reason`);
+
+  const admin = createSupabaseAdminClient();
+  const { data: invoice, error: invoiceError } = await admin
+    .from("invoices")
+    .select(
+      "id,status,invoice_number,canceled_at,cancellation_reason,processing_token",
+    )
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (invoiceError || !invoice) redirect(`${fallback}?error=load`);
+  if (invoice.processing_token) redirect(`${fallback}?error=processing`);
+  if (invoice.status === "canceled") {
+    if (invoice.cancellation_reason !== reason) {
+      redirect(`${fallback}?error=cancel-transition`);
+    }
+    const auditWritten = await ensureInvoiceLifecycleAudit({
+      admin,
+      actorId: profile.id,
+      action: "invoice.canceled",
+      invoiceId,
+      metadata: {
+        invoice_number: invoice.invoice_number,
+        previous_status: "canceled",
+        new_status: "canceled",
+        canceled_at: invoice.canceled_at,
+        reason,
+        reconciled: true,
+      },
+    });
+    if (!auditWritten) redirect(`${fallback}?error=audit`);
+    redirect(`${fallback}?status=canceled`);
+  }
+  if (!canCancelInvoice(invoice.status)) {
+    redirect(`${fallback}?error=cancel-transition`);
+  }
+
+  const canceledAt = new Date().toISOString();
+  const { data: canceledInvoice, error: updateError } = await admin
+    .from("invoices")
+    .update({
+      status: "canceled",
+      canceled_at: canceledAt,
+      cancellation_reason: reason,
+    })
+    .eq("id", invoiceId)
+    .eq("status", invoice.status)
+    .is("processing_token", null)
+    .select("id")
+    .maybeSingle();
+  if (updateError || !canceledInvoice) {
+    redirect(`${fallback}?error=state`);
+  }
+
+  const auditWritten = await ensureInvoiceLifecycleAudit({
+    admin,
+    actorId: profile.id,
+    action: "invoice.canceled",
+    invoiceId,
+    metadata: {
+      invoice_number: invoice.invoice_number,
+      previous_status: invoice.status,
+      new_status: "canceled",
+      canceled_at: canceledAt,
+      reason,
+    },
+  });
+
+  revalidatePath("/admin/invoices");
+  revalidatePath(fallback);
+  revalidatePath("/portal/invoices");
+  if (!auditWritten) redirect(`${fallback}?error=audit`);
+  redirect(`${fallback}?status=canceled`);
 }
 
 export async function createInvoiceFromOfferAction(formData: FormData) {

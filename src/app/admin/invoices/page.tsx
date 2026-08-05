@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { createInvoiceFromOfferAction, saveInvoiceAction } from "@/app/actions/admin";
 import { DocumentEditor } from "@/components/portal/DocumentEditor";
-import { EmptyState, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { PaginationNav } from "@/components/portal/PaginationNav";
+import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { asText, formatDate, formatEuro } from "@/lib/portal/format";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdminContext } from "@/lib/portal/access";
+import { paginateItems } from "@/lib/portal/listing";
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function queryValue(params: Awaited<SearchParams>, key: string) {
+  const value = params[key];
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
 
 function statusLabel(status: string) {
   if (status === "released") return "Erstellt";
@@ -15,10 +24,19 @@ function statusLabel(status: string) {
   return status;
 }
 
-export default async function AdminInvoicesPage() {
-  const supabase = await createSupabaseServerClient();
-  const [{ data: invoices }, { data: customers }, { data: projects }, { data: offers }] = await Promise.all([
-    supabase.from("invoices").select("id,status,title,invoice_number,gross_total,due_date").order("created_at", { ascending: false }),
+export default async function AdminInvoicesPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const search = queryValue(params, "q").trim().toLocaleLowerCase("de");
+  const statusFilter = queryValue(params, "invoiceStatus");
+  const sort = queryValue(params, "sort") || "newest";
+  const { admin: supabase } = await requireAdminContext();
+  const [
+    { data: invoices, error: invoicesError },
+    { data: customers, error: customersError },
+    { data: projects, error: projectsError },
+    { data: offers, error: offersError },
+  ] = await Promise.all([
+    supabase.from("invoices").select("id,status,title,invoice_number,gross_total,due_date,created_at,customers(company_name,contact_name,email)").order("created_at", { ascending: false }),
     supabase.from("customers").select("id,company_name,contact_name,email").order("created_at", { ascending: false }),
     supabase.from("projects").select("id,name,customer_id,object_address").order("created_at", { ascending: false }),
     supabase
@@ -27,6 +45,9 @@ export default async function AdminInvoicesPage() {
       .in("status", ["released", "accepted"])
       .order("created_at", { ascending: false }),
   ]);
+  if (invoicesError || customersError || projectsError || offersError) {
+    throw new Error("Die Rechnungsliste konnte nicht vollständig geladen werden.");
+  }
 
   const customerOptions =
     customers?.map((customer) => ({
@@ -39,6 +60,20 @@ export default async function AdminInvoicesPage() {
       label: asText(project.name || project.object_address),
       customerId: project.customer_id,
     })) ?? [];
+  const filteredInvoices = (invoices ?? []).filter((invoice) => {
+    const customer = Array.isArray(invoice.customers) ? invoice.customers[0] : invoice.customers;
+    const haystack = [invoice.title, invoice.invoice_number, customer?.company_name, customer?.contact_name, customer?.email]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase("de");
+    return (!search || haystack.includes(search)) && (!statusFilter || invoice.status === statusFilter);
+  }).sort((left, right) => {
+    if (sort === "number") return String(left.invoice_number || "").localeCompare(String(right.invoice_number || ""), "de");
+    if (sort === "amount-high") return Number(right.gross_total) - Number(left.gross_total);
+    if (sort === "oldest") return String(left.created_at).localeCompare(String(right.created_at));
+    return String(right.created_at).localeCompare(String(left.created_at));
+  });
+  const invoicePage = paginateItems(filteredInvoices, queryValue(params, "page"));
 
   return (
     <>
@@ -93,10 +128,19 @@ export default async function AdminInvoicesPage() {
             }}
           />
         </Panel>
-        <Panel title="Rechnungsliste">
-          {invoices?.length ? (
-            <div className="grid gap-3">
-              {invoices.map((invoice) => (
+        <Panel title="Rechnungen suchen und filtern">
+          <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Suche"><input name="q" defaultValue={queryValue(params, "q")} placeholder="Nummer, Titel, Kunde …" className={inputClass} /></Field>
+            <Field label="Status"><select name="invoiceStatus" defaultValue={statusFilter} className={inputClass}><option value="">Alle Status</option><option value="draft">Entwurf</option><option value="released">Erstellt</option><option value="open">Offen</option><option value="paid">Bezahlt</option><option value="overdue">Überfällig</option><option value="canceled">Storniert</option></select></Field>
+            <Field label="Sortierung"><select name="sort" defaultValue={sort} className={inputClass}><option value="newest">Neueste zuerst</option><option value="oldest">Älteste zuerst</option><option value="number">Rechnungsnummer</option><option value="amount-high">Höchster Betrag</option></select></Field>
+            <div className="flex items-end gap-2"><button className={buttonClass}>Anwenden</button><Link href="/admin/invoices" className="inline-flex min-h-11 items-center text-sm font-bold text-brand underline">Zurücksetzen</Link></div>
+          </form>
+        </Panel>
+        <Panel title={`Rechnungsliste (${filteredInvoices.length})`}>
+          {filteredInvoices.length ? (
+            <>
+              <div className="grid gap-3">
+              {invoicePage.items.map((invoice) => (
                 <article key={invoice.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -110,9 +154,14 @@ export default async function AdminInvoicesPage() {
                   </Link>
                 </article>
               ))}
-            </div>
+              </div>
+              <PaginationNav pathname="/admin/invoices" query={{ q: queryValue(params, "q"), invoiceStatus: statusFilter, sort }} page={invoicePage.page} totalPages={invoicePage.totalPages} totalItems={invoicePage.totalItems} />
+            </>
           ) : (
-            <EmptyState title="Keine Rechnungen" text="Rechnungsentwürfe und freigegebene Rechnungen erscheinen hier." />
+            <EmptyState
+              title={search || statusFilter ? "Keine Rechnungen gefunden" : "Noch keine Rechnungen"}
+              text={search || statusFilter ? "Passen Sie die Suche oder den Statusfilter an." : "Rechnungsentwürfe und freigegebene Rechnungen erscheinen hier."}
+            />
           )}
         </Panel>
       </div>

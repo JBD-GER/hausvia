@@ -10,7 +10,7 @@ export default async function CustomerCarePage() {
   const [{ data: projects }, { data: shifts }] = customer
     ? await Promise.all([
         supabase.from("projects").select("id,status,name,object_address,object_type,public_notes,project_tasks(title,interval_label,seasonal)").eq("customer_id", customer.id),
-        supabase.from("shifts").select("id,started_at,ended_at,net_minutes,notes,projects(name)").eq("customer_id", customer.id).eq("customer_visible", true).eq("status", "approved").order("started_at", { ascending: false }),
+        supabase.from("shifts").select("id,started_at,ended_at,net_minutes,projects(name)").eq("customer_id", customer.id).eq("customer_visible", true).eq("status", "approved").order("started_at", { ascending: false }),
       ])
     : [{ data: [] }, { data: [] }];
 
@@ -52,7 +52,6 @@ export default async function CustomerCarePage() {
                 <article key={shift.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <p className="font-extrabold text-slate-950">{asText(firstRelation(shift.projects)?.name)}</p>
                   <p className="mt-1 text-sm text-slate-650">{formatDateTime(shift.started_at)} · {shift.net_minutes} Minuten</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{asText(shift.notes)}</p>
                 </article>
               ))}
             </div>

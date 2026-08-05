@@ -65,6 +65,11 @@ export default async function LoginPage({
                 Dieser Zugang ist deaktiviert.
               </p>
             ) : null}
+            {params.status === "inactive" ? (
+              <p className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                Dieser Zugang wurde noch nicht über eine gültige Einladung aktiviert.
+              </p>
+            ) : null}
             {params.status === "password-updated" ? (
               <p className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
                 Das Passwort wurde aktualisiert. Sie können sich jetzt mit dem neuen Passwort einloggen.

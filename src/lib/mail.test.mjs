@@ -45,6 +45,7 @@ test("versendet Portal-Dokumente im zentralen Hausvia-Design mit Plaintext", asy
   const body = JSON.parse(String(request?.init?.body));
   assert.equal(body.to, "kunde@example.com");
   assert.match(body.html, /^<!doctype html>/);
+  assert.match(body.html, /https:\/\/www\.hausvia\.de\/hausvia-logo-email\.png/);
   assert.match(body.html, /background:#082b61/);
   assert.match(body.html, /Rechnung für &lt;Muster &amp; Co\.&gt;/);
   assert.match(body.html, /Im Hausvia Portal öffnen/);

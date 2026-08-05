@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createOfferFromLeadAction } from "@/app/actions/admin";
 import { EmptyState, PageHeader, Panel, StatusPill, buttonClass } from "@/components/portal/PortalUI";
 import { asText, formatDateTime, formatEuro, leadStatusLabel, offerStatusLabel } from "@/lib/portal/format";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdminContext } from "@/lib/portal/access";
 
 type LeadRow = {
   id: string;
@@ -48,7 +48,7 @@ function estimateText(estimate: Record<string, unknown> | null) {
 }
 
 export default async function AdminLeadsPage() {
-  const supabase = await createSupabaseServerClient();
+  const { admin: supabase } = await requireAdminContext();
   const { data: leads } = await supabase
     .from("leads")
     .select("id,status,company_name,contact_name,email,phone,object_address,object_type,requested_services,frequency,message,created_at,customer_id,desired_start_date,preferred_callback_time,estimate")

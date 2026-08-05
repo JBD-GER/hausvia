@@ -40,9 +40,12 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: ASSETS.favicon,
+    icon: [
+      { url: ASSETS.favicon, type: "image/png", sizes: "64x64" },
+      { url: ASSETS.mark, type: "image/png", sizes: "512x512" },
+    ],
     shortcut: ASSETS.favicon,
-    apple: ASSETS.mark,
+    apple: [{ url: ASSETS.appleIcon, type: "image/png", sizes: "180x180" }],
   },
   openGraph: {
     title: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",

@@ -1,4 +1,9 @@
 import { SITE } from "@/lib/site";
+import {
+  createHausviaPdfLogoObject,
+  drawHausviaPdfLogo,
+  hausviaPdfLogoResourceName,
+} from "@/lib/pdfBrandLogo";
 import { parseWinterPolygons, type WinterMapPoint } from "@/lib/winterLeadSubmission";
 import { winterPricingConfig } from "@/lib/winterPricing";
 
@@ -53,6 +58,7 @@ const margin = 46;
 const brand = { r: 0.031, g: 0.169, b: 0.38 };
 const slate = { r: 0.094, g: 0.126, b: 0.2 };
 const muted = { r: 0.31, g: 0.36, b: 0.43 };
+const teal = { r: 0.031, g: 0.682, b: 0.706 };
 const yellow = { r: 0.96, g: 0.77, b: 0.26 };
 const softYellow = { r: 1, g: 0.96, b: 0.84 };
 const softBlue = { r: 0.91, g: 0.95, b: 0.99 };
@@ -355,19 +361,21 @@ function polygonCommand(points: ProjectedWinterPoint[], fill: typeof softBlue) {
 
 function createPdf(pages: string[][]) {
   const objects: string[] = [];
-  const firstPageId = 5;
+  const logoObjectId = 5;
+  const firstPageId = 6;
   const pageRefs = pages.map((_, index) => firstPageId + index * 2);
   objects[0] = "<< /Type /Catalog /Pages 2 0 R >>";
   objects[1] = `<< /Type /Pages /Kids [${pageRefs.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>`;
   objects[2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
   objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+  objects[logoObjectId - 1] = createHausviaPdfLogoObject();
 
   pages.forEach((commands, index) => {
     const pageId = firstPageId + index * 2;
     const contentId = pageId + 1;
     const content = commands.join("\n");
     objects[pageId - 1] =
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R >>`;
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /${hausviaPdfLogoResourceName} ${logoObjectId} 0 R >> >> /Contents ${contentId} 0 R >>`;
     objects[contentId - 1] = `<< /Length ${Buffer.byteLength(content, "latin1")} >>\nstream\n${content}\nendstream`;
   });
 
@@ -408,21 +416,23 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   function newPage() {
     commands = [];
     pages.push(commands);
-    commands.push(rect(0, 768, pageWidth, 74, brand));
-    commands.push(rect(0, 744, pageWidth, 24, yellow));
-    commands.push(text("Hausvia", margin, 807, 24, white, "F2"));
-    commands.push(text("HAUSMEISTERSERVICE", margin, 787, 8, white, "F2"));
+    commands.push(rect(0, 0, pageWidth, pageHeight, white));
+    commands.push(drawHausviaPdfLogo(margin, 790, 204));
+    commands.push(text("PREISEINSCHÄTZUNG", 395, 810, 10, brand, "F2"));
+    commands.push(text(SITE.slogan, 348, 793, 7.5, muted, "F2"));
+    commands.push(rect(0, 744, pageWidth, 28, softBlue));
+    commands.push(rect(0, 744, pageWidth, 4, teal));
     commands.push(
       text(
         isWinterRequest ? "Winterdienst Preiseinschätzung" : "Kosteneinschätzung für Objektbetreuung",
         margin,
-        752,
+        755,
         10,
         brand,
         "F2",
       ),
     );
-    commands.push(text(`Erstellt am ${formatDate(submittedAt)}`, 400, 752, 8, brand));
+    commands.push(text(`Erstellt am ${formatDate(submittedAt)}`, 400, 755, 8, brand));
     commands.push(line(margin, 58, pageWidth - margin, 58, softBlue));
     commands.push(text(`${SITE.name} · ${SITE.email} · ${SITE.phone}`, margin, 38, 8, muted));
     y = 716;

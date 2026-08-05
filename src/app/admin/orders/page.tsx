@@ -1,10 +1,10 @@
 import { updateMaterialRequestStatusAction } from "@/app/actions/admin";
 import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { asText, firstRelation, formatDateTime } from "@/lib/portal/format";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdminContext } from "@/lib/portal/access";
 
 export default async function AdminOrdersPage() {
-  const supabase = await createSupabaseServerClient();
+  const { admin: supabase } = await requireAdminContext();
   const { data: requests } = await supabase
     .from("material_requests")
     .select("id,status,title,category,quantity,unit,note,admin_comment,created_at,projects(name),employee_profiles(full_name)")

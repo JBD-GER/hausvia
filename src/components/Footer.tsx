@@ -12,6 +12,9 @@ export function Footer() {
           <div className="mb-5 inline-flex rounded-md bg-white p-2">
             <Logo />
           </div>
+          <p className="mb-3 text-sm font-extrabold tracking-wide text-cyan-300">
+            {SITE.slogan}
+          </p>
           <p className="max-w-md text-sm leading-7 text-slate-300">
             Hausvia ist der zuverlässige Partner für Hausmeisterservice,
             Objektbetreuung und laufende Immobilienpflege in Hannover und Umgebung.

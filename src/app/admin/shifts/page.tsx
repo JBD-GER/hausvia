@@ -1,10 +1,10 @@
 import { reviewShiftAction } from "@/app/actions/admin";
 import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { asText, firstRelation, formatDateTime } from "@/lib/portal/format";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdminContext } from "@/lib/portal/access";
 
 export default async function AdminShiftsPage() {
-  const supabase = await createSupabaseServerClient();
+  const { admin: supabase } = await requireAdminContext();
   const { data: shifts } = await supabase
     .from("shifts")
     .select("id,status,started_at,ended_at,gross_minutes,break_minutes,net_minutes,notes,customer_visible,projects(name,object_address),employee_profiles(full_name)")

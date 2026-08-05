@@ -76,6 +76,12 @@ test("liefert ein vollständiges responsives Hausvia E-Mail-Design", () => {
   assert.match(html, /@media only screen and \(max-width: 680px\)/);
   assert.match(html, /role="presentation"/);
   assert.match(html, /display:none;max-height:0/);
+  assert.match(
+    html,
+    /<img src="https:\/\/www\.hausvia\.de\/hausvia-logo-email\.png" width="224" height="51" alt="Hausvia"/,
+  );
+  assert.match(html, /background:#08aeb4/);
+  assert.match(html, /Hausvia\. Digital\. Zuverlässig\. Vor Ort\./);
   assert.match(html, /background:#082b61/);
   assert.match(html, /background:#f5c542/);
   assert.match(html, /Dokument im Anhang/);
@@ -107,6 +113,7 @@ test("erzeugt einen eigenständigen gut lesbaren Plaintext-Fallback", () => {
   });
 
   assert.match(text, /^HAUSVIA\nHausmeisterservice/);
+  assert.match(text, /Hausvia\. Digital\. Zuverlässig\. Vor Ort\./);
   assert.match(text, /DOKUMENT\nRE-2026-007-rechnung-hausvia\.pdf/);
   assert.match(text, /Portal: https:\/\/www\.hausvia\.de\/portal\/invoices/);
   assert.match(text, /Rechnung öffnen: https:\/\/www\.hausvia\.de\/portal\/invoices/);

@@ -1,75 +1,144 @@
-import { acceptOfferAction } from "@/app/actions/customer";
+import { ChevronRight, Download, FileText } from "lucide-react";
 import Link from "next/link";
-import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
-import { asText, formatEuro } from "@/lib/portal/format";
-import { requireProfile } from "@/lib/supabase/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { EmptyState, PageHeader } from "@/components/portal/PortalUI";
+import { berlinIsoDate } from "@/lib/portal/core";
+import { requireCustomerContext } from "@/lib/portal/access";
+import {
+  effectiveOfferStatus,
+  OfferDateLine,
+  OfferPriceSummary,
+  OfferStatusBadge,
+  offerGroup,
+  type PortalOfferVersion,
+} from "./_shared";
+
+const groupDefinitions = [
+  { key: "open", title: "Offene Angebote", text: "Diese Angebote können Sie bis zum angegebenen Datum annehmen oder ablehnen." },
+  { key: "accepted", title: "Angenommene Angebote", text: "Ihre verbindlich angenommenen Angebotsversionen." },
+  { key: "rejected", title: "Abgelehnte Angebote", text: "Von Ihnen abgelehnte Angebotsversionen." },
+  { key: "expired", title: "Abgelaufene & frühere Angebote", text: "Abgelaufene, zurückgezogene oder durch eine neue Version ersetzte Angebote." },
+] as const;
 
 export default async function CustomerOffersPage({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string; error?: string }>;
 }) {
-  const profile = await requireProfile(["customer"]);
-  const params = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  const { data: customer } = await supabase.from("customers").select("id").eq("portal_user_id", profile.id).maybeSingle();
-  const { data: offers } = customer
-    ? await supabase.from("offers").select("id,status,title,intro,net_total,tax_total,gross_total,offer_items(title,description,quantity,unit,total_net)").eq("customer_id", customer.id).order("created_at", { ascending: false })
-    : { data: [] };
+  const query = await searchParams;
+  const { customerId, supabase } = await requireCustomerContext();
+  const { data, error } = await supabase
+    .from("offer_versions")
+    .select("id,offer_id,version_number,lifecycle_status,offer_number,title,offer_date,valid_until,net_total_cents,tax_total_cents,gross_total_cents,billing_totals,original_pdf_path")
+    .eq("customer_id", customerId)
+    .in("lifecycle_status", ["sent", "viewed", "accepted", "linked", "rejected", "expired", "withdrawn", "superseded"])
+    .order("offer_date", { ascending: false })
+    .order("version_number", { ascending: false });
+  if (error) throw new Error("Die Angebote konnten nicht geladen werden.");
+
+  const today = berlinIsoDate();
+  const versions = (data ?? []).map((row) => {
+    const version = row as unknown as PortalOfferVersion;
+    return { ...version, effectiveStatus: effectiveOfferStatus(version, today) };
+  });
 
   return (
     <>
-      <PageHeader eyebrow="Angebote" title="Ihre Angebote" text="Nur von Hausvia freigegebene Angebote sind hier sichtbar." />
-      {params.status === "accepted" ? (
-        <p className="mb-5 rounded-md border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-800">
-          Vielen Dank. Das Angebot wurde angenommen und Hausvia wurde informiert.
+      <PageHeader
+        eyebrow="Angebote"
+        title="Ihre Angebote"
+        text="Prüfen Sie Leistungsumfang und Preise in Ruhe. Jede angezeigte Version bleibt unverändert nachvollziehbar."
+      />
+
+      {query.status ? (
+        <p className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">
+          {query.status}
         </p>
       ) : null}
-      <Panel title="Freigegebene Angebote">
-        {offers?.length ? (
-          <div className="grid gap-5">
-            {offers.map((offer) => (
-              <article key={offer.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-start justify-between gap-3">
+      {query.error ? (
+        <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+          {query.error}
+        </p>
+      ) : null}
+
+      {versions.length ? (
+        <div className="grid gap-7">
+          {groupDefinitions.map((group) => {
+            const groupVersions = versions.filter(
+              (version) => offerGroup(version.effectiveStatus) === group.key,
+            );
+            if (!groupVersions.length) return null;
+
+            return (
+              <section key={group.key} aria-labelledby={`offers-${group.key}`}>
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
                   <div>
-                    <p className="font-extrabold text-slate-950">{offer.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-650">{asText(offer.intro)}</p>
+                    <h2 id={`offers-${group.key}`} className="text-xl font-black text-slate-950">
+                      {group.title}
+                    </h2>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{group.text}</p>
                   </div>
-                  <StatusPill>{offer.status}</StatusPill>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-slate-600 shadow-sm">
+                    {groupVersions.length} {groupVersions.length === 1 ? "Angebot" : "Angebote"}
+                  </span>
                 </div>
-                <div className="mt-4 rounded-lg bg-white p-4">
-                  {(offer.offer_items ?? []).map((item: { title: string; description: string | null; quantity: number; unit: string; total_net: number }) => (
-                    <div key={item.title} className="border-b border-slate-100 py-3 last:border-0">
-                      <p className="font-bold text-slate-950">{item.title}</p>
-                      <p className="text-sm text-slate-650">{asText(item.description)} · {item.quantity} {item.unit}</p>
-                      <p className="text-sm font-bold text-slate-900">{formatEuro(item.total_net)} netto</p>
-                    </div>
+
+                <div className="grid gap-4">
+                  {groupVersions.map((version) => (
+                    <article key={version.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,.9fr)]">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <OfferStatusBadge status={version.effectiveStatus} />
+                            <span className="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                              Version {version.version_number}
+                            </span>
+                          </div>
+                          <p className="mt-3 text-xs font-black uppercase tracking-[0.12em] text-brand">
+                            {version.offer_number}
+                          </p>
+                          <h3 className="mt-1 text-xl font-black leading-tight text-slate-950">{version.title}</h3>
+                          <div className="mt-2"><OfferDateLine version={version} /></div>
+                        </div>
+
+                        <OfferPriceSummary
+                          billingTotals={version.billing_totals}
+                          netTotalCents={version.net_total_cents}
+                          taxTotalCents={version.tax_total_cents}
+                          grossTotalCents={version.gross_total_cents}
+                          compact
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-5">
+                        <Link
+                          href={`/api/documents/offers/${version.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        >
+                          <Download aria-hidden="true" size={17} /> PDF öffnen
+                        </Link>
+                        <Link
+                          href={`/portal/offers/${version.id}`}
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-extrabold text-white transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                        >
+                          <FileText aria-hidden="true" size={17} /> Angebot ansehen
+                          <ChevronRight aria-hidden="true" size={17} />
+                        </Link>
+                      </div>
+                    </article>
                   ))}
-                  <p className="mt-4 text-right text-2xl font-extrabold text-slate-950">{formatEuro(offer.gross_total)} brutto</p>
                 </div>
-                <Link href={`/api/documents/offers/${offer.id}`} className={`${buttonClass} mt-4`}>
-                  Angebot als PDF öffnen
-                </Link>
-                {offer.status === "released" ? (
-                  <form action={acceptOfferAction} className="mt-4 grid gap-4 rounded-lg border border-brand/15 bg-white p-4">
-                    <input type="hidden" name="offerId" value={offer.id} />
-                    <Field label="Name für Annahme"><input name="signatureName" required className={inputClass} /></Field>
-                    <Field label="Digitale Unterschrift"><input name="signature" required className={inputClass} placeholder="Bitte Namen als digitale Signatur eingeben" /></Field>
-                    <label className="flex gap-3 text-sm font-semibold leading-6 text-slate-700">
-                      <input type="checkbox" name="confirmed" required className="mt-1 h-5 w-5 rounded border-slate-300 text-brand focus:ring-brand" />
-                      Ich bestätige die Annahme dieses Angebots verbindlich und stimme der digitalen Speicherung mit Zeitstempel zu.
-                    </label>
-                    <button className={buttonClass}>Angebot annehmen</button>
-                  </form>
-                ) : null}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="Keine Angebote" text="Sobald Hausvia ein Angebot freigibt, erscheint es hier." />
-        )}
-      </Panel>
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          title="Noch keine Angebote"
+          text="Sobald Hausvia Ihnen ein Angebot sendet, erscheint es hier inklusive PDF und Preisübersicht."
+        />
+      )}
     </>
   );
 }

@@ -1,253 +1,227 @@
 # Hausvia Website und Portal
 
-Next.js App-Router-Projekt für Hausvia: öffentliche SEO-Website, Kostencheck-Funnel, Adminbereich, Mitarbeiterportal und Kundenportal.
+Next.js-App-Router-Projekt für Hausvia mit öffentlicher SEO-Website, Kostencheck-Funnel und drei geschützten Portalbereichen:
 
-## Entwicklung
+- `/admin` für Administration und Disposition
+- `/app` für Mitarbeitende
+- `/portal` für Kundinnen und Kunden
+
+Das Portal nutzt Supabase für Auth, Postgres, Row Level Security (RLS), Storage und Realtime, Resend für transaktionale E-Mails sowie Vercel Cron für zeitgesteuerte Abläufe.
+
+## Entwicklung und Prüfung
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Prüfung
+Vor einem Deployment mindestens ausführen:
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 
-## Env Vars
+## Umgebungsvariablen
 
-```env
-RESEND_API_KEY=
-RESEND_FROM_EMAIL=Hausvia <info@hausvia.de>
-HAUSVIA_INTERNAL_LEAD_EMAIL=c.pfad@flaaq.com
+Lokale Werte gehören in `.env.local`, Produktionswerte in die Vercel-Projektkonfiguration. Keine Secret-Werte committen. Alle Namen mit `NEXT_PUBLIC_` werden in den Browser-Build übernommen und dürfen deshalb keine Geheimnisse enthalten.
 
-NEXT_PUBLIC_SITE_URL=https://hausvia.de
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-CRON_SECRET=
+| Name | Sichtbarkeit und Zweck |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Öffentlich. Kanonischer Ursprung für Links, Redirects und Einladungs-URLs. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Öffentlich. URL des Supabase-Projekts. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Öffentlich. Bevorzugter Publishable Key für Browser- und SSR-Clients; die Sicherheit muss über Grants und RLS kommen. |
+| `SUPABASE_SECRET_KEY` | Nur Server. Bevorzugter Supabase Secret Key für ausdrücklich autorisierte administrative und öffentliche Serverabläufe. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Öffentlich. Nur noch unterstützter Legacy-Fallback für den Publishable Key. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Nur Server. Nur noch unterstützter Legacy-Fallback für den Secret Key; umgeht RLS und darf nie im Browser landen. |
+| `RESEND_API_KEY` | Nur Server. API-Schlüssel für Einladungen, Leads, Angebote und Rechnungen per E-Mail. |
+| `RESEND_FROM_EMAIL` | Nur Server. Verifizierte Absenderidentität für transaktionale E-Mails. |
+| `HAUSVIA_INTERNAL_LEAD_EMAIL` | Nur Server. Interne Empfängeradresse für neue Funnel-Anfragen. |
+| `CRON_SECRET` | Nur Server. Bearer Secret für alle in `vercel.json` registrierten Cron-Routen. |
+| `QR_TOKEN_SECRET` | Nur Server. Signiert und prüft Gebäude-QR-Tokens. |
+| `PUBLIC_FORM_RATE_LIMIT_SECRET` | Nur Server. Separates Hash-Secret für das Rate-Limit öffentlicher Formulare. |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Nur Server. Stabiler, Base64-kodierter AES-Schlüssel mit 16, 24 oder bevorzugt 32 Byte für verschlüsselte Next.js-Server-Action-Daten über Deployments und Instanzen hinweg. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Öffentlich. Google-Maps-Key für Adress-/Kartenfunktionen; per API- und HTTP-Referrer-Restriktion absichern. |
+| `NEXT_PUBLIC_GOOGLE_ADS_ID` | Öffentlich und optional. Google-Ads-Konto-ID für Conversion Tracking. |
+| `NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL` | Öffentlich und optional. Conversion-Label für allgemeine Leads. |
+| `NEXT_PUBLIC_GOOGLE_ADS_WINTERDIENST_CONVERSION_LABEL` | Öffentlich und optional. Conversion-Label für Winterdienst-Leads. |
 
-NEXT_PUBLIC_GOOGLE_ADS_ID=AW-18131829931
-NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL=p6rgCLT7yr0cEKuJ98VD
-NEXT_PUBLIC_GOOGLE_ADS_WINTERDIENST_CONVERSION_LABEL=VMaTCOa13tscEKuJ98VD
-```
+Für neue Installationen ausschließlich die bevorzugten Supabase-Schlüsselnamen verwenden. Die beiden Legacy-Namen bleiben nur für bestehende Deployments als Fallback erhalten.
 
-Wichtig: `SUPABASE_SERVICE_ROLE_KEY` darf niemals im Browser landen. Er wird nur in Server Actions, API Routes und serverseitiger Funnel-Persistenz genutzt.
+## Supabase einrichten und migrieren
 
-`CRON_SECRET` schützt die automatische Rechnungserstellung unter `/api/billing/run-cycles`. In Vercel als Environment Variable setzen; Vercel Cron sendet den Wert als Bearer Token an die Route.
+Die Migrationen müssen in Zeitstempelreihenfolge über den normalen Supabase-Migrationsworkflow ausgeführt werden:
 
-## Supabase Setup
+1. `supabase/migrations/20260612090000_core_portal.sql`
+2. `supabase/migrations/20260612113000_offer_invoice_workflow.sql`
+3. `supabase/migrations/20260612120000_offer_closing_text.sql`
+4. `supabase/migrations/20260805112124_hausvia_portal_v2.sql`
+5. `supabase/migrations/20260805112409_portal_security_hardening.sql`
+6. `supabase/migrations/20260805114046_portal_acceptance_hardening.sql`
+7. `supabase/migrations/20260805120141_customer_status_access_hardening.sql`
+8. `supabase/migrations/20260805120546_account_lifecycle_hardening.sql`
+9. `supabase/migrations/20260805120707_atomic_account_status.sql`
+10. `supabase/migrations/20260805122016_operational_report_visit_scope.sql`
+11. `supabase/migrations/20260805122249_portal_foreign_key_indexes.sql`
+12. `supabase/migrations/20260805124648_atomic_equipment_assignments.sql`
+13. `supabase/migrations/20260805130428_atomic_property_lifecycle.sql`
+14. `supabase/migrations/20260805130433_atomic_property_service_configuration.sql`
+15. `supabase/migrations/20260805130735_atomic_visit_plan_status.sql`
+16. `supabase/migrations/20260805131539_active_operational_parent_guards.sql`
+17. `supabase/migrations/20260805131545_chat_message_cleanup.sql`
+18. `supabase/migrations/20260805134740_property_employee_work_guards.sql`
+19. `supabase/migrations/20260805134911_atomic_visit_plan_configuration.sql`
+20. `supabase/migrations/20260805135127_visit_plan_generation_security_hardening.sql`
+21. `supabase/migrations/20260805140121_preserve_past_visit_plan_visits.sql`
+22. `supabase/migrations/20260805140558_preserve_past_property_visits.sql`
 
-1. Neues Supabase-Projekt erstellen.
-2. Migration `supabase/migrations/20260612090000_core_portal.sql` ausführen.
-3. Storage Buckets werden durch die Migration vorbereitet:
-   `offer-pdfs`, `invoice-pdfs`, `customer-documents`, `project-documents`, `shift-photos`.
-4. Auth Provider `Email` aktivieren.
-5. Site URL setzen: `https://hausvia.de`.
-6. Redirect URLs hinterlegen:
-   `https://hausvia.de/auth/callback`
-   `https://hausvia.de/auth/callback?next=/reset-password`
-   `https://hausvia.de/login`
-   `https://hausvia.de/forgot-password`
-   `https://hausvia.de/reset-password`
-   `http://localhost:3000/auth/callback`
-   `http://localhost:3000/auth/callback?next=/reset-password`
-   `http://localhost:3000/login`
-   `http://localhost:3000/forgot-password`
-   `http://localhost:3000/reset-password`
+Die V2-Migration erweitert das bestehende Portal additiv um Immobilien und Gebäude, Leistungen und Checklisten, Einsatzplanung, Aufgaben-Snapshots, Equipment, Schadenmeldungen, Einsatzberichte, Objektchat, Beschwerden, Benachrichtigungen und die neue Monatsabrechnung. Sie setzt die drei älteren Migrationen voraus und ersetzt sie nicht.
 
-## Ersten Admin anlegen
+Die nachgelagerten Hardening-Migrationen begrenzen administrative RPCs und interne Plan-/Zeitdaten zusätzlich, verschieben Erweiterungen in das vorgesehene Schema, frieren betriebliche Meldungen beim Einsatzabschluss in einem getrennten, ausschließlich administrativen Snapshot ein, machen Kunden-, Mitarbeiter-, Immobilien- und Gebäudestatus zu unmittelbaren Autorisierungs- und Lebenszyklusgrenzen, widerrufen offene Einladungen bei einer Deaktivierung atomar und erzwingen korrekte Gebäude-/Einsatzbezüge. Equipmentzuordnungen, vollständige Leistungskonfigurationen und Besuchspläne einschließlich Gebäude-/Mitarbeiterbezügen, Terminbildung und Audit-Log werden transaktional geändert. Planänderung, Termin-Cron und Immobilienarchivierung verwenden einen gemeinsamen Transaktions-Lock, damit weder alte Termine nach einer parallelen Änderung neu entstehen noch gegensätzliche Mehrzeilen-Sperren kollidieren. Pausierung und Archivierung wirken ausschließlich prospektiv; vergangene geplante und manuell angepasste Termine bleiben als Betriebsnachweis unverändert. Datenbank-Guards verhindern aktive Mitarbeiterzuordnungen und Besuchspläne unter bereits archivierten Immobilien sowie das Beenden oder Löschen einer Teamzuordnung, solange sie noch von einem aktiven Plan oder offenen Einsatz benötigt wird. Kompensierte Chat-Nachrichten entfernen zugehörige Anhänge, Benachrichtigungen und Zustellstatus vollständig. Ergänzende Fremdschlüsselindizes halten administrative Profiländerungen auch bei wachsendem Datenbestand performant.
 
-1. In Supabase unter **Authentication > Users** einen User für `info@hausvia.de` anlegen.
-2. Entweder direkt im Supabase-Dashboard ein temporäres Passwort setzen oder später über `/forgot-password` einen Reset-Link anfordern.
-3. Die echte User-ID aus Supabase kopieren. Wichtig: `AUTH_USER_UUID` ist nur ein Platzhalter und muss durch die UUID aus `auth.users` ersetzt werden.
+Vor der V2-Migration:
 
-Die echte User-ID kann auch per SQL geprüft werden:
+1. Datenbank sichern und die Migration zuerst in einer Staging-Umgebung prüfen.
+2. Historische Datenfehler beheben, die der Preflight meldet, insbesondere doppelte Rechnungsnummern.
+3. Alle Migrationen vollständig ausführen, beispielsweise nach Verknüpfung mit dem richtigen Projekt über `supabase db push`.
+4. Anschließend RLS, Grants, Storage Policies, private Buckets und Auth-Redirects in der Zielumgebung prüfen.
 
-```sql
-select id, email
-from auth.users
-where email = 'info@hausvia.de';
-```
+Für Supabase Auth gilt:
 
-Danach den Admin-Profil-Datensatz mit der echten UUID anlegen:
+- E-Mail/Passwort aktivieren.
+- Öffentliche Registrierung deaktiviert lassen. Benutzer werden ausschließlich serverseitig durch den Admin-/Einladungsprozess bereitgestellt.
+- Mindestens acht Passwortzeichen und den Schutz gegen bekannte geleakte Passwörter aktivieren.
+- Site URL auf den produktiven Ursprung setzen.
+- Den Callback-Pfad `/auth/callback` sowie `/auth/callback?next=/reset-password` für Produktion und lokale Entwicklung als Redirects erlauben.
 
-```sql
-insert into public.user_profiles (id, role, email, full_name, status, onboarding_completed)
-values ('00000000-0000-0000-0000-000000000000', 'admin', 'info@hausvia.de', 'Hausvia Admin', 'active', true)
-on conflict (id) do update set
-  role = 'admin',
-  email = excluded.email,
-  full_name = excluded.full_name,
-  status = 'active',
-  onboarding_completed = true,
-  updated_at = now();
-```
+`supabase/config.toml` bildet diese Regeln für die lokale Supabase-Umgebung reproduzierbar ab: Self-Sign-up und anonyme Registrierung sind deaktiviert, Passwörter benötigen mindestens acht Zeichen und Recovery-/E-Mail-OTP-Links laufen nach 60 Minuten ab. Die Datei konfiguriert nicht automatisch das gehostete Projekt; dessen Auth-Einstellungen müssen beim Deployment weiterhin abgeglichen werden.
 
-`00000000-0000-0000-0000-000000000000` muss dabei durch die echte Supabase-Auth-UUID ersetzt werden.
+## Rollen, Anmeldung und Einladungen
 
-Danach kann sich der Admin unter `/login` anmelden. Falls kein Passwort bekannt ist: `/forgot-password` öffnen, `info@hausvia.de` eintragen, Reset-Mail nutzen und ein neues Passwort setzen.
+Die sichtbare Navigation ist nur Komfort. Die eigentliche Berechtigung wird serverseitig und durch RLS durchgesetzt.
 
-## Passwort vergessen / Recovery
+- `admin`: vollständige Verwaltung von Kunden, Mitarbeitenden, Immobilien, Gebäuden, Leistungen, Checklisten, Einsatzplänen und Einsätzen, Equipment, QR-/Schadenprozessen, Berichten, Chat/Beschwerden, Benachrichtigungen, Unternehmensdaten und Abrechnung.
+- `employee`: ausschließlich zugewiesene Immobilien, Pläne und Einsätze sowie die dafür freigegebenen Aufgaben, Timer, Berichte und Equipment-Daten. Keine Rechnungen, Preise oder fremden Kundendaten.
+- `customer`: ausschließlich verknüpfte Kundenkonten und Immobilien sowie kundensichtbare Einsätze/Berichte, eigene Nachrichten, Beschwerden, Schäden und Rechnungen.
 
-Die Website enthält einen Passwort-vergessen-Flow:
+Es gibt keine öffentliche Registrierungsseite und keinen freien Sign-up. Der Ablauf für Kunden und Mitarbeitende ist:
 
-- `/forgot-password`: Reset-Link per E-Mail anfordern.
-- `/auth/callback?next=/reset-password`: Supabase bestätigt den Recovery-Link und baut die Session auf.
-- `/reset-password`: neues Passwort festlegen.
-- Danach erfolgt die Weiterleitung je nach Rolle nach `/admin`, `/app` oder `/portal`.
+1. Ein Admin legt zuerst den konkreten Kunden- oder Mitarbeiterdatensatz an. Dabei entsteht eine Einladung im Status `draft`.
+2. Beim Senden wird eine individuelle E-Mail über Resend erzeugt. Die Einladung wechselt auf `sent` und ist 30 Tage gültig.
+3. Der Link führt nach `/einladung/[token]`. Das Token besteht aus 32 zufälligen Bytes; in Postgres wird ausschließlich dessen SHA-256-Hash gespeichert.
+4. Erst die einmalige, noch gültige Annahme setzt das Passwort, bestätigt den Auth-Benutzer, verknüpft ihn mit dem konkreten Ziel und aktiviert das Rollenprofil.
+5. Einladungen können erneut gesendet oder widerrufen werden. Erneutes Senden rotiert das Token. Zulässige Zustände sind `draft`, `sent`, `accepted`, `expired` und `revoked`.
 
-Für Supabase Recovery sollte als Redirect URL verwendet werden:
+Pro normalisierter E-Mail-Adresse ist höchstens eine offene Einladung (`draft` oder `sent`) zulässig. Eine Kunden-Einladung muss genau auf einen Kunden, eine Mitarbeiter-Einladung genau auf ein Mitarbeiterprofil zeigen. Das frühere Supabase-Invite-Mail-Template ist nicht Teil dieses Ablaufs; Einladungsversand und Inhalt liegen in der Anwendung und bei Resend.
 
-```txt
-https://hausvia.de/auth/callback?next=/reset-password
-```
+### Ersten Admin anlegen
 
-Lokal:
+Der einzige Bootstrap-Sonderfall ist die fest hinterlegte Admin-Adresse `info@hausvia.de`:
 
-```txt
-http://localhost:3000/auth/callback?next=/reset-password
-```
+1. In Supabase unter **Authentication > Users** einen Auth-Benutzer mit dieser Adresse anlegen.
+2. Ein temporäres Passwort setzen oder über `/forgot-password` den Recovery-Ablauf nutzen.
+3. Beim ersten erfolgreichen Login beziehungsweise Auth-Callback legt die Anwendung automatisch das aktive Adminprofil für Christoph Pfad an und leitet nach `/admin` weiter.
 
-## Supabase Invite-Mail-Template
+Für alle anderen Adressen ist ein vorhandenes, aktives Rollenprofil beziehungsweise eine gültige Einladung erforderlich. Ein manuelles SQL-Profil mit frei gewählter Rolle ist nicht der reguläre Onboarding-Weg.
 
-Betreff:
+### Passwort-Recovery
 
-```txt
-Ihre Einladung zum Hausvia Portal
-```
+- `/forgot-password` fordert neutral einen Reset-Link an, ohne das Vorhandensein eines Kontos offenzulegen.
+- `/auth/callback?next=/reset-password` bestätigt den Supabase-Recovery-Link und baut die Session auf.
+- `/reset-password` setzt das neue Passwort.
+- Anschließend erfolgt die rollenabhängige Weiterleitung nach `/admin`, `/app` oder `/portal`.
 
-HTML:
+Der Recovery-Versand ist nur für aktive, vollständig eingerichtete Profile sowie den Admin-Bootstrap vorgesehen.
 
-```html
-<div style="font-family:Arial,sans-serif;background:#f7f9fc;padding:24px;color:#172033">
-  <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dfe7f2;border-radius:12px;overflow:hidden">
-    <div style="background:#082b61;color:#ffffff;padding:24px 28px">
-      <div style="font-size:24px;font-weight:800">Hausvia</div>
-      <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#d8e4f5">Hausmeisterservice</div>
-    </div>
-    <div style="border-top:6px solid #f5c542;padding:28px">
-      <h1 style="font-size:24px;line-height:1.25;margin:0 0 14px">Ihre Einladung zum Hausvia Portal</h1>
-      <p style="font-size:15px;line-height:1.65;margin:0 0 18px">
-        Sie wurden zum Hausvia Portal eingeladen. Über den folgenden Button aktivieren Sie Ihr Konto und legen ein eigenes Passwort fest.
-      </p>
-      <p style="margin:26px 0">
-        <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#082b61;color:#ffffff;text-decoration:none;font-weight:800;border-radius:8px;padding:14px 20px">
-          Konto aktivieren
-        </a>
-      </p>
-      <p style="font-size:14px;line-height:1.6;color:#526071;margin:0">
-        Falls Sie diese Einladung nicht erwartet haben, ignorieren Sie diese E-Mail bitte.
-      </p>
-    </div>
-  </div>
-</div>
-```
+## RLS und privater Storage
 
-## Supabase Passwort-Reset-Mail-Template
+Die V2-Migration aktiviert RLS für alle neu exponierten Portal-Tabellen, reduziert pauschale Grants und ergänzt rollen- und beziehungsbasierte Policies. Maßgebliche Beziehungen sind unter anderem Kundenmitgliedschaften, Immobilienzuweisungen, Einsatzplan-/Einsatzzuweisungen sowie die jeweilige Elternressource eines Anhangs.
 
-Betreff:
+Wichtige Sicherheitsregeln:
 
-```txt
-Passwort für Ihr Hausvia Portal zurücksetzen
-```
+- Browserzugriffe verwenden nur den Publishable Key und bleiben durch Grants plus RLS begrenzt.
+- Der Secret-/Service-Role-Key umgeht RLS. Er ist ausschließlich in Server Actions und Route Handlers zulässig, nachdem der jeweilige Admin-, Cron-, Einladungs- oder öffentliche Sicherheits-Guard erfüllt wurde.
+- Ein angemeldeter Benutzer erhält keinen Zugriff allein aufgrund einer bekannten UUID oder eines erratenen Storage-Pfads.
+- Private Dateien werden nach serverseitiger Berechtigungsprüfung beziehungsweise über kurzlebige signierte Downloads ausgeliefert.
+- Der öffentliche QR-Schadeneinstieg macht weder Tabellen noch Storage Buckets öffentlich.
 
-HTML:
+Alle Portal-Buckets sind privat (`public = false`):
 
-```html
-<div style="font-family:Arial,sans-serif;background:#f7f9fc;padding:24px;color:#172033">
-  <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dfe7f2;border-radius:12px;overflow:hidden">
-    <div style="background:#082b61;color:#ffffff;padding:24px 28px">
-      <div style="font-size:24px;font-weight:800">Hausvia</div>
-      <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#d8e4f5">Hausmeisterservice</div>
-    </div>
-    <div style="border-top:6px solid #f5c542;padding:28px">
-      <h1 style="font-size:24px;line-height:1.25;margin:0 0 14px">Passwort zurücksetzen</h1>
-      <p style="font-size:15px;line-height:1.65;margin:0 0 18px">
-        Sie haben eine Zurücksetzung Ihres Passworts für das Hausvia Portal angefordert. Über den folgenden Button legen Sie ein neues Passwort fest.
-      </p>
-      <p style="margin:26px 0">
-        <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#082b61;color:#ffffff;text-decoration:none;font-weight:800;border-radius:8px;padding:14px 20px">
-          Neues Passwort festlegen
-        </a>
-      </p>
-      <p style="font-size:14px;line-height:1.6;color:#526071;margin:0">
-        Falls Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail bitte.
-      </p>
-    </div>
-  </div>
-</div>
-```
+- Dokumente: `offer-pdfs`, `invoice-pdfs`, `customer-documents`, `project-documents`
+- Einsatzbilder: `shift-photos`, `visit-task-attachments`, `operational-report-attachments`
+- Schäden und Beschwerden: `damage-attachments`, `complaint-attachments`
+- Kommunikation und Equipment: `property-message-attachments`, `equipment-images`
 
-## Portal-Rollen
+Die Migration setzt Bucket-spezifische Größen-/MIME-Grenzen und pfadbewusste Storage-RLS. Admins haben den vorgesehenen Gesamtzugriff; Kunden und Mitarbeitende erhalten nur den für ihre verknüpften Datensätze erlaubten Lese-/Uploadzugriff. Original-PDFs freigegebener Rechnungen im Bucket `invoice-pdfs` können zusätzlich durch einen Datenbank-Trigger weder überschrieben noch gelöscht werden.
 
-- Admin: Zugriff auf Leads, Kunden, Mitarbeiter, Projekte, Tätigkeiten, Angebote, Rechnungen, Schichten, Material und Dokumente.
-- Mitarbeiter: sieht nur zugewiesene Kunden/Projekte, Tätigkeiten, eigene Schichten und eigene Materialanforderungen. Keine Preise, Angebote oder Rechnungen.
-- Kunde: sieht nur eigene Anfrage, freigegebene Angebote, eigene Betreuung, freigegebene Einsätze und eigene Rechnungen.
+Dateien, die derzeit über Server Actions hochgeladen werden, sind anwendungsseitig auf 4 MB begrenzt, damit sie einschließlich Multipart-Overhead unter dem Request-Limit des vorgesehenen Vercel-Hostings bleiben. Größere Chatvideos benötigen künftig einen separat autorisierten Direktupload in den privaten Storage; die aktuellen unterstützten Bild-, Video- und PDF-Typen funktionieren bis 4 MB.
 
-## RLS-Hinweise
+## Vercel Cron
 
-Die Migration aktiviert RLS auf allen Portal-Tabellen. Admin-Zugriffe laufen über Profilrolle `admin`. Mitarbeiterzugriffe werden über `project_assignments` begrenzt. Kundenzugriffe laufen über `customers.portal_user_id`.
+Vercel interpretiert alle Ausdrücke in `vercel.json` in UTC. Jede aktuelle Route akzeptiert den von Vercel verwendeten GET-Aufruf und zusätzlich POST für einen kontrollierten manuellen Wiederholungslauf. Beide Methoden verlangen exakt `Authorization: Bearer <CRON_SECRET>`.
 
-Public Funnel Submits werden serverseitig über den Service Role Client gespeichert. Der Browser erhält keinen Service Role Key.
+| Route | Ausdruck | UTC | Verhalten in `Europe/Berlin` |
+| --- | --- | --- | --- |
+| `/api/cron/generate-visits` | `0 3 * * *` | täglich 03:00 | 04:00 MEZ beziehungsweise 05:00 MESZ. Ergänzt duplikatfrei geplante Einsätze für einen rollierenden 90-Tage-Horizont. |
+| `/api/cron/equipment-reminders` | `0 * * * *` | stündlich zur vollen Stunde | Arbeitet stündlich; Datum und Anzeige werden in `Europe/Berlin` berechnet. Ordnet für die kommenden 90 Tage objekt-, gebäude- und saisonabhängiges Equipment zu und benachrichtigt aktive Admins sowie zugewiesene Mitarbeitende gemäß Vorlaufzeit. Bei der Zeitumstellung gilt die übliche ausgelassene beziehungsweise doppelte lokale Stunde des UTC-Plans. |
+| `/api/billing/run-monthly` | `15 5 * * *` | täglich 05:15 | 06:15 MEZ beziehungsweise 07:15 MESZ. Verarbeitet idempotent den unmittelbar vorherigen Berliner Kalendermonat und wiederholt fehlgeschlagene/unvollständige Läufe innerhalb des Folgemonats sicher. |
 
-## Angebote, Rechnungen und Rechnungszyklen
+`/api/billing/run-cycles` ist dauerhaft stillgelegt, steht nicht mehr in `vercel.json` und liefert für GET sowie POST immer HTTP `410 Gone` mit dem Code `billing_cycle_route_retired`. Die Route nicht erneut als Cron konfigurieren und nicht als Fallback verwenden.
 
-- Funnel-Anfragen erzeugen automatisch Kunde, Lead und einen Angebotsentwurf.
-- Der Angebotsentwurf übernimmt die ausgewählten Funnel-Leistungen als einzelne editierbare Positionen.
-- Admins können im Bereich `/admin/offers` Positionen ändern, weitere Positionen hinzufügen und Netto-Preise pflegen.
-- 19% Umsatzsteuer werden automatisch auf die Netto-Summe berechnet.
-- Ein Angebot bleibt zunächst `draft` und ist nicht im Kundenportal sichtbar.
-- Über „An Kunden senden“ wird ein PDF erzeugt, per Resend an den Kunden geschickt und im Kundenportal sichtbar gemacht.
-- Aus einem Angebot kann ein Rechnungsentwurf erstellt werden.
-- Für regelmäßige Betreuung kann ein Rechnungszyklus angelegt werden. Die Route `/api/billing/run-cycles` prüft täglich fällige Zyklen.
-- Die Cron-Konfiguration liegt in `vercel.json` und ruft die Route täglich um 06:00 UTC auf.
-- Bei aktivierter Vorabzahlung wird die Rechnung für den kommenden Leistungsmonat mit Hinweistext erstellt.
-- Freigegebene/gesendete Rechnungen erscheinen im Kundenportal mit dem Status „Erstellt“ und sind als PDF abrufbar.
+## Monatliche, unveränderliche Rechnungen
 
-Empfohlener operativer Ablauf:
+Die reguläre Monatsabrechnung ist objektbezogen und auf Wiederholbarkeit ausgelegt:
 
-1. Funnel-Anfrage kommt rein und erzeugt einen Angebotsentwurf.
-2. Admin prüft und bearbeitet Positionen, Preise und Abschlusspassage.
-3. Admin sendet das Angebot an den Kunden.
-4. Kunde nimmt das Angebot im Portal digital an.
-5. Das zugehörige Projekt wird aktiviert. Falls noch kein Projekt am Angebot hängt, wird automatisch ein aktives Projekt aus Kunde, Lead und Angebotspositionen angelegt.
-6. Admin weist anschließend den passenden Mitarbeiter zu.
-7. Zeittracking, Tätigkeiten, Materialanforderungen und Abrechnung laufen über das Projekt.
+- Pro Immobilie und Abrechnungsmonat kann die Datenbank nur eine reguläre Rechnung anlegen. Rechnungsnummer und Verarbeitungs-Claim werden atomar vergeben; parallele oder wiederholte Cron-Aufrufe erzeugen keine zweite Monatsrechnung.
+- Abgerechnet wird der vorherige Kalendermonat in `Europe/Berlin`. Eine in diesem Zeitraum gültige Grundvergütung und noch offene, abrechenbare Zusatzleistungen werden als strukturierte Positionen übernommen. Eine Zusatzleistung kann nur einmal an eine Rechnungsposition gebunden werden.
+- Geldbeträge werden intern als ganzzahlige Centwerte gespeichert. Aussteller-, Empfänger- und Bankdaten werden beim Erstellen als Snapshots an der Rechnung festgehalten.
+- Beim Freigeben werden das private Original-PDF, dessen SHA-256-Prüfsumme und eine Prüfsumme der strukturierten Rechnungsdaten gespeichert.
+- Nach der Freigabe sind Rechnungskopf, Snapshots, Beträge und Positionen unveränderlich. Zulässig bleiben nur Status-/Versandfelder wie offen, bezahlt, überfällig oder storniert. Eine Stornierung erfordert einen Grund und wird protokolliert; sie verändert das Original nicht.
+- Download und erneuter Versand verwenden das gespeicherte, verifizierte Original-PDF. Es wird keine neue Datei aus aktuellen Stammdaten erzeugt.
+- Fehlercode und verständliche Fehlermeldung bleiben für Admins sichtbar. Fehlende Pflichtdaten blockieren den Versand und erzeugen eine Admin-Benachrichtigung, statt eine unvollständige Rechnung zu versenden.
+- Für die E-Rechnungsweiterverarbeitung steht Admins `GET /api/invoices/[id]/structured` zur Verfügung. Die versionierte JSON-Schnittstelle `hausvia.invoice.v1` liefert Aussteller, Empfänger, Zahlungsdaten, Leistungszeitraum, Positionen, Steuersummen und Gesamtbeträge in Cent sowie Integritäts-Hashes. Sie ist die dokumentierte Übergabe für einen späteren ZUGFeRD-/XRechnung-Konverter; die Anwendung erzeugt derzeit bewusst noch kein normvalidiertes XML.
 
-## Testplan
+Historische manuelle Entwürfe können weiterhin bearbeitet werden, solange sie nicht freigegeben und damit unveränderlich geworden sind.
 
-1. Admin kann sich einloggen.
-2. Admin kann Mitarbeiter anlegen.
-3. Mitarbeiter bekommt Einladung.
-4. Mitarbeiter setzt Passwort.
-5. Mitarbeiter landet in `/app`.
-6. Mitarbeiter sieht keine Preise, Angebote oder Rechnungen.
-7. Funnel erstellt Lead, Kunde, Projekt und Tätigkeiten.
-8. Kunde bekommt Einladung.
-9. Kunde setzt Passwort.
-10. Kunde landet in `/portal`.
-11. Kunde sieht Anfrage.
-12. Admin erstellt Angebot.
-13. Kunde sieht Angebot.
-14. Kunde nimmt Angebot mit Unterschrift an.
-15. Admin sieht angenommene Angebote.
-16. Kunde sieht Betreuung.
-17. Mitarbeiter wird Projekt zugewiesen.
-18. Mitarbeiter sieht Kunde und Projekt.
-19. Mitarbeiter erfasst Schicht.
-20. Pause wird automatisch berechnet: über 6 Stunden 30 Minuten, über 9 Stunden 45 Minuten.
-21. Admin gibt Schicht frei.
-22. Kunde sieht freigegebenen Einsatz.
-23. Mitarbeiter erstellt Materialanforderung.
-24. Admin bearbeitet Materialanforderung.
-25. Admin erstellt Rechnung.
-26. Kunde sieht Rechnung.
+### Pflichtdaten im Adminbereich
+
+Unter `/admin/settings` müssen vor dem automatischen Rechnungslauf echte, rechtlich geprüfte Daten gepflegt werden. Für die technische Freigabe verlangt die Anwendung:
+
+- Rechtlicher Firmenname
+- vollständige Anschrift mit Straße, Hausnummer, Postleitzahl, Ort und Land
+- Handelsregister und Geschäftsführung
+- gültige Unternehmens-E-Mail
+- Steuernummer oder Umsatzsteuer-ID
+- Bankname, IBAN und BIC
+- Zahlungsziel, Rechnungspräfix und Standard-Umsatzsteuersatz
+
+Zusätzlich im Adminformular pflegen: Markenname, Telefon, Standard-Stundensatz netto sowie Absender- und Antwortadresse für Rechnungs-E-Mails. Vorbelegte Werte aus einer Migration sind keine Bestätigung ihrer rechtlichen Richtigkeit und müssen vor Produktivbetrieb geprüft werden.
+
+Für jede abrechenbare Immobilie werden außerdem benötigt:
+
+- Rechnungsempfänger mit Name, vollständiger Anschrift, Land und gültiger Rechnungs-E-Mail; ein Adresszusatz ist optional.
+- Eine für den Leistungsmonat gültige Grundvergütung mit Netto-Betrag, Steuersatz und Gültigkeitszeitraum, sofern die Betreuung den Monat berührt.
+- Korrekte Betreuungszeiträume sowie fachlich geprüfte, abrechenbare Zusatzleistungen.
+
+## Angebote und öffentlicher Funnel
+
+Der bestehende Angebotsprozess bleibt erhalten: Funnel-Anfragen können Kunden, Leads und Angebotsentwürfe erzeugen; Admins bearbeiten Positionen und versenden das freigegebene PDF, Kunden können Angebote im Portal digital annehmen. `/api/lead` erzeugt weiterhin das Lead-PDF, versendet es per Resend und persistiert die Anfrage bei konfiguriertem Supabase serverseitig. Dieser Angebotsprozess ist von der neuen objektbezogenen Monatsabrechnung und deren Cron-Route getrennt.
+
+## Operative Abnahme
+
+Nach Migration oder Deployment mindestens prüfen:
+
+1. Admin-Bootstrap, Login, Recovery und rollenabhängige Weiterleitungen.
+2. Einladung senden, erneut senden, widerrufen, ablaufen lassen und genau einmal annehmen; öffentliche Registrierung muss geschlossen bleiben.
+3. Mit Kunden- und Mitarbeiterkonten versuchen, fremde Tabellenzeilen und Storage-Pfade zu lesen oder zu verändern; RLS muss den Zugriff verweigern.
+4. Einsatzgenerierung, Timer/Aufgaben, Equipment-Erinnerung, Schadenmeldung, Einsatzbericht, Chat und Beschwerde jeweils mit den erlaubten Rollen testen.
+5. Alle drei Cron-Routen ohne beziehungsweise mit falschem Bearer Header auf `401` prüfen; `/api/billing/run-cycles` muss `410` liefern.
+6. Monatslauf zweimal für denselben Zeitraum auslösen und bestätigen, dass nur eine Rechnung existiert und Zusatzleistungen nicht doppelt abgerechnet werden.
+7. Originalrechnung herunterladen, erneut senden, als bezahlt markieren und mit Begründung stornieren. Direkte Inhalts-/Positionsänderung sowie Überschreiben/Löschen des Original-PDFs müssen scheitern.
 
 ## Hinweise
 
-- Impressum, Datenschutz, AGB und Pflichtangaben müssen vor Veröffentlichung final rechtlich geprüft werden.
-- `/api/lead` erstellt weiterhin das PDF und versendet es per Resend; zusätzlich wird die Anfrage in Supabase gespeichert, wenn Supabase Env Vars gesetzt sind.
+- Impressum, Datenschutz, AGB, Rechnungsangaben und weitere Pflichtinformationen müssen vor Veröffentlichung abschließend rechtlich und steuerlich geprüft werden.
 - Sitemap und Robots werden über `src/app/sitemap.ts` und `src/app/robots.ts` erzeugt.
+- Weiterführende Referenzen: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Supabase Storage-Zugriff](https://supabase.com/docs/guides/storage/security/access-control) und [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs).

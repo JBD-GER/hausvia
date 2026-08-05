@@ -8,9 +8,9 @@ export function PageHeader({
   text?: string;
 }) {
   return (
-    <div className="mb-6">
+    <div className="mb-5 sm:mb-6">
       <p className="text-sm font-extrabold uppercase tracking-wide text-brand">{eyebrow}</p>
-      <h1 className="mt-2 text-3xl font-extrabold leading-tight text-slate-950 sm:text-4xl">{title}</h1>
+      <h1 className="mt-2 text-2xl font-extrabold leading-tight text-slate-950 sm:text-3xl lg:text-4xl">{title}</h1>
       {text ? <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-650 sm:text-base">{text}</p> : null}
     </div>
   );
@@ -61,7 +61,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
 }
 
 export const inputClass =
-  "mt-2 min-h-11 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20";
+  "mt-2 min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20";
 
 export const buttonClass =
-  "inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-extrabold text-white transition hover:bg-brand-dark";
+  "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-extrabold text-white transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 sm:w-auto";

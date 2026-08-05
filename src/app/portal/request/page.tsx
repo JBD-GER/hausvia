@@ -8,7 +8,13 @@ export default async function CustomerRequestPage() {
   const supabase = await createSupabaseServerClient();
   const { data: customer } = await supabase.from("customers").select("id").eq("portal_user_id", profile.id).maybeSingle();
   const { data: leads } = customer
-    ? await supabase.from("leads").select("*").eq("customer_id", customer.id).order("created_at", { ascending: false })
+    ? await supabase
+        .from("leads")
+        .select(
+          "id,status,object_address,object_type,requested_services,frequency,message,created_at",
+        )
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false })
     : { data: [] };
 
   return (

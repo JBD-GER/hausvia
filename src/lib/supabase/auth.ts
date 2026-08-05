@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppRole, UserProfile } from "@/lib/supabase/types";
 
 export function portalPathForRole(role: AppRole) {
-  if (role === "admin") return "/admin";
+  if (role === "admin") return "/admin/properties";
   if (role === "employee") return "/app";
   return "/portal";
 }
@@ -25,7 +25,9 @@ export async function requireProfile(allowedRoles?: AppRole[]) {
   const profile = await getCurrentProfile();
 
   if (!profile) redirect("/login");
-  if (profile.status === "disabled") redirect("/login?status=disabled");
+  if (profile.status !== "active") {
+    redirect(profile.status === "disabled" ? "/login?status=disabled" : "/login?status=inactive");
+  }
   if (!profile.onboarding_completed) redirect("/onboarding");
   if (allowedRoles && !allowedRoles.includes(profile.role)) redirect(portalPathForRole(profile.role));
 
@@ -34,7 +36,7 @@ export async function requireProfile(allowedRoles?: AppRole[]) {
 
 export async function redirectAuthenticatedUser() {
   const profile = await getCurrentProfile();
-  if (!profile) return;
+  if (!profile || profile.status !== "active") return;
 
   if (!profile.onboarding_completed) redirect("/onboarding");
   redirect(portalPathForRole(profile.role));

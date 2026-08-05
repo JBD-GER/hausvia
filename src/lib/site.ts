@@ -89,6 +89,7 @@ export const SITE = {
   name: "Hausvia",
   legalName: "Flaaq Holding GmbH",
   url: "https://www.hausvia.de",
+  slogan: "Hausvia. Digital. Zuverlässig. Vor Ort.",
   tagline:
     "Zuverlässiger Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung.",
   phone: "05761 8429666",
@@ -164,9 +165,11 @@ export const SEO_KEYWORDS = [
 ];
 
 export const ASSETS = {
-  logo: "/hausvia-logo.svg",
-  mark: "/hausvia-mark.svg",
-  favicon: "/favicon.svg",
+  logo: "/hausvia-logo.png",
+  emailLogo: "/hausvia-logo-email.png",
+  mark: "/hausvia-icon.png",
+  favicon: "/hausvia-favicon.png",
+  appleIcon: "/hausvia-apple-touch-icon.png",
   hero: "/images/hausvia-hausmeisterservice-hannover-treppenhausreinigung.jpg",
   garden: "/images/hausvia-gartenpflege-hannover-wohnanlage.jpg",
   repair: "/images/hausvia-kleinreparaturen-hannover-objektkontrolle.jpg",

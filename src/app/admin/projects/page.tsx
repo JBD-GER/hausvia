@@ -1,10 +1,10 @@
 import { assignEmployeeAction, createProjectAction, createTaskAction, updateProjectStatusAction } from "@/app/actions/admin";
 import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { asText } from "@/lib/portal/format";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdminContext } from "@/lib/portal/access";
 
 export default async function AdminProjectsPage() {
-  const supabase = await createSupabaseServerClient();
+  const { admin: supabase } = await requireAdminContext();
   const [{ data: projects }, { data: customers }, { data: employees }] = await Promise.all([
     supabase.from("projects").select("id,status,name,object_address,object_type,customer_id,primary_employee_id,employee_instructions").order("created_at", { ascending: false }),
     supabase.from("customers").select("id,company_name,contact_name,email").order("created_at", { ascending: false }),

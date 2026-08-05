@@ -3,10 +3,10 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase/config";
 
 export async function createSupabaseServerClient() {
-  const { url, anonKey } = getSupabasePublicConfig();
+  const { url, publicKey } = getSupabasePublicConfig();
   const cookieStore = await cookies();
 
-  return createServerClient(url, anonKey, {
+  return createServerClient(url, publicKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

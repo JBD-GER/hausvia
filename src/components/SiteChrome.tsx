@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import { MobileStickyCTA } from "@/components/MobileStickyCTA";
 
 const appPrefixes = ["/admin", "/app", "/portal"];
-const authPrefixes = ["/login", "/forgot-password", "/reset-password", "/onboarding", "/set-password", "/auth"];
+const authPrefixes = ["/login", "/forgot-password", "/reset-password", "/onboarding", "/set-password", "/auth", "/einladung"];
 
 function matchesPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);

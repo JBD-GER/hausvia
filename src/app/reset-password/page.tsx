@@ -45,8 +45,8 @@ export default async function ResetPasswordPage({
         ) : (
           <>
             <p className="mt-3 text-sm leading-6 text-slate-650">
-              Legen Sie jetzt ein neues Passwort für Ihren Portal-Zugang fest. Danach werden Sie automatisch in den
-              passenden Bereich weitergeleitet.
+              Legen Sie jetzt ein neues Passwort für Ihren Portal-Zugang fest. Danach können Sie sich mit dem neuen
+              Passwort wieder anmelden.
             </p>
 
             {params.error ? (

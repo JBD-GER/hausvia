@@ -1,10 +1,10 @@
 import { uploadDocumentAction } from "@/app/actions/admin";
 import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { asText, formatDateTime } from "@/lib/portal/format";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAdminContext } from "@/lib/portal/access";
 
 export default async function AdminDocumentsPage() {
-  const supabase = await createSupabaseServerClient();
+  const { admin: supabase } = await requireAdminContext();
   const [{ data: documents }, { data: customers }, { data: projects }] = await Promise.all([
     supabase.from("documents").select("id,bucket,filename,visibility,released_to_customer,created_at").order("created_at", { ascending: false }),
     supabase.from("customers").select("id,company_name,contact_name,email").order("created_at", { ascending: false }),

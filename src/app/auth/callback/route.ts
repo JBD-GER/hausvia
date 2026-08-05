@@ -3,12 +3,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/supabase/config";
 import { portalPathForRole } from "@/lib/supabase/auth";
-import type { AppRole, UserProfile } from "@/lib/supabase/types";
+import type { UserProfile } from "@/lib/supabase/types";
 
-function safeRole(value: unknown): AppRole {
-  if (value === "admin" || value === "employee" || value === "customer") return value;
-  return "customer";
-}
+const ADMIN_BOOTSTRAP_EMAIL = "info@hausvia.de";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -38,26 +35,43 @@ export async function GET(request: Request) {
   let profile = existingProfile as UserProfile | null;
 
   if (!profile) {
-    const role = safeRole(user.user_metadata?.role);
+    if (user.email?.trim().toLowerCase() !== ADMIN_BOOTSTRAP_EMAIL) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${siteUrl}/login?error=profile`);
+    }
+
     const admin = createSupabaseAdminClient();
-    const { data } = await admin
+    const { data, error: profileError } = await admin
       .from("user_profiles")
       .insert({
         id: user.id,
-        role,
-        email: user.email ?? "",
-        full_name: String(user.user_metadata?.full_name ?? ""),
-        status: "invited",
+        role: "admin",
+        email: ADMIN_BOOTSTRAP_EMAIL,
+        full_name: "Christoph Pfad",
+        status: "active",
+        onboarding_completed: true,
       })
       .select("*")
       .single();
+
+    if (profileError || !data) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${siteUrl}/login?error=profile`);
+    }
     profile = data as UserProfile;
+  }
+
+  if (profile.status !== "active") {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(
+      `${siteUrl}/login?status=${profile.status === "disabled" ? "disabled" : "inactive"}`,
+    );
   }
 
   await supabase.from("user_profiles").update({ last_login_at: new Date().toISOString() }).eq("id", user.id);
 
-  if (next) {
-    return NextResponse.redirect(`${siteUrl}${next.startsWith("/") ? next : `/${next}`}`);
+  if (next === "/reset-password") {
+    return NextResponse.redirect(`${siteUrl}/reset-password`);
   }
 
   if (!profile.onboarding_completed) {

@@ -2,6 +2,7 @@ import { SITE } from "@/lib/site";
 import {
   renderHausviaEmail,
   type HausviaEmailAction,
+  type HausviaEmailFooter,
 } from "@/lib/hausviaEmail";
 
 const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? `Hausvia <${SITE.email}>`;
@@ -19,7 +20,10 @@ export async function sendPortalDocumentEmail({
   note,
   attachment,
   replyTo = SITE.email,
+  fromEmail,
+  idempotencyKey,
   action,
+  footer,
 }: {
   to: string;
   subject: string;
@@ -28,7 +32,10 @@ export async function sendPortalDocumentEmail({
   note: string;
   attachment: MailAttachment;
   replyTo?: string;
+  fromEmail?: string;
+  idempotencyKey?: string;
   action?: HausviaEmailAction | null;
+  footer?: HausviaEmailFooter;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -55,6 +62,7 @@ export async function sendPortalDocumentEmail({
             label: "Im Hausvia Portal öffnen",
             href: portalUrl,
           },
+    footer,
   });
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -62,9 +70,10 @@ export async function sendPortalDocumentEmail({
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify({
-      from: resendFromEmail,
+      from: fromEmail || resendFromEmail,
       to,
       subject,
       html: renderedEmail.html,

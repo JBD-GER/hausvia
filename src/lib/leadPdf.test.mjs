@@ -46,6 +46,10 @@ test("erzeugt die PDF-Flächenübersicht nur als Vektorgrafik aus validierten Po
   const pdfSource = pdf.toString("latin1");
 
   assert.match(pdfSource, /2\.25 w 1 J 1 j/);
-  assert.doesNotMatch(pdfSource, /\/Subtype \/Image/);
+  assert.equal((pdfSource.match(/\/Subtype \/Image/g) ?? []).length, 1);
+  assert.match(pdfSource, /\/HausviaLogo 5 0 R/);
+  assert.ok(
+    pdfSource.includes(Buffer.from("Hausvia. Digital. Zuverlässig. Vor Ort.", "latin1").toString("hex").toUpperCase()),
+  );
   assert.doesNotMatch(pdfSource, /HAUSVIA-FAKE-MARKER/);
 });

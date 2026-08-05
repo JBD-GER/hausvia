@@ -108,7 +108,7 @@ export function localBusinessSchema() {
     logo: absoluteUrl(ASSETS.logo),
     image: [absoluteUrl(ASSETS.hero), absoluteUrl(ASSETS.garden), absoluteUrl(ASSETS.repair)],
     description: SITE.tagline,
-    slogan: "Zuverlässige Objektbetreuung in Hannover und Umgebung",
+    slogan: SITE.slogan,
     telephone: SITE.phone,
     email: SITE.email,
     priceRange: "$$",
@@ -160,6 +160,7 @@ export function websiteSchema() {
     url: SITE.url,
     name: SITE.name,
     alternateName: "Hausvia Hausmeisterservice",
+    slogan: SITE.slogan,
     description: SITE.tagline,
     inLanguage: "de-DE",
     publisher: {

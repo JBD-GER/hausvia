@@ -1,4 +1,4 @@
-import { SITE } from "@/lib/site";
+import { ASSETS, SITE } from "@/lib/site";
 
 export type HausviaEmailAction = {
   label: string;
@@ -19,6 +19,17 @@ export type HausviaEmailSummary = {
   }>;
 };
 
+export type HausviaEmailFooter = {
+  legalName: string;
+  address: string;
+  representative?: string | null;
+  register?: string | null;
+  vatId?: string | null;
+  taxNumber?: string | null;
+  phone: string;
+  email: string;
+};
+
 export type HausviaEmailContent = {
   preheader?: string;
   eyebrow?: string;
@@ -28,6 +39,7 @@ export type HausviaEmailContent = {
   summary?: HausviaEmailSummary;
   attachment?: HausviaEmailAttachment;
   action?: HausviaEmailAction;
+  footer?: HausviaEmailFooter;
 };
 
 export type RenderedHausviaEmail = {
@@ -74,13 +86,28 @@ function safeWebUrl(value: string | undefined) {
   }
 }
 
+function emailFooter(content: HausviaEmailContent): HausviaEmailFooter {
+  return (
+    content.footer ?? {
+      legalName: SITE.legalName,
+      address: SITE.address,
+      representative: SITE.representative,
+      register: SITE.register,
+      vatId: SITE.vatId,
+      phone: SITE.phone,
+      email: SITE.email,
+    }
+  );
+}
+
 function renderHausviaPlainText(content: HausviaEmailContent) {
   const headline = normalizePlainText(content.headline);
   const intro = normalizePlainText(content.intro);
   const note = content.note ? normalizePlainText(content.note) : "";
   const portalUrl = safeWebUrl(content.attachment?.portalUrl);
   const actionUrl = safeWebUrl(content.action?.href);
-  const sections = ["HAUSVIA", "Hausmeisterservice", "", headline, "", intro];
+  const footer = emailFooter(content);
+  const sections = ["HAUSVIA", "Hausmeisterservice", SITE.slogan, "", headline, "", intro];
 
   if (note) sections.push("", note);
 
@@ -108,14 +135,21 @@ function renderHausviaPlainText(content: HausviaEmailContent) {
     sections.push("", `${normalizePlainText(content.action.label)}: ${actionUrl}`);
   }
 
+  const legalDetails = [
+    footer.representative ? `Vertreten durch ${normalizePlainText(footer.representative)}` : "",
+    footer.register ? normalizePlainText(footer.register) : "",
+    footer.vatId ? `USt-IdNr. ${normalizePlainText(footer.vatId)}` : "",
+    footer.taxNumber ? `Steuernummer ${normalizePlainText(footer.taxNumber)}` : "",
+  ].filter(Boolean);
+
   sections.push(
     "",
     "Fragen zu Ihrem Dokument? Antworten Sie einfach auf diese E-Mail oder kontaktieren Sie uns:",
-    `${SITE.phone} · ${SITE.email}`,
+    `${normalizePlainText(footer.phone)} · ${normalizePlainText(footer.email)}`,
     "",
-    SITE.legalName,
-    SITE.address,
-    `Vertreten durch ${SITE.representative} · ${SITE.register} · USt-IdNr. ${SITE.vatId}`,
+    normalizePlainText(footer.legalName),
+    normalizePlainText(footer.address),
+    legalDetails.join(" · "),
     `Impressum: ${SITE.url}/impressum`,
     `Datenschutz: ${SITE.url}/datenschutz`,
   );
@@ -141,17 +175,26 @@ export function renderHausviaEmail(content: HausviaEmailContent): RenderedHausvi
   const actionLabel = content.action && actionUrl ? htmlText(content.action.label) : "";
   const escapedPortalUrl = portalUrl ? escapeHausviaEmailHtml(portalUrl) : "";
   const escapedActionUrl = actionUrl ? escapeHausviaEmailHtml(actionUrl) : "";
-  const escapedPhone = escapeHausviaEmailHtml(SITE.phone);
-  const escapedEmail = escapeHausviaEmailHtml(SITE.email);
-  const escapedLegalName = escapeHausviaEmailHtml(SITE.legalName);
-  const escapedAddress = escapeHausviaEmailHtml(SITE.address);
-  const escapedRepresentative = escapeHausviaEmailHtml(SITE.representative);
-  const escapedRegister = escapeHausviaEmailHtml(SITE.register);
-  const escapedVatId = escapeHausviaEmailHtml(SITE.vatId);
-  const phoneHref = escapeHausviaEmailHtml(`tel:${SITE.phone.replace(/[^+\d]/g, "")}`);
-  const emailHref = escapeHausviaEmailHtml(`mailto:${SITE.email}`);
+  const footer = emailFooter(content);
+  const escapedPhone = escapeHausviaEmailHtml(footer.phone);
+  const escapedEmail = escapeHausviaEmailHtml(footer.email);
+  const escapedLegalName = escapeHausviaEmailHtml(footer.legalName);
+  const escapedAddress = escapeHausviaEmailHtml(footer.address);
+  const escapedLegalDetails = [
+    footer.representative
+      ? `Vertreten durch ${escapeHausviaEmailHtml(footer.representative)}`
+      : "",
+    footer.register ? escapeHausviaEmailHtml(footer.register) : "",
+    footer.vatId ? `USt-IdNr. ${escapeHausviaEmailHtml(footer.vatId)}` : "",
+    footer.taxNumber ? `Steuernummer ${escapeHausviaEmailHtml(footer.taxNumber)}` : "",
+  ].filter(Boolean);
+  const phoneHref = escapeHausviaEmailHtml(`tel:${footer.phone.replace(/[^+\d]/g, "")}`);
+  const emailHref = escapeHausviaEmailHtml(`mailto:${footer.email}`);
   const imprintUrl = escapeHausviaEmailHtml(`${SITE.url}/impressum`);
   const privacyUrl = escapeHausviaEmailHtml(`${SITE.url}/datenschutz`);
+  const homeUrl = escapeHausviaEmailHtml(SITE.url);
+  const logoUrl = escapeHausviaEmailHtml(new URL(ASSETS.emailLogo, SITE.url).toString());
+  const slogan = htmlText(SITE.slogan);
   const year = new Date().getFullYear();
 
   const summaryBlock = content.summary?.rows.length
@@ -238,17 +281,18 @@ export function renderHausviaEmail(content: HausviaEmailContent): RenderedHausvi
           <!--[if mso]><table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0"><tr><td><![endif]-->
           <table class="email-shell" role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;border-collapse:separate;background:#ffffff;border:1px solid #dbe4ef;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(8,43,97,0.08);">
             <tr>
-              <td style="height:6px;background:#f5c542;font-size:0;line-height:0;">&nbsp;</td>
+              <td style="height:6px;background:#08aeb4;font-size:0;line-height:0;">&nbsp;</td>
             </tr>
             <tr>
-              <td class="mobile-pad" style="padding:27px 34px;background:#082b61;font-family:Arial,Helvetica,sans-serif;">
+              <td class="mobile-pad" style="padding:24px 34px;background:#ffffff;border-bottom:1px solid #dbe4ef;font-family:Arial,Helvetica,sans-serif;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">
                   <tr>
                     <td valign="middle">
-                      <p style="margin:0;color:#ffffff;font-size:27px;font-weight:800;line-height:31px;letter-spacing:-0.4px;">Hausvia</p>
-                      <p style="margin:3px 0 0;color:#d8e4f5;font-size:10px;font-weight:700;line-height:15px;letter-spacing:2px;text-transform:uppercase;">Hausmeisterservice</p>
+                      <a href="${homeUrl}" style="display:inline-block;text-decoration:none;">
+                        <img src="${logoUrl}" width="224" height="51" alt="Hausvia" style="display:block;width:224px;max-width:100%;height:auto;border:0;" />
+                      </a>
+                      <p style="margin:8px 0 0;color:#082b61;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;line-height:17px;letter-spacing:0.45px;">${slogan}</p>
                     </td>
-                    <td align="right" valign="middle" style="color:#f5c542;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:800;line-height:18px;letter-spacing:0.7px;text-transform:uppercase;">Digital &amp; zuverlässig</td>
                   </tr>
                 </table>
               </td>
@@ -286,7 +330,7 @@ export function renderHausviaEmail(content: HausviaEmailContent): RenderedHausvi
             <tr>
               <td class="mobile-pad" style="padding:25px 34px;background:#061f47;font-family:Arial,Helvetica,sans-serif;">
                 <p style="margin:0;color:#ffffff;font-size:13px;font-weight:800;line-height:20px;">${escapedLegalName}</p>
-                <p style="margin:4px 0 0;color:#b8c9df;font-size:11px;line-height:18px;">${escapedAddress}<br />Vertreten durch ${escapedRepresentative} · ${escapedRegister}<br />USt-IdNr. ${escapedVatId}</p>
+                <p style="margin:4px 0 0;color:#b8c9df;font-size:11px;line-height:18px;">${escapedAddress}${escapedLegalDetails.length ? `<br />${escapedLegalDetails.join(" · ")}` : ""}</p>
                 <p style="margin:12px 0 0;color:#b8c9df;font-size:11px;line-height:18px;">© ${year} Hausvia · <a href="${imprintUrl}" style="color:#f5c542;text-decoration:underline;">Impressum</a> · <a href="${privacyUrl}" style="color:#f5c542;text-decoration:underline;">Datenschutz</a></p>
               </td>
             </tr>
