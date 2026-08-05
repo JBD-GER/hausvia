@@ -23,10 +23,11 @@ export function Logo({ compact = false, href = "/" }: { compact?: boolean; href?
       <Image
         src={ASSETS.logo}
         alt="Hausvia"
-        width={248}
-        height={56}
+        width={177}
+        height={40}
         preload
-        className="h-10 w-auto sm:h-11"
+        className="w-auto"
+        style={{ height: "2rem", width: "auto" }}
       />
     </Link>
   );

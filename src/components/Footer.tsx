@@ -9,7 +9,7 @@ export function Footer() {
     <footer className="border-t border-slate-200 bg-slate-950 text-white">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.2fr_2fr] lg:px-8">
         <div>
-          <div className="mb-5 inline-flex rounded-md bg-white p-2">
+          <div className="mb-5 inline-flex rounded-md bg-white p-1.5">
             <Logo />
           </div>
           <p className="mb-3 text-sm font-extrabold tracking-wide text-cyan-300">
