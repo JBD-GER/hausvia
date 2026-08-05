@@ -165,11 +165,11 @@ export const SEO_KEYWORDS = [
 ];
 
 export const ASSETS = {
-  logo: "/hausvia-logo.png",
-  emailLogo: "/hausvia-logo-email.png",
-  mark: "/hausvia-icon.png",
-  favicon: "/hausvia-favicon.png",
-  appleIcon: "/hausvia-apple-touch-icon.png",
+  logo: "/hausvia-logo-2026.png",
+  emailLogo: "/hausvia-logo-email-2026.png",
+  mark: "/hausvia-icon-2026.png",
+  favicon: "/hausvia-favicon-2026.png",
+  appleIcon: "/hausvia-apple-touch-icon-2026.png",
   hero: "/images/hausvia-hausmeisterservice-hannover-treppenhausreinigung.jpg",
   garden: "/images/hausvia-gartenpflege-hannover-wohnanlage.jpg",
   repair: "/images/hausvia-kleinreparaturen-hannover-objektkontrolle.jpg",

@@ -78,7 +78,7 @@ test("liefert ein vollständiges responsives Hausvia E-Mail-Design", () => {
   assert.match(html, /display:none;max-height:0/);
   assert.match(
     html,
-    /<img src="https:\/\/www\.hausvia\.de\/hausvia-logo-email\.png" width="224" height="51" alt="Hausvia"/,
+    /<img src="https:\/\/www\.hausvia\.de\/hausvia-logo-email-2026\.png" width="224" height="51" alt="Hausvia"/,
   );
   assert.match(html, /background:#08aeb4/);
   assert.match(html, /Hausvia\. Digital\. Zuverlässig\. Vor Ort\./);
