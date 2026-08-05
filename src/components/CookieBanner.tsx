@@ -62,27 +62,30 @@ export function CookieBanner() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="cookie-title"
-      className="fixed inset-0 z-[100] flex items-end justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+      aria-describedby="cookie-description"
+      className="fixed inset-0 z-[100] flex items-end justify-center overflow-hidden bg-slate-950/70 backdrop-blur-sm sm:items-center sm:p-6"
     >
       <section
         aria-label="Cookie-Einstellungen"
-        className="max-h-[calc(100svh-1.5rem)] w-full max-w-4xl overflow-y-auto rounded-xl border border-white/20 bg-white shadow-2xl shadow-slate-950/30"
+        className="flex max-h-[100svh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-white/20 bg-white shadow-2xl shadow-slate-950/30 sm:max-h-[calc(100svh-3rem)] sm:rounded-xl"
       >
-        <div className="border-b border-slate-200 bg-brand px-5 py-4 text-white sm:px-7">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-100">Datenschutz & Conversion-Messung</p>
-          <h2 id="cookie-title" className="mt-2 text-2xl font-extrabold leading-tight sm:text-3xl">
+        <div className="shrink-0 border-b border-slate-200 bg-brand px-4 py-3 text-white sm:px-7 sm:py-4">
+          <p className="hidden text-xs font-bold uppercase tracking-[0.22em] text-blue-100 sm:block">
+            Datenschutz & Conversion-Messung
+          </p>
+          <h2 id="cookie-title" className="text-xl font-extrabold leading-tight sm:mt-2 sm:text-3xl">
             Cookies und Tracking auswählen
           </h2>
         </div>
 
-        <div className="grid gap-5 p-5 sm:p-7 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-          <div>
-            <p className="text-base font-semibold leading-7 text-slate-750">
+        <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[1.15fr_0.85fr] lg:items-start lg:gap-5 lg:overflow-y-auto lg:p-7">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-7 sm:py-5 lg:overflow-visible lg:p-0">
+            <p id="cookie-description" className="text-sm font-semibold leading-6 text-slate-750 sm:text-base sm:leading-7">
               Hausvia nutzt notwendige Speicherungen für den Betrieb der Website. Mit Ihrer Zustimmung nutzen wir
               außerdem Analyse- und Marketingdienste, damit Anfragen und Conversion-Quellen sauber gemessen werden
               können.
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 hidden gap-3 sm:grid sm:grid-cols-3">
               {[
                 "Auswahl erforderlich, bevor es weitergeht",
                 "Werbe-Cookies und erweiterte Messdaten nur mit Zustimmung",
@@ -97,18 +100,20 @@ export function CookieBanner() {
             <button
               type="button"
               onClick={() => setShowDetails((current) => !current)}
-              className="mt-5 text-sm font-bold text-brand underline"
+              aria-expanded={showDetails}
+              aria-controls="cookie-details"
+              className="mt-3 text-sm font-bold text-brand underline sm:mt-5"
             >
               {showDetails ? "Details ausblenden" : "Details und Auswahl anzeigen"}
             </button>
 
             {showDetails ? (
-              <div className="mt-4 grid gap-3 text-sm text-slate-750">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div id="cookie-details" className="mt-3 grid gap-3 text-sm text-slate-750 sm:mt-4">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
                   <p className="font-extrabold text-slate-950">Notwendig</p>
                   <p className="mt-1 leading-6">Erforderlich für Grundfunktionen und die Speicherung dieser Auswahl.</p>
                 </div>
-                <label className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <label className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
                   <span className="flex items-start gap-3">
                     <input
                       type="checkbox"
@@ -122,7 +127,7 @@ export function CookieBanner() {
                     </span>
                   </span>
                 </label>
-                <label className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <label className="rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
                   <span className="flex items-start gap-3">
                     <input
                       type="checkbox"
@@ -143,49 +148,57 @@ export function CookieBanner() {
             ) : null}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-extrabold uppercase tracking-wide text-brand">Empfohlen</p>
-            <p className="mt-2 text-xl font-extrabold leading-tight text-slate-950">
-              Alle akzeptieren und Website nutzen
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-650">
-              Damit können wir messen, welche Anfragen entstehen und die Kampagnen sauber optimieren.
-            </p>
-            <div className="mt-5 grid gap-2">
+          <div className="shrink-0 border-t border-slate-200 bg-slate-50 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] lg:rounded-xl lg:border lg:p-4 lg:shadow-none">
+            <div className="hidden lg:block">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-brand">Empfohlen</p>
+              <p className="mt-2 text-xl font-extrabold leading-tight text-slate-950">
+                Alle akzeptieren und Website nutzen
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-650">
+                Damit können wir messen, welche Anfragen entstehen und die Kampagnen sauber optimieren.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 lg:mt-5 lg:grid-cols-1">
               <button
                 type="button"
                 onClick={acceptAll}
-                className="min-h-12 rounded-md bg-brand px-5 py-3 text-sm font-extrabold text-white transition hover:bg-brand-dark"
+                className="min-h-11 rounded-md bg-brand px-3 py-2.5 text-sm font-extrabold text-white transition hover:bg-brand-dark lg:min-h-12 lg:px-5 lg:py-3"
               >
-                Alle akzeptieren und fortfahren
+                <span className="lg:hidden">Alle akzeptieren</span>
+                <span className="hidden lg:inline">Alle akzeptieren und fortfahren</span>
               </button>
-              <button
-                type="button"
-                onClick={acceptSelection}
-                className="min-h-11 rounded-md border border-brand bg-white px-5 py-2.5 text-sm font-bold text-brand transition hover:bg-brand-soft"
-              >
-                Auswahl speichern
-              </button>
+              {showDetails ? (
+                <button
+                  type="button"
+                  onClick={acceptSelection}
+                  className="order-first col-span-2 min-h-11 rounded-md border border-brand bg-white px-5 py-2.5 text-sm font-bold text-brand transition hover:bg-brand-soft lg:order-none lg:col-span-1"
+                >
+                  Auswahl speichern
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={acceptNecessaryOnly}
-                className="min-h-11 rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:border-brand hover:text-brand"
+                className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 transition hover:border-brand hover:text-brand lg:px-5"
               >
-                Nur notwendige Cookies
+                <span className="lg:hidden">Nur notwendige</span>
+                <span className="hidden lg:inline">Nur notwendige Cookies</span>
               </button>
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-4 text-xs font-bold text-slate-500 lg:mt-4 lg:flex-col lg:gap-2">
               {editingSavedConsent ? (
                 <button
                   type="button"
                   onClick={closeSettings}
-                  className="min-h-10 px-4 py-2 text-xs font-bold text-slate-600 underline underline-offset-4 transition hover:text-brand"
+                  className="underline underline-offset-4 transition hover:text-brand"
                 >
                   Ohne Änderungen schließen
                 </button>
               ) : null}
+              <Link href="/datenschutz" className="underline">
+                Datenschutzhinweise öffnen
+              </Link>
             </div>
-            <Link href="/datenschutz" className="mt-4 block text-center text-xs font-bold text-slate-500 underline">
-              Datenschutzhinweise öffnen
-            </Link>
           </div>
         </div>
       </section>
