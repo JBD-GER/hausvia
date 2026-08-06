@@ -10,7 +10,12 @@ import {
   Paperclip,
   Send,
 } from "lucide-react";
-import { useActionState, useEffect, useRef } from "react";
+import {
+  useActionState,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import {
   markPropertyMessagesReadAction,
   reactToPropertyMessageAction,
@@ -23,13 +28,26 @@ import {
 } from "@/components/portal/PortalUI";
 import {
   INITIAL_PROPERTY_MESSAGE_ACTION_STATE,
+  propertyMessageActionError,
   type SendPropertyMessageAction,
 } from "@/lib/portal/chatActionState";
+import { optimizeChatImage } from "@/lib/portal/chatImageCompression";
 import { formatGermanDate } from "@/lib/portal/core";
+import {
+  CHAT_ATTACHMENT_ACCEPT,
+  MAX_CHAT_FILE_BYTES,
+  validateChatAttachmentSelection,
+  validateUploadMetadata,
+} from "@/lib/portal/uploadPolicy";
 
 const ALLOWED_REACTIONS = ["👍", "✅", "❤️", "🙂", "❄️", "🛠️"] as const;
-const CHAT_ATTACHMENT_ACCEPT =
-  "image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm,application/pdf";
+
+function megabytes(bytes: number) {
+  return (bytes / 1024 / 1024).toLocaleString("de-DE", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
 
 type MessageAttachment = {
   id: string;
@@ -135,16 +153,103 @@ export function PropertyChat({
   readOnly?: boolean;
 }) {
   const messageFormRef = useRef<HTMLFormElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const attachmentSelectionId = useRef(0);
+  const [preparedAttachment, setPreparedAttachment] = useState<File | null>(
+    null,
+  );
+  const [attachmentOptimizing, setAttachmentOptimizing] = useState(false);
+  const [attachmentFeedback, setAttachmentFeedback] = useState<{
+    tone: "info" | "error";
+    message: string;
+  } | null>(null);
+  const submitPreparedMessage = useCallback(
+    async (previousState: typeof INITIAL_PROPERTY_MESSAGE_ACTION_STATE, formData: FormData) => {
+      const rawAttachment = formData.get("attachment");
+      const attachment =
+        preparedAttachment ??
+        (rawAttachment instanceof File && rawAttachment.size > 0
+          ? rawAttachment
+          : null);
+      if (attachment) {
+        const validation = validateUploadMetadata(attachment, "chat");
+        if (!validation.ok) {
+          return propertyMessageActionError(previousState, validation.message);
+        }
+        formData.set("attachment", attachment);
+      } else {
+        formData.delete("attachment");
+      }
+      const result = await sendMessageAction(previousState, formData);
+      if (result.status === "success") {
+        messageFormRef.current?.reset();
+        setPreparedAttachment(null);
+        setAttachmentFeedback(null);
+      }
+      return result;
+    },
+    [preparedAttachment, sendMessageAction],
+  );
   const [sendState, sendFormAction, sendPending] = useActionState(
-    sendMessageAction,
+    submitPreparedMessage,
     INITIAL_PROPERTY_MESSAGE_ACTION_STATE,
   );
 
-  useEffect(() => {
-    if (sendState.status === "success" && sendState.submissionId > 0) {
-      messageFormRef.current?.reset();
+  async function prepareAttachment(file: File | null) {
+    const selectionId = attachmentSelectionId.current + 1;
+    attachmentSelectionId.current = selectionId;
+    setPreparedAttachment(null);
+    setAttachmentFeedback(null);
+    setAttachmentOptimizing(false);
+    if (!file) return;
+
+    const selection = validateChatAttachmentSelection(file);
+    if (!selection.ok) {
+      if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+      setAttachmentFeedback({ tone: "error", message: selection.message });
+      return;
     }
-  }, [sendState.status, sendState.submissionId]);
+    if (!selection.optimizeImage) {
+      setPreparedAttachment(file);
+      setAttachmentFeedback({
+        tone: "info",
+        message: `${file.name} · ${megabytes(file.size)} MB bereit zum Senden.`,
+      });
+      return;
+    }
+
+    setAttachmentOptimizing(true);
+    setAttachmentFeedback({
+      tone: "info",
+      message: `Das Foto (${megabytes(file.size)} MB) wird automatisch für den Chat optimiert …`,
+    });
+    try {
+      const optimized = await optimizeChatImage(file);
+      if (attachmentSelectionId.current !== selectionId) return;
+      const validation = validateUploadMetadata(optimized, "chat");
+      if (!validation.ok) throw new Error(validation.message);
+      setPreparedAttachment(optimized);
+      setAttachmentFeedback({
+        tone: "info",
+        message: `Foto optimiert: ${megabytes(file.size)} MB → ${megabytes(optimized.size)} MB.`,
+      });
+    } catch (error) {
+      if (attachmentSelectionId.current !== selectionId) return;
+      if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+      setPreparedAttachment(null);
+      setAttachmentFeedback({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Das Foto konnte nicht optimiert werden.",
+      });
+    } finally {
+      if (attachmentSelectionId.current === selectionId) {
+        setAttachmentOptimizing(false);
+      }
+    }
+  }
 
   const unreadCount = messages.filter(
     (message) =>
@@ -285,7 +390,29 @@ export function PropertyChat({
         <form
           ref={messageFormRef}
           action={sendFormAction}
-          aria-busy={sendPending}
+          aria-busy={sendPending || attachmentOptimizing}
+          onSubmit={(event) => {
+            if (attachmentOptimizing) {
+              event.preventDefault();
+              setAttachmentFeedback({
+                tone: "info",
+                message: "Bitte warten Sie kurz, bis das Foto optimiert wurde.",
+              });
+              return;
+            }
+            const selectedFile =
+              preparedAttachment ?? attachmentInputRef.current?.files?.[0];
+            if (selectedFile && selectedFile.size > 0) {
+              const validation = validateUploadMetadata(selectedFile, "chat");
+              if (!validation.ok) {
+                event.preventDefault();
+                setAttachmentFeedback({
+                  tone: "error",
+                  message: validation.message,
+                });
+              }
+            }
+          }}
           className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
         >
           <input type="hidden" name="propertyId" value={propertyId} />
@@ -312,7 +439,7 @@ export function PropertyChat({
           ) : null}
 
           <fieldset
-            disabled={sendPending}
+            disabled={sendPending || attachmentOptimizing}
             className="m-0 grid min-w-0 gap-3 border-0 p-0"
           >
             <Field label="Nachricht" required>
@@ -327,27 +454,50 @@ export function PropertyChat({
             </Field>
             <Field label="Bild, Video oder PDF (optional)">
               <input
+                ref={attachmentInputRef}
                 name="attachment"
                 type="file"
                 accept={CHAT_ATTACHMENT_ACCEPT}
+                aria-describedby="chat-upload-hint chat-attachment-feedback"
+                onChange={(event) => {
+                  void prepareAttachment(event.currentTarget.files?.[0] ?? null);
+                }}
                 className={inputClass}
               />
             </Field>
+            {attachmentFeedback ? (
+              <p
+                id="chat-attachment-feedback"
+                role={attachmentFeedback.tone === "error" ? "alert" : "status"}
+                className={`rounded-lg border px-3 py-2 text-xs font-bold leading-5 ${
+                  attachmentFeedback.tone === "error"
+                    ? "border-rose-200 bg-rose-50 text-rose-800"
+                    : "border-teal-200 bg-teal-50 text-teal-900"
+                }`}
+              >
+                {attachmentFeedback.message}
+              </p>
+            ) : null}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p id="chat-upload-hint" className="text-xs leading-5 text-slate-500">
-                JPG, PNG, WebP, HEIC, MP4, MOV, WebM oder PDF · maximal 4 MB.
+                Fotos bis 30 MB werden automatisch optimiert. Videos und PDFs
+                dürfen maximal {Math.round(MAX_CHAT_FILE_BYTES / 1024 / 1024)} MB groß sein.
               </p>
               <button
                 type="submit"
-                disabled={sendPending}
+                disabled={sendPending || attachmentOptimizing}
                 className={`${buttonClass} shrink-0 sm:min-w-44`}
               >
-                {sendPending ? (
+                {sendPending || attachmentOptimizing ? (
                   <LoaderCircle aria-hidden="true" className="animate-spin" size={18} />
                 ) : (
                   <Send aria-hidden="true" size={18} />
                 )}
-                {sendPending ? "Wird gesendet …" : "Nachricht senden"}
+                {attachmentOptimizing
+                  ? "Foto wird optimiert …"
+                  : sendPending
+                    ? "Wird gesendet …"
+                    : "Nachricht senden"}
               </button>
             </div>
           </fieldset>

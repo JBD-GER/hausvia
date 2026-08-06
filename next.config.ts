@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "5mb",
+      // Vercel rejects Function requests above 4.5 MB before an Action runs.
+      // Leave enough room above the 4 MiB application file limit for multipart
+      // boundaries and the encrypted Server Action metadata.
+      bodySizeLimit: "4.25mb",
     },
   },
   async headers() {

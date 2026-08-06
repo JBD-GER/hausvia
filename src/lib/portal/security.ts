@@ -7,26 +7,14 @@ import {
   randomUUID,
   timingSafeEqual,
 } from "node:crypto";
-
-const IMAGE_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-]);
-const CHAT_MIME_TYPES = new Set([
-  ...IMAGE_MIME_TYPES,
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "application/pdf",
-]);
+import {
+  matchesUploadSignature,
+  validateUploadMetadata,
+} from "@/lib/portal/uploadPolicy";
 
 // Keep Server Action uploads below Vercel's 4.5 MB request-body ceiling,
 // including multipart form overhead. Larger media needs a direct-to-storage flow.
-export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-export const MAX_CHAT_FILE_BYTES = 4 * 1024 * 1024;
+export { MAX_CHAT_FILE_BYTES, MAX_IMAGE_BYTES } from "@/lib/portal/uploadPolicy";
 
 export function createOpaqueToken(bytes = 32) {
   return randomBytes(bytes).toString("base64url");
@@ -63,22 +51,7 @@ export function validateUpload(
   file: File,
   kind: "image" | "chat" = "image",
 ): { ok: true } | { ok: false; message: string } {
-  const allowed = kind === "chat" ? CHAT_MIME_TYPES : IMAGE_MIME_TYPES;
-  const limit = kind === "chat" ? MAX_CHAT_FILE_BYTES : MAX_IMAGE_BYTES;
-  if (!file.name || file.size <= 0)
-    return { ok: false, message: "Die Datei ist leer." };
-  if (!allowed.has(file.type))
-    return { ok: false, message: "Dieser Dateityp ist nicht erlaubt." };
-  if (file.size > limit)
-    return {
-      ok: false,
-      message: `Die Datei darf höchstens ${Math.round(limit / 1024 / 1024)} MB groß sein.`,
-    };
-  return { ok: true };
-}
-
-function startsWith(bytes: Uint8Array, signature: number[], offset = 0) {
-  return signature.every((value, index) => bytes[offset + index] === value);
+  return validateUploadMetadata(file, kind);
 }
 
 export async function validateUploadContents(
@@ -89,21 +62,7 @@ export async function validateUploadContents(
   if (!metadata.ok) return metadata;
 
   const bytes = new Uint8Array(await file.slice(0, 32).arrayBuffer());
-  const ascii = new TextDecoder("ascii").decode(bytes);
-  const valid =
-    (file.type === "image/jpeg" && startsWith(bytes, [0xff, 0xd8, 0xff])) ||
-    (file.type === "image/png" &&
-      startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) ||
-    (file.type === "image/webp" &&
-      ascii.startsWith("RIFF") &&
-      ascii.slice(8, 12) === "WEBP") ||
-    (["image/heic", "image/heif"].includes(file.type) &&
-      ascii.slice(4, 8) === "ftyp") ||
-    (["video/mp4", "video/quicktime"].includes(file.type) &&
-      ascii.slice(4, 8) === "ftyp") ||
-    (file.type === "video/webm" &&
-      startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) ||
-    (file.type === "application/pdf" && ascii.startsWith("%PDF-"));
+  const valid = matchesUploadSignature(bytes, file.type);
 
   return valid
     ? { ok: true }
