@@ -6,6 +6,7 @@ import { CompactSection, PageHeader, Panel, StatusPill } from "@/components/port
 import { PropertyChat } from "@/components/portal/PropertyChat";
 import { PropertyRealtimeRefresh } from "@/components/portal/PropertyRealtimeRefresh";
 import { requireEmployeeContext } from "@/lib/portal/access";
+import { attachChatSenderRoles } from "@/lib/portal/chatSenderRoles";
 import { createPrivateAttachmentUrls } from "@/lib/portal/files";
 
 export default async function EmployeePropertyPage({
@@ -78,7 +79,9 @@ export default async function EmployeePropertyPage({
   const accessNotesByBuildingId = new Map(
     (accessNotes ?? []).map((note) => [note.building_id, note.access_notes]),
   );
-  const chatMessages = (messages ?? []).slice().reverse();
+  const chatMessages = await attachChatSenderRoles(
+    (messages ?? []).slice().reverse(),
+  );
   const signedAttachmentUrls = await createPrivateAttachmentUrls(
     supabase,
     chatMessages.flatMap((message) => message.message_attachments ?? []),
@@ -184,7 +187,9 @@ export default async function EmployeePropertyPage({
           <Panel title="Immobilien-Chat" description="Nachrichten und Anhänge zur Immobilie">
             <PropertyChat
               propertyId={property.id}
+              propertyName={property.name}
               currentUserId={profile.id}
+              currentUserRole={profile.role}
               messages={chatMessages}
               signedAttachmentUrls={signedAttachmentUrls}
               sendMessageAction={sendEmployeePropertyMessageAction}

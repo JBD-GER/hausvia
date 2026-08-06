@@ -32,6 +32,7 @@ import {
   formatGermanDate,
   VISIT_STATUS_LABELS,
 } from "@/lib/portal/core";
+import { attachChatSenderRoles } from "@/lib/portal/chatSenderRoles";
 import { createPrivateAttachmentUrls } from "@/lib/portal/files";
 import { requireCustomerContext } from "@/lib/portal/access";
 import {
@@ -103,7 +104,9 @@ export default async function CustomerPropertyPage({
     Number.isInteger(newValue)
       ? Number(newValue)
       : Math.round(Number(legacy ?? 0) * 100);
-  const chatMessages = (messages ?? []).slice().reverse();
+  const chatMessages = await attachChatSenderRoles(
+    (messages ?? []).slice().reverse(),
+  );
   const signedAttachmentUrls = await createPrivateAttachmentUrls(
     supabase,
     chatMessages.flatMap((message) => message.message_attachments ?? []),
@@ -542,7 +545,9 @@ export default async function CustomerPropertyPage({
           <Panel title="Immobilien-Chat">
             <PropertyChat
               propertyId={property.id}
+              propertyName={property.name}
               currentUserId={profile.id}
+              currentUserRole={profile.role}
               messages={chatMessages}
               signedAttachmentUrls={signedAttachmentUrls}
               sendMessageAction={sendCustomerPropertyMessageAction}
