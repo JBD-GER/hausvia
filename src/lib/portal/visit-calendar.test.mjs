@@ -4,6 +4,7 @@ import {
   addCalendarDays,
   addCalendarMonths,
   buildVisitCalendarHref,
+  calendarDayVisitId,
   calendarDatesBetween,
   calendarDayNumber,
   calendarMonthNumber,
@@ -160,6 +161,16 @@ test("normalisiert unbekannte Ansichten auf den Monat", () => {
   assert.equal(normalizeVisitCalendarView("month"), "month");
   assert.equal(normalizeVisitCalendarView("agenda"), "month");
   assert.equal(normalizeVisitCalendarView(undefined), "month");
+});
+
+test("öffnet einen Kalendertag nur bei genau einem Termin direkt", () => {
+  assert.equal(calendarDayVisitId([]), null);
+  assert.equal(calendarDayVisitId([{ id: " einsatz-1 " }]), "einsatz-1");
+  assert.equal(
+    calendarDayVisitId([{ id: "einsatz-1" }, { id: "einsatz-2" }]),
+    null,
+  );
+  assert.equal(calendarDayVisitId([{ id: "   " }]), null);
 });
 
 test("baut interne Kalenderlinks, bewahrt Kontext und entfernt alte Meldungen", () => {

@@ -11,6 +11,7 @@ import { VISIT_STATUS_LABELS } from "@/lib/portal/core";
 import {
   VISIT_CALENDAR_WEEKDAYS,
   buildVisitCalendarHref,
+  calendarDayVisitId,
   calendarDatesBetween,
   calendarDayNumber,
   calendarWeekdayLabel,
@@ -277,6 +278,7 @@ function DesktopCalendar({
                     view === "month" && !isSameCalendarMonth(date, calendarDate);
                   const visibleEvents = view === "month" ? events.slice(0, 3) : events;
                   const hiddenEventCount = events.length - visibleEvents.length;
+                  const directVisitId = calendarDayVisitId(events);
 
                   return (
                     <td
@@ -292,11 +294,12 @@ function DesktopCalendar({
                               baseHref,
                               view,
                               calendarDate: date,
+                              visitId: directVisitId,
                             })}
                             prefetch={false}
                             scroll={false}
                             aria-current={isSelectedDate ? "date" : undefined}
-                            aria-label={`${formatVisitCalendarFullDate(date)}${isToday ? ", heute" : ""} auswählen${events.length ? `, ${events.length} ${events.length === 1 ? "Termin" : "Termine"}` : ""}`}
+                            aria-label={`${formatVisitCalendarFullDate(date)}${isToday ? ", heute" : ""}${directVisitId ? ", Termin direkt öffnen" : ` auswählen${events.length ? `, ${events.length} Termine` : ""}`}`}
                             className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-black tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#08AEB4] focus-visible:ring-offset-1 ${
                               isToday
                                 ? "bg-brand text-white shadow-[0_6px_16px_rgba(8,43,97,0.24)]"
@@ -375,7 +378,9 @@ function MobileDatePicker({
     return (
       <div className="grid grid-cols-7 gap-1.5" aria-label="Tag auswählen">
         {dates.map((date) => {
-          const eventCount = eventsByDate.get(date)?.length ?? 0;
+          const events = eventsByDate.get(date) ?? [];
+          const eventCount = events.length;
+          const directVisitId = calendarDayVisitId(events);
           const selected = date === calendarDate;
           const isToday = date === today;
           return (
@@ -385,11 +390,12 @@ function MobileDatePicker({
                 baseHref,
                 view,
                 calendarDate: date,
+                visitId: directVisitId,
               })}
               prefetch={false}
               scroll={false}
               aria-current={selected ? "date" : undefined}
-              aria-label={`${formatVisitCalendarFullDate(date)}${isToday ? ", heute" : ""} auswählen, ${eventCount} ${eventCount === 1 ? "Termin" : "Termine"}`}
+              aria-label={`${formatVisitCalendarFullDate(date)}${isToday ? ", heute" : ""}${directVisitId ? ", Termin direkt öffnen" : ` auswählen, ${eventCount} Termine`}`}
               className={`flex min-h-16 min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#08AEB4] focus-visible:ring-offset-2 ${
                 selected
                   ? "border-brand bg-brand text-white shadow-[0_8px_20px_rgba(8,43,97,0.2)]"
@@ -431,7 +437,9 @@ function MobileDatePicker({
       </div>
       <div className="grid grid-cols-7 gap-1" aria-label="Tag auswählen">
         {dates.map((date) => {
-          const eventCount = eventsByDate.get(date)?.length ?? 0;
+          const events = eventsByDate.get(date) ?? [];
+          const eventCount = events.length;
+          const directVisitId = calendarDayVisitId(events);
           const selected = date === calendarDate;
           const isToday = date === today;
           const outsideMonth = !isSameCalendarMonth(date, calendarDate);
@@ -442,11 +450,12 @@ function MobileDatePicker({
                 baseHref,
                 view,
                 calendarDate: date,
+                visitId: directVisitId,
               })}
               prefetch={false}
               scroll={false}
               aria-current={selected ? "date" : undefined}
-              aria-label={`${formatVisitCalendarFullDate(date)}${isToday ? ", heute" : ""} auswählen, ${eventCount} ${eventCount === 1 ? "Termin" : "Termine"}`}
+              aria-label={`${formatVisitCalendarFullDate(date)}${isToday ? ", heute" : ""}${directVisitId ? ", Termin direkt öffnen" : ` auswählen, ${eventCount} Termine`}`}
               className={`flex min-h-11 min-w-0 flex-col items-center justify-center rounded-lg border text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#08AEB4] focus-visible:ring-offset-1 ${
                 selected
                   ? "border-brand bg-brand text-white shadow-[0_5px_14px_rgba(8,43,97,0.2)]"

@@ -588,12 +588,49 @@ select public.__portal_test_assert(
   (select count(*) = 0 from public.visit_tasks where visit_id = 'f0000000-0000-0000-0000-000000000001'),
   'customer must not read live visit tasks'
 );
+update public.visit_tasks
+set status = 'done'
+where visit_id = 'f0000000-0000-0000-0000-000000000001';
+
+-- Admins may complete a task during a started visit. The admin read also proves
+-- that the customer UPDATE above affected zero rows through RLS.
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}',
+  true
+);
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
+select public.__portal_test_assert(
+  exists (
+    select 1 from public.visit_tasks
+    where visit_id = 'f0000000-0000-0000-0000-000000000001'
+      and status = 'open'
+  ),
+  'customer must not update a live visit task'
+);
+update public.visit_tasks
+set status = 'done'
+where visit_id = 'f0000000-0000-0000-0000-000000000001';
+select public.__portal_test_assert(
+  exists (
+    select 1 from public.visit_tasks
+    where visit_id = 'f0000000-0000-0000-0000-000000000001'
+      and status = 'done'
+      and completed_by = '10000000-0000-0000-0000-000000000001'
+  ),
+  'admin must complete a task with server-owned actor identity'
+);
+
 select set_config(
   'request.jwt.claims',
   '{"sub":"30000000-0000-0000-0000-000000000001","role":"authenticated"}',
   true
 );
 select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000001', true);
+
+update public.visit_tasks
+set status = 'open'
+where visit_id = 'f0000000-0000-0000-0000-000000000001';
 
 update public.visit_tasks
 set status = 'done', completed_at = '2000-01-01 00:00:00+00',
@@ -658,6 +695,17 @@ select public.__portal_test_assert(
 select public.__portal_test_assert_fails(
   $$select public.complete_visit('f0000000-0000-0000-0000-000000000001')$$,
   'customer must not complete a visit, including idempotent completed calls'
+);
+update public.visit_tasks
+set status = 'open'
+where visit_id = 'f0000000-0000-0000-0000-000000000001';
+select public.__portal_test_assert(
+  exists (
+    select 1 from public.visit_tasks
+    where visit_id = 'f0000000-0000-0000-0000-000000000001'
+      and status = 'done'
+  ),
+  'customer must not change completed task evidence'
 );
 update public.notifications
 set read_at = now()

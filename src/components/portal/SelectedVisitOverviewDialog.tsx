@@ -19,19 +19,12 @@ import {
   XCircle,
 } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef } from "react";
+import { useFormStatus } from "react-dom";
 
 export type VisitOverviewBuilding = {
   id: string;
   label: string;
   address: string;
-};
-
-export type VisitOverviewService = {
-  id: string;
-  name: string;
-  category: string | null;
-  status: string;
-  buildingLabels: string[];
 };
 
 export type VisitOverviewTask = {
@@ -64,7 +57,6 @@ export type SelectedVisitOverview = {
   completedLabel: string | null;
   durationLabel: string | null;
   buildings: VisitOverviewBuilding[];
-  services: VisitOverviewService[];
   tasks: VisitOverviewTask[];
 };
 
@@ -141,14 +133,31 @@ function OverviewMetric({
   );
 }
 
+function CompleteTaskButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#082B61] px-3 text-xs font-black text-white transition hover:bg-[#061F47] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#08AEB4]/25 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+    >
+      <CheckCircle2 aria-hidden="true" size={16} />
+      {pending ? "Wird gespeichert …" : "Als erledigt markieren"}
+    </button>
+  );
+}
+
 export function SelectedVisitOverviewDialog({
   visit,
   closeHref,
   detailsHref,
+  completeTaskAction,
 }: {
   visit: SelectedVisitOverview;
   closeHref: string;
   detailsHref: string;
+  completeTaskAction: (formData: FormData) => Promise<void>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const skipCloseNavigationRef = useRef(false);
@@ -282,79 +291,33 @@ export function SelectedVisitOverviewDialog({
           )}
         </section>
 
-        <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1.35fr)]">
-          <section
-            aria-labelledby={`${titleId}-services`}
-            className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <ListChecks aria-hidden="true" size={18} className="text-[#087F83]" />
-                <h3
-                  id={`${titleId}-services`}
-                  className="font-black text-slate-950"
-                >
-                  Fällige Leistungen
-                </h3>
-              </div>
-              <span className="inline-flex min-h-7 items-center rounded-full bg-white px-2.5 text-xs font-black text-slate-600 shadow-sm">
-                {visit.services.length}
-              </span>
-            </div>
-            {visit.services.length ? (
-              <ul className="mt-3 grid gap-2">
-                {visit.services.map((service) => (
-                  <li
-                    key={service.id}
-                    className="rounded-xl border border-slate-200 bg-white p-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-extrabold text-slate-950">
-                          {service.name}
-                        </p>
-                        <p className="mt-0.5 text-xs font-semibold leading-5 text-slate-500">
-                          {[service.category, ...service.buildingLabels]
-                            .filter(Boolean)
-                            .join(" · ") || "Immobilie gesamt"}
-                        </p>
-                      </div>
-                      <TaskStatus status={service.status} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-                An diesem Termin ist nach Saison- und Leistungsplan keine regelmäßige Leistung fällig.
+        <section aria-labelledby={`${titleId}-tasks`} className="mt-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-[0.62rem] font-black uppercase tracking-[0.12em] text-[#087F83]">
+                <ListChecks aria-hidden="true" size={16} />
+                Termin-Checkliste
               </p>
-            )}
-            <p className="mt-3 border-t border-slate-200 pt-3 text-xs font-semibold leading-5 text-slate-500">
-              Es erscheinen nur Leistungen, die an diesem Termin tatsächlich fällig sind – saisonale Leistungen nur innerhalb ihres Zeitfensters.
-            </p>
-          </section>
-
-          <section aria-labelledby={`${titleId}-tasks`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-[#087F83]">
-                  Mitarbeiter-Checkliste
-                </p>
-                <h3
-                  id={`${titleId}-tasks`}
-                  className="mt-0.5 text-lg font-black tracking-[-0.02em] text-slate-950"
-                >
-                  Aufgaben im Einsatz
-                </h3>
-              </div>
-              <span className="inline-flex min-h-8 items-center rounded-full border border-slate-200 bg-white px-3 text-xs font-black text-slate-600">
-                {visit.tasks.length}
-              </span>
+              <h3
+                id={`${titleId}-tasks`}
+                className="mt-0.5 text-lg font-black tracking-[-0.02em] text-slate-950"
+              >
+                Leistungen und Aufgaben
+              </h3>
+              <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-slate-500">
+                Angezeigt werden nur die für diesen Termin fälligen Aufgaben.
+                Ändern dürfen den Status ausschließlich Mitarbeiter und Admins
+                während eines gestarteten Einsatzes.
+              </p>
             </div>
+            <span className="inline-flex min-h-8 items-center rounded-full border border-slate-200 bg-white px-3 text-xs font-black text-slate-600">
+              {visit.tasks.length}
+            </span>
+          </div>
 
-            {visit.tasks.length ? (
-              <div className="mt-3 grid gap-2.5">
-                {visit.tasks.map((task) => (
+          {visit.tasks.length ? (
+            <div className="mt-3 grid gap-2.5">
+              {visit.tasks.map((task) => (
                   <article
                     key={task.id}
                     className={`rounded-2xl border p-4 ${
@@ -453,16 +416,26 @@ export function SelectedVisitOverviewDialog({
                         Erledigt am {task.completedAtLabel}
                       </p>
                     ) : null}
+                    {visit.status === "started" && task.status !== "done" ? (
+                      <form
+                        action={completeTaskAction}
+                        className="mt-4 flex justify-end border-t border-slate-200/80 pt-3"
+                      >
+                        <input type="hidden" name="visitId" value={visit.id} />
+                        <input type="hidden" name="taskId" value={task.id} />
+                        <CompleteTaskButton />
+                      </form>
+                    ) : null}
                   </article>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm font-semibold leading-6 text-slate-600">
-                Für diesen Termin ist nach Leistungs- und Saisonprüfung keine Aufgabe fällig.
-              </p>
-            )}
-          </section>
-        </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm font-semibold leading-6 text-slate-600">
+              Für diesen Termin ist nach Leistungs- und Saisonprüfung keine
+              Aufgabe fällig.
+            </p>
+          )}
+        </section>
       </div>
 
       <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50/95 p-3 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-4">

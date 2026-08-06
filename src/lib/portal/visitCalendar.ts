@@ -284,6 +284,13 @@ export function calendarWeekdayLabel(
   return VISIT_CALENDAR_WEEKDAYS[calendarWeekdayIndex(value)][variant];
 }
 
+export function calendarDayVisitId(
+  events: readonly { id: string }[],
+): string | null {
+  if (events.length !== 1) return null;
+  return events[0]?.id.trim() || null;
+}
+
 export function buildVisitCalendarHref({
   baseHref,
   view,

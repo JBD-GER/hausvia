@@ -1690,6 +1690,102 @@ export async function cancelVisitAction(formData: FormData) {
   go(fallback, "status", "Der Einsatz wurde abgesagt und die Beteiligten wurden informiert.");
 }
 
+export async function completeAdminVisitTaskAction(formData: FormData) {
+  const { profile, supabase, admin } = await requireAdminContext();
+  const visitId = formValue(formData, "visitId");
+  const taskId = formValue(formData, "taskId");
+  if (
+    !/^[0-9a-f-]{36}$/i.test(visitId) ||
+    !/^[0-9a-f-]{36}$/i.test(taskId)
+  ) {
+    go("/admin/properties", "error", "Die Aufgabe konnte nicht eindeutig zugeordnet werden.");
+  }
+
+  const { data: task, error: taskError } = await supabase
+    .from("visit_tasks")
+    .select("id,visit_id,property_id,status,photo_required")
+    .eq("id", taskId)
+    .eq("visit_id", visitId)
+    .maybeSingle();
+  if (taskError || !task) {
+    go("/admin/properties", "error", "Die Einsatzaufgabe wurde nicht gefunden.");
+  }
+
+  const fallback = `${propertyViewPath(task.property_id, "einsaetze")}&visit=${encodeURIComponent(visitId)}`;
+  const { data: visit, error: visitError } = await supabase
+    .from("visits")
+    .select("id,status")
+    .eq("id", visitId)
+    .eq("property_id", task.property_id)
+    .maybeSingle();
+  if (visitError || !visit) {
+    go(fallback, "error", "Der Einsatz wurde nicht gefunden.");
+  }
+  if (visit.status !== "started") {
+    go(
+      fallback,
+      "error",
+      "Aufgaben können erst während eines gestarteten Einsatzes erledigt werden.",
+    );
+  }
+  if (task.status === "done") {
+    revalidatePath(`/admin/properties/${task.property_id}`);
+    return;
+  }
+
+  if (task.photo_required) {
+    const { count, error: attachmentError } = await supabase
+      .from("visit_task_attachments")
+      .select("id", { count: "exact", head: true })
+      .eq("visit_task_id", task.id);
+    if (attachmentError || !count) {
+      go(
+        fallback,
+        "error",
+        "Für diese Aufgabe ist vor dem Erledigen ein Foto erforderlich.",
+      );
+    }
+  }
+
+  const { data: completedTask, error: updateError } = await supabase
+    .from("visit_tasks")
+    .update({ status: "done", blocked_reason: null })
+    .eq("id", task.id)
+    .eq("visit_id", visit.id)
+    .neq("status", "done")
+    .select("id")
+    .maybeSingle();
+  if (updateError) {
+    go(fallback, "error", "Die Aufgabe konnte nicht als erledigt gespeichert werden.");
+  }
+  if (!completedTask) {
+    revalidatePath(`/admin/properties/${task.property_id}`);
+    return;
+  }
+
+  const { error: auditError } = await admin.from("audit_logs").insert({
+    actor_id: profile.id,
+    action: "visit.task_completed_by_admin",
+    entity_table: "visit_tasks",
+    entity_id: task.id,
+    metadata: {
+      property_id: task.property_id,
+      visit_id: visit.id,
+      previous_status: task.status,
+    },
+  });
+  if (auditError) {
+    console.error("[Hausvia admin visit task] Audit logging failed", {
+      taskId: task.id,
+      visitId: visit.id,
+      error: auditError,
+    });
+  }
+
+  revalidatePath(`/admin/properties/${task.property_id}`);
+  revalidatePath(`/app/visits/${visit.id}`);
+}
+
 function monthIsInSeason(month: number, startMonth: number, endMonth: number) {
   return startMonth <= endMonth
     ? month >= startMonth && month <= endMonth

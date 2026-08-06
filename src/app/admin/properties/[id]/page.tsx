@@ -8,6 +8,7 @@ import {
   assignPropertyEquipmentAction,
   cancelExtraChargeAction,
   cancelVisitAction,
+  completeAdminVisitTaskAction,
   correctVisitTimeAction,
   createAdminDamageAction,
   createExtraChargeAction,
@@ -212,22 +213,6 @@ function visitScheduleLabel(visit: {
   return visit.planned_start_time
     ? `${date} · ${visit.planned_start_time.slice(0, 5)} Uhr`
     : date;
-}
-
-function visitOverviewTaskStatus(statuses: string[]) {
-  if (statuses.length && statuses.every((status) => status === "done")) {
-    return "done";
-  }
-  if (
-    statuses.length &&
-    statuses.every((status) => status === "done" || status === "blocked")
-  ) {
-    return "blocked";
-  }
-  if (statuses.some((status) => status === "in_progress")) {
-    return "in_progress";
-  }
-  return "open";
 }
 
 function liveBuildingAddress(building: {
@@ -650,9 +635,6 @@ export default async function AdminPropertyDetailPage({
   const visitPlanById = new Map(
     (visitPlans ?? []).map((plan) => [plan.id, plan]),
   );
-  const serviceById = new Map(
-    (services ?? []).map((service) => [service.id, service]),
-  );
   const damageById = new Map(
     (damages ?? []).map((damage) => [damage.id, damage]),
   );
@@ -702,34 +684,6 @@ export default async function AdminPropertyDetailPage({
     overviewBuildings.map((building) => [building.id, building]),
   );
 
-  type ServiceOverviewAccumulator = {
-    id: string;
-    name: string;
-    category: string | null;
-    statuses: string[];
-    buildingLabels: Set<string>;
-  };
-  const serviceOverviewById = new Map<string, ServiceOverviewAccumulator>();
-  for (const task of explicitlySelectedTasks) {
-    if (!task.property_service_id) continue;
-    const service = serviceById.get(task.property_service_id);
-    const current: ServiceOverviewAccumulator =
-      serviceOverviewById.get(task.property_service_id) ?? {
-        id: task.property_service_id,
-        name: service?.name || task.title,
-        category: service?.category || task.category || null,
-        statuses: [],
-        buildingLabels: new Set<string>(),
-      };
-    current.statuses.push(task.status);
-    const buildingLabel = task.building_id
-      ? overviewBuildingById.get(task.building_id)?.label ||
-        buildingById.get(task.building_id)?.label
-      : null;
-    if (buildingLabel) current.buildingLabels.add(buildingLabel);
-    serviceOverviewById.set(task.property_service_id, current);
-  }
-
   const popupCloseHref = buildVisitCalendarHref({
     baseHref: `/admin/properties/${id}`,
     view: calendarView,
@@ -770,17 +724,6 @@ export default async function AdminPropertyDetailPage({
                 ? `${explicitlySelectedVisit.duration_minutes} Min.`
                 : null,
           buildings: overviewBuildings,
-          services: Array.from(serviceOverviewById.values()).map(
-            (service) => ({
-              id: service.id,
-              name: service.name,
-              category: service.category,
-              status: visitOverviewTaskStatus(service.statuses),
-              buildingLabels: Array.from(service.buildingLabels).sort((a, b) =>
-                a.localeCompare(b, "de"),
-              ),
-            }),
-          ),
           tasks: explicitlySelectedTasks.map((task) => {
             const damage = task.damage_report_id
               ? damageById.get(task.damage_report_id)
@@ -2548,6 +2491,7 @@ export default async function AdminPropertyDetailPage({
                 visit={selectedVisitOverview}
                 closeHref={popupCloseHref}
                 detailsHref={`${popupCloseHref}#selected-visit-detail`}
+                completeTaskAction={completeAdminVisitTaskAction}
               />
             ) : null}
             <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)]">
