@@ -50,6 +50,10 @@ import { PropertyChat } from "@/components/portal/PropertyChat";
 import { PropertyRealtimeRefresh } from "@/components/portal/PropertyRealtimeRefresh";
 import { ConfirmSubmitButton } from "@/components/portal/ConfirmSubmitButton";
 import { ServiceCatalogSelect } from "@/components/portal/ServiceCatalogSelect";
+import {
+  SelectedVisitOverviewDialog,
+  type SelectedVisitOverview,
+} from "@/components/portal/SelectedVisitOverviewDialog";
 import { VisitCalendar } from "@/components/portal/VisitCalendar";
 import { VisitPlanScheduleFields } from "@/components/portal/VisitPlanScheduleFields";
 import {
@@ -81,6 +85,7 @@ import { createPrivateAttachmentUrls } from "@/lib/portal/files";
 import { requireAdminContext } from "@/lib/portal/access";
 import { getVisitScheduleSummary } from "@/lib/portal/visitRecurrence";
 import {
+  buildVisitCalendarHref,
   getVisitCalendarRange,
   isCalendarDate,
   normalizeCalendarDate,
@@ -91,6 +96,7 @@ import {
   parseVisitOperationalReportsSnapshot,
   visitReportPhotos,
 } from "@/lib/visitReportSnapshot";
+import { parseVisitChecklistSnapshot } from "@/lib/visitTaskSnapshot";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type DisplayAttachment = { id: string; filename: string };
@@ -151,6 +157,12 @@ const visitPlanStatusLabels: Record<string, string> = {
   paused: "Pausiert",
   archived: "Archiviert",
 };
+const damagePriorityLabels: Record<string, string> = {
+  low: "Priorität niedrig",
+  normal: "Priorität normal",
+  high: "Priorität hoch",
+  urgent: "Priorität dringend",
+};
 const propertyStatusLabels: Record<string, string> = {
   planning: "In Planung",
   active: "Aktiv",
@@ -200,6 +212,39 @@ function visitScheduleLabel(visit: {
   return visit.planned_start_time
     ? `${date} · ${visit.planned_start_time.slice(0, 5)} Uhr`
     : date;
+}
+
+function visitOverviewTaskStatus(statuses: string[]) {
+  if (statuses.length && statuses.every((status) => status === "done")) {
+    return "done";
+  }
+  if (
+    statuses.length &&
+    statuses.every((status) => status === "done" || status === "blocked")
+  ) {
+    return "blocked";
+  }
+  if (statuses.some((status) => status === "in_progress")) {
+    return "in_progress";
+  }
+  return "open";
+}
+
+function liveBuildingAddress(building: {
+  formatted_address?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+}) {
+  if (building.formatted_address?.trim()) {
+    return building.formatted_address.trim();
+  }
+  const street = [building.street, building.house_number]
+    .filter(Boolean)
+    .join(" ");
+  const city = [building.postal_code, building.city].filter(Boolean).join(" ");
+  return [street, city].filter(Boolean).join(", ") || "Adresse nicht hinterlegt";
 }
 
 export default async function AdminPropertyDetailPage({
@@ -332,7 +377,7 @@ export default async function AdminPropertyDetailPage({
       .order("created_at", { ascending: false }),
     supabase
       .from("visits")
-      .select("*")
+      .select("*,visit_buildings(building_id)")
       .eq("property_id", id)
       .neq("status", "canceled")
       .gte("scheduled_date", calendarRange.start)
@@ -435,7 +480,7 @@ export default async function AdminPropertyDetailPage({
   if (requestedVisitIsValid && !selectedVisit) {
     const { data } = await supabase
       .from("visits")
-      .select("*")
+      .select("*,visit_buildings(building_id)")
       .eq("id", requestedVisitId)
       .eq("property_id", id)
       .neq("status", "canceled")
@@ -518,7 +563,11 @@ export default async function AdminPropertyDetailPage({
     isVisitsView || activeView === "uebersicht" ? visitIds : [];
   const [{ data: visitTasks }, { data: visitAdminMetrics }] = await Promise.all([
     taskVisitIds.length
-      ? supabase.from("visit_tasks").select("*").in("visit_id", taskVisitIds)
+      ? supabase
+          .from("visit_tasks")
+          .select("*")
+          .in("visit_id", taskVisitIds)
+          .order("created_at")
       : Promise.resolve({ data: [] }),
     metricVisitIds.length
       ? supabase
@@ -601,6 +650,172 @@ export default async function AdminPropertyDetailPage({
   const visitPlanById = new Map(
     (visitPlans ?? []).map((plan) => [plan.id, plan]),
   );
+  const serviceById = new Map(
+    (services ?? []).map((service) => [service.id, service]),
+  );
+  const damageById = new Map(
+    (damages ?? []).map((damage) => [damage.id, damage]),
+  );
+  const explicitlySelectedVisit =
+    requestedVisitIsValid && selectedVisit?.id === requestedVisitId
+      ? selectedVisit
+      : null;
+  const explicitlySelectedReport = explicitlySelectedVisit
+    ? (reportByVisitId.get(explicitlySelectedVisit.id) ?? null)
+    : null;
+  const explicitlySelectedTasks = explicitlySelectedVisit
+    ? (visitTasks ?? []).filter(
+        (task) => task.visit_id === explicitlySelectedVisit.id,
+      )
+    : [];
+
+  const liveVisitBuildingIds = explicitlySelectedVisit
+    ? (explicitlySelectedVisit.visit_buildings ?? []).map(
+        (link: { building_id: string }) => link.building_id,
+      )
+    : [];
+  const taskBuildingIds = explicitlySelectedTasks.flatMap((task) =>
+    task.building_id ? [task.building_id] : [],
+  );
+  const uniqueVisitBuildingIds = Array.from(
+    new Set([...liveVisitBuildingIds, ...taskBuildingIds]),
+  );
+  const overviewBuildings = explicitlySelectedReport?.buildings.length
+    ? explicitlySelectedReport.buildings.map((building) => ({
+        id: building.id,
+        label: building.label || "Gebäude",
+        address: building.address,
+      }))
+    : uniqueVisitBuildingIds.flatMap((buildingId) => {
+        const building = buildingById.get(buildingId);
+        return building
+          ? [
+              {
+                id: building.id,
+                label: building.label || "Gebäude",
+                address: liveBuildingAddress(building),
+              },
+            ]
+          : [];
+      });
+  const overviewBuildingById = new Map(
+    overviewBuildings.map((building) => [building.id, building]),
+  );
+
+  type ServiceOverviewAccumulator = {
+    id: string;
+    name: string;
+    category: string | null;
+    statuses: string[];
+    buildingLabels: Set<string>;
+  };
+  const serviceOverviewById = new Map<string, ServiceOverviewAccumulator>();
+  for (const task of explicitlySelectedTasks) {
+    if (!task.property_service_id) continue;
+    const service = serviceById.get(task.property_service_id);
+    const current: ServiceOverviewAccumulator =
+      serviceOverviewById.get(task.property_service_id) ?? {
+        id: task.property_service_id,
+        name: service?.name || task.title,
+        category: service?.category || task.category || null,
+        statuses: [],
+        buildingLabels: new Set<string>(),
+      };
+    current.statuses.push(task.status);
+    const buildingLabel = task.building_id
+      ? overviewBuildingById.get(task.building_id)?.label ||
+        buildingById.get(task.building_id)?.label
+      : null;
+    if (buildingLabel) current.buildingLabels.add(buildingLabel);
+    serviceOverviewById.set(task.property_service_id, current);
+  }
+
+  const popupCloseHref = buildVisitCalendarHref({
+    baseHref: `/admin/properties/${id}`,
+    view: calendarView,
+    calendarDate,
+  });
+  const explicitlySelectedCompletedAt =
+    explicitlySelectedReport?.completedAt ||
+    explicitlySelectedVisit?.completed_at ||
+    null;
+  const selectedVisitOverview: SelectedVisitOverview | null =
+    explicitlySelectedVisit
+      ? {
+          id: explicitlySelectedVisit.id,
+          propertyName:
+            explicitlySelectedReport?.propertyName || property.name,
+          scheduleLabel: visitScheduleLabel(explicitlySelectedVisit),
+          planLabel:
+            visitPlanById.get(explicitlySelectedVisit.visit_plan_id)?.label ??
+            (explicitlySelectedVisit.manually_adjusted
+              ? "Manueller Einsatz"
+              : "Einsatz"),
+          status: explicitlySelectedVisit.status,
+          employeeName:
+            explicitlySelectedReport?.employeeName ||
+            employeeById.get(explicitlySelectedVisit.primary_employee_id)
+              ?.full_name ||
+            "Noch nicht zugewiesen",
+          completedLabel: explicitlySelectedCompletedAt
+            ? formatGermanDate(explicitlySelectedCompletedAt, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          durationLabel:
+            explicitlySelectedReport?.durationMinutes != null
+              ? `${explicitlySelectedReport.durationMinutes} Min.`
+              : explicitlySelectedVisit.duration_minutes != null
+                ? `${explicitlySelectedVisit.duration_minutes} Min.`
+                : null,
+          buildings: overviewBuildings,
+          services: Array.from(serviceOverviewById.values()).map(
+            (service) => ({
+              id: service.id,
+              name: service.name,
+              category: service.category,
+              status: visitOverviewTaskStatus(service.statuses),
+              buildingLabels: Array.from(service.buildingLabels).sort((a, b) =>
+                a.localeCompare(b, "de"),
+              ),
+            }),
+          ),
+          tasks: explicitlySelectedTasks.map((task) => {
+            const damage = task.damage_report_id
+              ? damageById.get(task.damage_report_id)
+              : null;
+            return {
+              id: task.id,
+              title: task.title,
+              description: task.description || null,
+              category: task.category || null,
+              status: task.status,
+              buildingLabel: task.building_id
+                ? overviewBuildingById.get(task.building_id)?.label ||
+                  buildingById.get(task.building_id)?.label ||
+                  null
+                : null,
+              blockedReason: task.blocked_reason || null,
+              completedAtLabel: task.completed_at
+                ? formatGermanDate(task.completed_at, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : null,
+              checklist: parseVisitChecklistSnapshot(task.checklist_snapshot),
+              isDamage:
+                Boolean(task.damage_report_id) || task.source_type === "damage",
+              damagePriorityLabel: damage?.priority
+                ? damagePriorityLabels[damage.priority] ||
+                  `Priorität ${damage.priority}`
+                : null,
+              isCarried: Boolean(task.carried_from_task_id),
+              followUpRequired: task.follow_up_required === true,
+            };
+          }),
+        }
+      : null;
   const taskCountByVisitId = new Map<string, number>();
   for (const task of visitTasks ?? []) {
     taskCountByVisitId.set(
@@ -2328,6 +2543,13 @@ export default async function AdminPropertyDetailPage({
               selectedVisitId={selectedVisit?.id ?? null}
               baseHref={`/admin/properties/${id}`}
             />
+            {selectedVisitOverview ? (
+              <SelectedVisitOverviewDialog
+                visit={selectedVisitOverview}
+                closeHref={popupCloseHref}
+                detailsHref={`${popupCloseHref}#selected-visit-detail`}
+              />
+            ) : null}
             <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)]">
               <fieldset
                 disabled={propertyReadOnly}
@@ -2594,7 +2816,7 @@ export default async function AdminPropertyDetailPage({
                 </div>
               </details>
               </fieldset>
-              <div>
+              <div id="selected-visit-detail" className="scroll-mt-24">
                 <h3 className="font-extrabold text-slate-950">
                   Ausgewählter Einsatz
                 </h3>

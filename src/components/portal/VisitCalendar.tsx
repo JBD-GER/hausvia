@@ -716,7 +716,7 @@ export function VisitCalendar({
           </span>
         ))}
         <span className="ml-auto hidden text-right sm:block">
-          Termin auswählen, um Details und Aktionen zu öffnen
+          Termin auswählen, um die Einsatzübersicht zu öffnen
         </span>
       </footer>
     </section>
