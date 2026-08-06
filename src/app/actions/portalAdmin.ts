@@ -1189,6 +1189,34 @@ export async function updatePropertyServiceSortOrderAction(formData: FormData) {
   go(fallback, "status", `Sortierposition für „${service.name}“ aktualisiert.`);
 }
 
+function visitPlanMutationError(message: string) {
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes("kein freier termin") ||
+    normalized.includes("kein freier slot") ||
+    normalized.includes("kein freier mitarbeitertermin")
+  ) {
+    return "Im gewählten Zeitfenster ist für das eingeplante Team kein freier Termin verfügbar. Bitte das Zeitfenster vergrößern, die Dauer verkürzen oder einen anderen Mitarbeiter wählen.";
+  }
+  if (
+    normalized.includes("überschneidet") ||
+    normalized.includes("bereits belegt") ||
+    normalized.includes("bereits eingeplant")
+  ) {
+    return "Die feste Uhrzeit überschneidet sich mit einem anderen Einsatz des Mitarbeiters. Bitte eine andere Uhrzeit oder ein smartes Zeitfenster wählen.";
+  }
+  if (
+    normalized.includes("zeitfenster") &&
+    (normalized.includes("dauer") || normalized.includes("kürzer"))
+  ) {
+    return "Die geplante Einsatzdauer passt nicht vollständig in das gewählte Zeitfenster.";
+  }
+  if (normalized.includes("leistung")) {
+    return "Mindestens eine ausgewählte Leistung ist nicht mehr aktiv, gehört nicht zu dieser Immobilie oder kann nur bei einem manuellen Einsatz verwendet werden.";
+  }
+  return "Der Besuchsplan konnte nicht atomar gespeichert werden. Prüfen Sie Immobilienstatus, Zeitraum, Team, Leistungen und Gebäudezuordnungen.";
+}
+
 export async function createVisitPlanAction(formData: FormData) {
   const { supabase } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
@@ -1207,6 +1235,8 @@ export async function createVisitPlanAction(formData: FormData) {
     endDate: formValue(formData, "endDate"),
     primaryEmployeeId: formValue(formData, "primaryEmployeeId"),
     maxVisitMinutes: formValue(formData, "maxVisitMinutes"),
+    serviceIds: formValues(formData, "serviceId"),
+    acceptsUnplannedTasks: formData.has("acceptsUnplannedTasks"),
     buildingIds: formValues(formData, "buildingId"),
     additionalEmployeeIds: formValues(formData, "additionalEmployeeId"),
   });
@@ -1220,7 +1250,7 @@ export async function createVisitPlanAction(formData: FormData) {
       ),
     ),
   );
-  const { error } = await supabase.rpc("create_visit_plan_configuration_v2", {
+  const { error } = await supabase.rpc("create_visit_plan_configuration_v3", {
     p_property_id: value.propertyId,
     p_label: value.label,
     p_frequency: value.frequency,
@@ -1234,15 +1264,13 @@ export async function createVisitPlanAction(formData: FormData) {
     p_end_date: value.endDate || null,
     p_primary_employee_id: value.primaryEmployeeId,
     p_max_visit_minutes: value.maxVisitMinutes,
+    p_service_ids: value.serviceIds,
+    p_accepts_unplanned_tasks: value.acceptsUnplannedTasks,
     p_building_ids: buildingIds,
     p_additional_employee_ids: additionalEmployeeIds,
   });
   if (error) {
-    go(
-      fallback,
-      "error",
-      "Der Besuchsplan konnte nicht atomar erstellt werden. Prüfen Sie den Immobilienstatus sowie die Gebäude- und Teamzuordnungen für den gesamten Zeitraum.",
-    );
+    go(fallback, "error", visitPlanMutationError(error.message));
   }
   revalidatePath(fallback);
   revalidatePath("/app/today");
@@ -1276,6 +1304,8 @@ export async function updateVisitPlanAction(formData: FormData) {
     endDate: formValue(formData, "endDate"),
     primaryEmployeeId: formValue(formData, "primaryEmployeeId"),
     maxVisitMinutes: formValue(formData, "maxVisitMinutes"),
+    serviceIds: formValues(formData, "serviceId"),
+    acceptsUnplannedTasks: formData.has("acceptsUnplannedTasks"),
     buildingIds: formValues(formData, "buildingId"),
     additionalEmployeeIds: formValues(formData, "additionalEmployeeId"),
   });
@@ -1289,7 +1319,7 @@ export async function updateVisitPlanAction(formData: FormData) {
       ),
     ),
   );
-  const { error } = await supabase.rpc("update_visit_plan_configuration_v2", {
+  const { error } = await supabase.rpc("update_visit_plan_configuration_v3", {
     p_property_id: value.propertyId,
     p_visit_plan_id: visitPlanId,
     p_expected_updated_at: expectedUpdatedAt,
@@ -1305,6 +1335,8 @@ export async function updateVisitPlanAction(formData: FormData) {
     p_end_date: value.endDate || null,
     p_primary_employee_id: value.primaryEmployeeId,
     p_max_visit_minutes: value.maxVisitMinutes,
+    p_service_ids: value.serviceIds,
+    p_accepts_unplanned_tasks: value.acceptsUnplannedTasks,
     p_building_ids: buildingIds,
     p_additional_employee_ids: additionalEmployeeIds,
   });
@@ -1316,11 +1348,7 @@ export async function updateVisitPlanAction(formData: FormData) {
     );
   }
   if (error) {
-    go(
-      fallback,
-      "error",
-      "Der Besuchsplan konnte nicht atomar aktualisiert werden. Prüfen Sie den Immobilienstatus sowie die Gebäude- und Teamzuordnungen für den gesamten Zeitraum.",
-    );
+    go(fallback, "error", visitPlanMutationError(error.message));
   }
   revalidatePath(fallback);
   revalidatePath("/app/today");
@@ -1526,7 +1554,9 @@ export async function rescheduleVisitAction(formData: FormData) {
     go(
       fallback,
       "error",
-      "Der Einsatz wurde zwischenzeitlich geändert und konnte nicht verschoben werden.",
+      updateError?.message.toLowerCase().includes("bereits eingeplant")
+        ? "Der Mitarbeiter hat in diesem Zeitraum bereits einen anderen Einsatz. Bitte wählen Sie eine freie Uhrzeit."
+        : "Der Einsatz wurde zwischenzeitlich geändert und konnte nicht verschoben werden.",
     );
   }
   const reason = normalizePlainText(value.reason, 1_000);
@@ -2001,11 +2031,18 @@ export async function createManualVisitAction(formData: FormData) {
     scheduled_start: scheduledStart,
     window_start: value.windowStart || null,
     window_end: value.windowEnd || null,
+    planned_duration_minutes: value.maxVisitMinutes,
     status: "scheduled",
     manually_adjusted: true,
   });
   if (visitError) {
-    go(fallback, "error", "Der Bedarfs-Einsatz konnte nicht angelegt werden.");
+    go(
+      fallback,
+      "error",
+      visitError.message.toLowerCase().includes("bereits eingeplant")
+        ? "Der Mitarbeiter hat in diesem Zeitraum bereits einen anderen Einsatz. Bitte wählen Sie eine andere Uhrzeit."
+        : "Der Bedarfs-Einsatz konnte nicht angelegt werden.",
+    );
   }
   const { error: buildingLinksError } = await admin
     .from("visit_buildings")

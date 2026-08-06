@@ -190,6 +190,17 @@ export const propertyServiceSchema = z
     }
   });
 
+const visitTime = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Bitte eine gültige Uhrzeit eingeben.");
+
+const optionalVisitTime = visitTime.optional().or(z.literal(""));
+
+function timeInMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
 export const visitPlanSchema = z
   .object({
     propertyId: uuid,
@@ -198,25 +209,17 @@ export const visitPlanSchema = z
     repeatEvery: z.coerce.number().int().min(1).max(60),
     weekdays: z.array(z.coerce.number().int().min(1).max(7)).default([]),
     monthDays: z.array(z.coerce.number().int().min(1).max(31)).default([]),
-    desiredTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/)
-      .optional()
-      .or(z.literal("")),
-    windowStart: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/)
-      .optional()
-      .or(z.literal("")),
-    windowEnd: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/)
-      .optional()
-      .or(z.literal("")),
+    desiredTime: optionalVisitTime,
+    windowStart: optionalVisitTime,
+    windowEnd: optionalVisitTime,
     startDate: z.string().date(),
     endDate: z.string().date().optional().or(z.literal("")),
     primaryEmployeeId: uuid,
     maxVisitMinutes: z.coerce.number().int().min(1).max(1_440),
+    serviceIds: z
+      .array(uuid)
+      .min(1, "Bitte mindestens eine Leistung für diesen Plan auswählen."),
+    acceptsUnplannedTasks: z.boolean(),
     buildingIds: z.array(uuid).default([]),
     additionalEmployeeIds: z.array(uuid).default([]),
   })
@@ -233,6 +236,19 @@ export const visitPlanSchema = z
         code: "custom",
         path: ["windowEnd"],
         message: "Das Ende des Zeitfensters muss nach dessen Beginn liegen.",
+      });
+    }
+    if (
+      value.windowStart &&
+      value.windowEnd &&
+      timeInMinutes(value.windowEnd) - timeInMinutes(value.windowStart) <
+        value.maxVisitMinutes
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxVisitMinutes"],
+        message:
+          "Die geplante Einsatzdauer muss vollständig in das Zeitfenster passen.",
       });
     }
     if (Boolean(value.windowStart) !== Boolean(value.windowEnd)) {
@@ -276,14 +292,11 @@ export const visitPlanSchema = z
 
     return {
       ...value,
+      serviceIds: Array.from(new Set(value.serviceIds)).sort(),
       weekdays,
       monthDays,
     };
   });
-
-const visitTime = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Bitte eine gültige Uhrzeit eingeben.");
 
 export const visitPlanStatusSchema = z.object({
   propertyId: uuid,

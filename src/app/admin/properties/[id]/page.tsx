@@ -52,6 +52,10 @@ import { ConfirmSubmitButton } from "@/components/portal/ConfirmSubmitButton";
 import { ServiceCatalogSelect } from "@/components/portal/ServiceCatalogSelect";
 import { VisitCalendar } from "@/components/portal/VisitCalendar";
 import { VisitPlanScheduleFields } from "@/components/portal/VisitPlanScheduleFields";
+import {
+  VisitPlanServiceFields,
+  type VisitPlanServiceOption,
+} from "@/components/portal/VisitPlanServiceFields";
 import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   EmptyState,
@@ -322,7 +326,7 @@ export default async function AdminPropertyDetailPage({
     supabase
       .from("visit_plans")
       .select(
-        "*,visit_plan_buildings(building_id),visit_plan_employees(employee_id)",
+        "*,visit_plan_buildings(building_id),visit_plan_employees(employee_id),visit_plan_services(property_service_id,execution_mode)",
       )
       .eq("property_id", id)
       .order("created_at", { ascending: false }),
@@ -643,6 +647,29 @@ export default async function AdminPropertyDetailPage({
       service.status === "active" &&
       ["on_demand", "manual"].includes(service.execution_rule),
   );
+  const recurringServices = (services ?? []).filter(
+    (service) =>
+      service.status === "active" &&
+      !["on_demand", "manual"].includes(service.execution_rule),
+  );
+  const recurringServiceById = new Map(
+    recurringServices.map((service) => [service.id, service]),
+  );
+  const visitPlanServiceOptions: VisitPlanServiceOption[] =
+    recurringServices.map((service) => ({
+      id: service.id,
+      name: service.name,
+      category: service.category,
+      estimatedMinutes: service.estimated_minutes
+        ? Number(service.estimated_minutes)
+        : null,
+      seasonLabel:
+        service.seasonal &&
+        service.season_start_month &&
+        service.season_end_month
+          ? `${months[service.season_start_month - 1]} bis ${months[service.season_end_month - 1]}`
+          : null,
+    }));
   const openDamages = (damages ?? []).filter(
     (damage) => !["resolved", "rejected"].includes(damage.status),
   );
@@ -2324,6 +2351,20 @@ export default async function AdminPropertyDetailPage({
                         (link: { employee_id: string }) => link.employee_id,
                       ),
                     );
+                    const planServiceIds = new Set<string>(
+                      (plan.visit_plan_services ?? []).map(
+                        (link: { property_service_id: string }) =>
+                          link.property_service_id,
+                      ),
+                    );
+                    const planServiceList = Array.from(planServiceIds)
+                      .map((serviceId) => recurringServiceById.get(serviceId))
+                      .filter(Boolean);
+                    const planEstimatedMinutes = planServiceList.reduce(
+                      (total, service) =>
+                        total + Number(service?.estimated_minutes ?? 0),
+                      0,
+                    );
                     return (
                       <article
                         key={plan.id}
@@ -2351,8 +2392,31 @@ export default async function AdminPropertyDetailPage({
                           })}
                         </p>
                         <p className="mt-1 text-xs font-semibold text-slate-500">
-                          Maximal {plan.max_visit_minutes} Minuten je Einsatz
+                          {plan.max_visit_minutes} Minuten eingeplant
+                          {planEstimatedMinutes
+                            ? ` · Leistungsrichtwert ca. ${planEstimatedMinutes} Minuten`
+                            : ""}
                         </p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {planServiceList.map((service) => (
+                            <span
+                              key={service?.id}
+                              className="rounded-full border border-[#08AEB4]/25 bg-[#E7F8F9] px-2.5 py-1 text-[0.68rem] font-extrabold text-[#056C71]"
+                            >
+                              {service?.name}
+                            </span>
+                          ))}
+                          {!planServiceList.length ? (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[0.68rem] font-extrabold text-amber-800">
+                              Keine aktive Leistung zugeordnet
+                            </span>
+                          ) : null}
+                          {plan.accepts_unplanned_tasks === false ? (
+                            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.68rem] font-extrabold text-slate-600">
+                              Nur feste Planleistungen
+                            </span>
+                          ) : null}
+                        </div>
                         <form
                           action={updateVisitPlanStatusAction}
                           className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]"
@@ -2421,18 +2485,18 @@ export default async function AdminPropertyDetailPage({
                                   ))}
                                 </select>
                               </Field>
-                              <Field label="Maximale Einsatzdauer in Minuten">
-                                <input
-                                  name="maxVisitMinutes"
-                                  type="number"
-                                  min="1"
-                                  max="1440"
-                                  required
-                                  defaultValue={plan.max_visit_minutes}
-                                  className={inputClass}
-                                />
-                              </Field>
                             </div>
+
+                            <VisitPlanServiceFields
+                              services={visitPlanServiceOptions}
+                              initialServiceIds={Array.from(planServiceIds).filter(
+                                (serviceId) => recurringServiceById.has(serviceId),
+                              )}
+                              initialMaxVisitMinutes={plan.max_visit_minutes}
+                              initialAcceptsUnplannedTasks={
+                                plan.accepts_unplanned_tasks !== false
+                              }
+                            />
 
                             <VisitPlanScheduleFields
                               initialFrequency={plan.frequency}
@@ -2494,7 +2558,10 @@ export default async function AdminPropertyDetailPage({
                               Änderungen bilden nur zukünftige, noch nicht gestartete und nicht manuell angepasste Termine neu. Mitarbeiter müssen zuvor im Bereich Team aktiv zugeordnet sein.
                             </p>
                             <button
-                              disabled={!schedulableEmployees.length}
+                              disabled={
+                                !schedulableEmployees.length ||
+                                !recurringServices.length
+                              }
                               className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                             >
                               Besuchsplan aktualisieren
@@ -2929,12 +2996,25 @@ export default async function AdminPropertyDetailPage({
               <summary className="cursor-pointer font-extrabold text-brand">
                 Besuchsplan anlegen
               </summary>
+              {!recurringServices.length ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
+                  Legen Sie zuerst mindestens eine regelmäßige Leistung für
+                  diese Immobilie an. Leistungen „nach Bedarf“ werden weiterhin
+                  bei manuellen Einsätzen verwendet.{" "}
+                  <Link
+                    href={"/admin/properties/" + id + "?view=leistungen"}
+                    className="font-extrabold underline underline-offset-2"
+                  >
+                    Zu den Leistungen
+                  </Link>
+                </div>
+              ) : null}
               <form
                 action={createVisitPlanAction}
                 className="mt-4 grid gap-4"
               >
                 <input type="hidden" name="propertyId" value={id} />
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Bezeichnung">
                     <input
                       name="label"
@@ -2958,18 +3038,12 @@ export default async function AdminPropertyDetailPage({
                       ))}
                     </select>
                   </Field>
-                  <Field label="Maximale Einsatzdauer in Minuten">
-                    <input
-                      name="maxVisitMinutes"
-                      type="number"
-                      min="1"
-                      max="1440"
-                      required
-                      defaultValue={maxVisitMinutes}
-                      className={inputClass}
-                    />
-                  </Field>
                 </div>
+
+                <VisitPlanServiceFields
+                  services={visitPlanServiceOptions}
+                  initialMaxVisitMinutes={maxVisitMinutes}
+                />
 
                 <VisitPlanScheduleFields initialStartDate={berlinIsoDate()} />
 
@@ -3030,7 +3104,9 @@ export default async function AdminPropertyDetailPage({
                   </p>
                 ) : null}
                 <button
-                  disabled={!schedulableEmployees.length}
+                  disabled={
+                    !schedulableEmployees.length || !recurringServices.length
+                  }
                   className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   Besuchsplan und Termine erstellen

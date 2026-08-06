@@ -16,6 +16,8 @@ const validPlan = {
   endDate: "",
   primaryEmployeeId: "20000000-0000-4000-8000-000000000002",
   maxVisitMinutes: 120,
+  serviceIds: ["30000000-0000-4000-8000-000000000003"],
+  acceptsUnplannedTasks: true,
   buildingIds: [],
   additionalEmployeeIds: [],
 };
@@ -47,6 +49,57 @@ test("Besuchspläne benötigen eine feste Uhrzeit oder ein vollständiges Zeitfe
       windowStart: "08:00",
       windowEnd: "11:00",
     }).success,
+    false,
+  );
+});
+
+test("Jeder Besuchsplan benötigt mindestens eine individuelle Leistung", () => {
+  assert.equal(visitPlanSchema.safeParse(validPlan).success, true);
+  assert.equal(
+    visitPlanSchema.safeParse({ ...validPlan, serviceIds: [] }).success,
+    false,
+  );
+
+  const parsed = visitPlanSchema.parse({
+    ...validPlan,
+    serviceIds: [
+      "30000000-0000-4000-8000-000000000004",
+      "30000000-0000-4000-8000-000000000003",
+      "30000000-0000-4000-8000-000000000004",
+    ],
+  });
+  assert.deepEqual(parsed.serviceIds, [
+    "30000000-0000-4000-8000-000000000003",
+    "30000000-0000-4000-8000-000000000004",
+  ]);
+});
+
+test("Die Einsatzdauer muss vollständig in das smarte Zeitfenster passen", () => {
+  assert.equal(
+    visitPlanSchema.safeParse({
+      ...validPlan,
+      desiredTime: "",
+      windowStart: "09:00",
+      windowEnd: "10:00",
+      maxVisitMinutes: 60,
+    }).success,
+    true,
+  );
+  assert.equal(
+    visitPlanSchema.safeParse({
+      ...validPlan,
+      desiredTime: "",
+      windowStart: "09:00",
+      windowEnd: "10:00",
+      maxVisitMinutes: 61,
+    }).success,
+    false,
+  );
+});
+
+test("Besuchszeiten werden strikt validiert", () => {
+  assert.equal(
+    visitPlanSchema.safeParse({ ...validPlan, desiredTime: "99:99" }).success,
     false,
   );
 });

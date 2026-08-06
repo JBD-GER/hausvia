@@ -430,7 +430,7 @@ export function VisitPlanScheduleFields({
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Zeitfenster
+              Smartes Zeitfenster
             </button>
           </div>
 
@@ -447,31 +447,39 @@ export function VisitPlanScheduleFields({
               />
             </label>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <label>
-                <span className={labelClass}>Von</span>
-                <input
-                  name="windowStart"
-                  type="time"
-                  required
-                  value={windowStart}
-                  onChange={(event) => setWindowStart(event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label>
-                <span className={labelClass}>Bis</span>
-                <input
-                  name="windowEnd"
-                  type="time"
-                  required
-                  min={windowStart || undefined}
-                  value={windowEnd}
-                  onChange={(event) => setWindowEnd(event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-            </div>
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <label>
+                  <span className={labelClass}>Frühestens ab</span>
+                  <input
+                    name="windowStart"
+                    type="time"
+                    required
+                    value={windowStart}
+                    onChange={(event) => setWindowStart(event.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+                <label>
+                  <span className={labelClass}>Spätestens fertig bis</span>
+                  <input
+                    name="windowEnd"
+                    type="time"
+                    required
+                    min={windowStart || undefined}
+                    value={windowEnd}
+                    onChange={(event) => setWindowEnd(event.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+              <p className={helperClass}>
+                Hausvia wählt automatisch die erste freie Startzeit, die mit
+                allen anderen Kunden und Immobilien des eingeplanten Teams
+                zusammenpasst. Der Einsatz endet vollständig innerhalb dieses
+                Fensters.
+              </p>
+            </>
           )}
         </fieldset>
 
