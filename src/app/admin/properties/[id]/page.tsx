@@ -818,6 +818,7 @@ export default async function AdminPropertyDetailPage({
       id: service.id,
       name: service.name,
       category: service.category,
+      startDate: service.start_date,
       estimatedMinutes: service.estimated_minutes
         ? Number(service.estimated_minutes)
         : null,
@@ -2531,6 +2532,10 @@ export default async function AdminPropertyDetailPage({
                         total + Number(service?.estimated_minutes ?? 0),
                       0,
                     );
+                    const delayedPlanServices = planServiceList.filter(
+                      (service) =>
+                        service && service.start_date > plan.start_date,
+                    );
                     return (
                       <article
                         key={plan.id}
@@ -2583,6 +2588,24 @@ export default async function AdminPropertyDetailPage({
                             </span>
                           ) : null}
                         </div>
+                        {delayedPlanServices.length ? (
+                          <div
+                            role="note"
+                            className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold leading-5 text-amber-900"
+                          >
+                            <span className="font-extrabold">
+                              Aufgaben beginnen später:
+                            </span>{" "}
+                            {delayedPlanServices
+                              .map(
+                                (service) =>
+                                  `${service?.name} ab ${formatGermanDate(service?.start_date ?? plan.start_date)}`,
+                              )
+                              .join(", ")}
+                            . Termine davor enthalten diese Leistungen noch
+                            nicht.
+                          </div>
+                        ) : null}
                         <form
                           action={updateVisitPlanStatusAction}
                           className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]"
@@ -3211,7 +3234,13 @@ export default async function AdminPropertyDetailPage({
                   initialMaxVisitMinutes={maxVisitMinutes}
                 />
 
-                <VisitPlanScheduleFields initialStartDate={berlinIsoDate()} />
+                <VisitPlanScheduleFields
+                  initialStartDate={
+                    property.care_start_date && property.care_start_date > today
+                      ? property.care_start_date
+                      : today
+                  }
+                />
 
                 <details className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                   <summary className="cursor-pointer text-sm font-extrabold text-brand">

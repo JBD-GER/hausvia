@@ -8,6 +8,7 @@ export type VisitPlanServiceOption = {
   id: string;
   name: string;
   category: string;
+  startDate: string;
   estimatedMinutes: number | null;
   seasonLabel: string | null;
 };
@@ -33,6 +34,11 @@ function knownDuration(
   }
 
   return { minutes, unknown };
+}
+
+function formatIsoDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return `${day}.${month}.${year}`;
 }
 
 export function VisitPlanServiceFields({
@@ -82,8 +88,9 @@ export function VisitPlanServiceFields({
               id={`${helpId}-help`}
               className="mt-1 text-xs font-semibold leading-5 text-[#08777B]"
             >
-              Die gewählten Leistungen erscheinen bei jedem Termin dieses
-              Plans. Saisonale Leistungen nur innerhalb ihrer Saison.
+              Die gewählten Leistungen erscheinen ab ihrem jeweiligen
+              Leistungsbeginn bei jedem Termin dieses Plans. Saisonale
+              Leistungen nur innerhalb ihrer Saison.
             </p>
           </div>
         </div>
@@ -123,6 +130,7 @@ export function VisitPlanServiceFields({
                   </span>
                   <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
                     {service.category}
+                    {` · aktiv ab ${formatIsoDate(service.startDate)}`}
                     {service.estimatedMinutes
                       ? ` · ca. ${service.estimatedMinutes} Min.`
                       : ""}
