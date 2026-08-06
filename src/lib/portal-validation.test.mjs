@@ -6,7 +6,7 @@ const validPlan = {
   propertyId: "10000000-0000-4000-8000-000000000001",
   label: "Regelbetreuung",
   frequency: "weekly",
-  visitsPerPeriod: 1,
+  repeatEvery: 1,
   weekdays: [1],
   monthDays: [],
   desiredTime: "09:00",
@@ -51,21 +51,71 @@ test("Besuchspläne benötigen eine feste Uhrzeit oder ein vollständiges Zeitfe
   );
 });
 
-test("Besuchsanzahl und ausgewählte Wochentage bleiben konsistent", () => {
+test("Das Wiederholungsintervall muss zwischen 1 und 60 liegen", () => {
+  assert.equal(visitPlanSchema.safeParse({ ...validPlan, repeatEvery: 60 }).success, true);
+  assert.equal(visitPlanSchema.safeParse({ ...validPlan, repeatEvery: 0 }).success, false);
+  assert.equal(visitPlanSchema.safeParse({ ...validPlan, repeatEvery: 61 }).success, false);
+  assert.equal(visitPlanSchema.safeParse({ ...validPlan, repeatEvery: 1.5 }).success, false);
   assert.equal(
     visitPlanSchema.safeParse({
       ...validPlan,
-      visitsPerPeriod: 2,
-      weekdays: [1, 4],
+      frequency: "individual",
+      repeatEvery: 2,
+    }).success,
+    false,
+  );
+});
+
+test("Die Besuchsanzahl wird nicht mehr aus einem Formwert validiert", () => {
+  assert.equal(
+    visitPlanSchema.safeParse({
+      ...validPlan,
+      visitsPerPeriod: 31,
+      weekdays: [1],
     }).success,
     true,
   );
+});
+
+test("Nur die zur Häufigkeit passenden Ausführungstage werden übernommen", () => {
+  const weekly = visitPlanSchema.parse({
+    ...validPlan,
+    weekdays: [5, 1, 5],
+    monthDays: [10],
+  });
+  assert.deepEqual(weekly.weekdays, [1, 5]);
+  assert.deepEqual(weekly.monthDays, []);
+
+  const monthly = visitPlanSchema.parse({
+    ...validPlan,
+    frequency: "monthly",
+    repeatEvery: 2,
+    weekdays: [1],
+    monthDays: [20, 5, 20],
+  });
+  assert.deepEqual(monthly.weekdays, []);
+  assert.deepEqual(monthly.monthDays, [5, 20]);
+
+  const individual = visitPlanSchema.parse({
+    ...validPlan,
+    frequency: "individual",
+    repeatEvery: 1,
+    weekdays: [1],
+    monthDays: [5],
+  });
+  assert.deepEqual(individual.weekdays, []);
+  assert.deepEqual(individual.monthDays, []);
+});
+
+test("Bestehende quartalsweise Pläne bleiben gültig", () => {
   assert.equal(
     visitPlanSchema.safeParse({
       ...validPlan,
-      visitsPerPeriod: 2,
-      weekdays: [1],
+      frequency: "quarterly",
+      repeatEvery: 1,
+      weekdays: [],
+      monthDays: [15],
     }).success,
-    false,
+    true,
   );
 });

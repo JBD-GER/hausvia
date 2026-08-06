@@ -195,7 +195,7 @@ export const visitPlanSchema = z
     propertyId: uuid,
     label: requiredText(180),
     frequency: z.enum(["weekly", "monthly", "quarterly", "individual"]),
-    visitsPerPeriod: z.coerce.number().int().min(1).max(31),
+    repeatEvery: z.coerce.number().int().min(1).max(60),
     weekdays: z.array(z.coerce.number().int().min(1).max(7)).default([]),
     monthDays: z.array(z.coerce.number().int().min(1).max(31)).default([]),
     desiredTime: z
@@ -256,23 +256,29 @@ export const visitPlanSchema = z
         message: "Bitte entweder eine feste Uhrzeit oder ein Zeitfenster verwenden.",
       });
     }
-    const selectedDays =
-      value.frequency === "weekly"
-        ? new Set(value.weekdays).size
-        : value.frequency === "monthly" || value.frequency === "quarterly"
-          ? new Set(value.monthDays).size
-          : 0;
-    const expectedVisits = value.frequency === "individual" ? 1 : selectedDays || 1;
-    if (value.visitsPerPeriod !== expectedVisits) {
+    if (value.frequency === "individual" && value.repeatEvery !== 1) {
       context.addIssue({
         code: "custom",
-        path: ["visitsPerPeriod"],
-        message:
-          value.frequency === "individual"
-            ? "Ein individueller Plan muss genau einen Termin enthalten."
-            : `Die Anzahl der Besuche muss den ausgewählten Tagen entsprechen (${expectedVisits}).`,
+        path: ["repeatEvery"],
+        message: "Ein Einzeltermin kann nicht wiederholt werden.",
       });
     }
+  })
+  .transform((value) => {
+    const weekdays =
+      value.frequency === "weekly"
+        ? Array.from(new Set(value.weekdays)).sort((left, right) => left - right)
+        : [];
+    const monthDays =
+      value.frequency === "monthly" || value.frequency === "quarterly"
+        ? Array.from(new Set(value.monthDays)).sort((left, right) => left - right)
+        : [];
+
+    return {
+      ...value,
+      weekdays,
+      monthDays,
+    };
   });
 
 const visitTime = z

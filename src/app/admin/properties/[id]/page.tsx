@@ -48,6 +48,7 @@ import {
 import { PropertyChat } from "@/components/portal/PropertyChat";
 import { PropertyRealtimeRefresh } from "@/components/portal/PropertyRealtimeRefresh";
 import { ServiceCatalogSelect } from "@/components/portal/ServiceCatalogSelect";
+import { VisitPlanScheduleFields } from "@/components/portal/VisitPlanScheduleFields";
 import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   EmptyState,
@@ -71,6 +72,7 @@ import {
 import { attachChatSenderRoles } from "@/lib/portal/chatSenderRoles";
 import { createPrivateAttachmentUrls } from "@/lib/portal/files";
 import { requireAdminContext } from "@/lib/portal/access";
+import { getVisitScheduleSummary } from "@/lib/portal/visitRecurrence";
 import {
   parseVisitReportSnapshot,
   parseVisitOperationalReportsSnapshot,
@@ -94,15 +96,6 @@ const months = [
   "November",
   "Dezember",
 ];
-const weekdays = [
-  [1, "Montag"],
-  [2, "Dienstag"],
-  [3, "Mittwoch"],
-  [4, "Donnerstag"],
-  [5, "Freitag"],
-  [6, "Samstag"],
-  [7, "Sonntag"],
-] as const;
 const damageStatusLabels: Record<string, string> = {
   new: "Neu",
   reviewed: "Geprüft",
@@ -144,12 +137,6 @@ const visitPlanStatusLabels: Record<string, string> = {
   active: "Aktiv",
   paused: "Pausiert",
   archived: "Archiviert",
-};
-const visitFrequencyLabels: Record<string, string> = {
-  weekly: "Wöchentlich",
-  monthly: "Monatlich",
-  quarterly: "Quartalsweise",
-  individual: "Individuell",
 };
 const propertyStatusLabels: Record<string, string> = {
   planning: "In Planung",
@@ -2213,8 +2200,6 @@ export default async function AdminPropertyDetailPage({
                         (link: { employee_id: string }) => link.employee_id,
                       ),
                     );
-                    const planWeekdays = new Set<number>(plan.weekdays ?? []);
-                    const planMonthDays = new Set<number>(plan.month_days ?? []);
                     return (
                       <article
                         key={plan.id}
@@ -2228,10 +2213,21 @@ export default async function AdminPropertyDetailPage({
                             {visitPlanStatusLabels[plan.status] ?? plan.status}
                           </StatusPill>
                         </div>
-                        <p className="mt-1 text-sm text-slate-650">
-                          {visitFrequencyLabels[plan.frequency] ?? plan.frequency} ·{" "}
-                          {plan.visits_per_period} Termin(e) · maximal{" "}
-                          {plan.max_visit_minutes} Minuten
+                        <p className="mt-1 text-sm font-semibold leading-6 text-slate-650">
+                          {getVisitScheduleSummary({
+                            frequency: plan.frequency,
+                            repeatEvery: plan.repeat_every ?? 1,
+                            weekdays: plan.weekdays ?? [],
+                            monthDays: plan.month_days ?? [],
+                            startDate: plan.start_date,
+                            endDate: plan.end_date,
+                            desiredTime: plan.desired_time,
+                            windowStart: plan.window_start,
+                            windowEnd: plan.window_end,
+                          })}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          Maximal {plan.max_visit_minutes} Minuten je Einsatz
                         </p>
                         <form
                           action={updateVisitPlanStatusAction}
@@ -2272,190 +2268,110 @@ export default async function AdminPropertyDetailPage({
                           </summary>
                           <form
                             action={updateVisitPlanAction}
-                            className="mt-4 grid gap-3 sm:grid-cols-2"
+                            className="mt-4 grid gap-4"
                           >
                             <input type="hidden" name="propertyId" value={id} />
                             <input type="hidden" name="visitPlanId" value={plan.id} />
                             <input type="hidden" name="updatedAt" value={plan.updated_at} />
-                            <Field label="Bezeichnung">
-                              <input
-                                name="label"
-                                required
-                                defaultValue={plan.label}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field label="Häufigkeit">
-                              <select
-                                name="frequency"
-                                required
-                                defaultValue={plan.frequency}
-                                className={inputClass}
-                              >
-                                {Object.entries(visitFrequencyLabels).map(
-                                  ([value, label]) => (
-                                    <option key={value} value={value}>
-                                      {label}
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <Field label="Bezeichnung">
+                                <input
+                                  name="label"
+                                  required
+                                  defaultValue={plan.label}
+                                  className={inputClass}
+                                />
+                              </Field>
+                              <Field label="Primärer Mitarbeiter">
+                                <select
+                                  name="primaryEmployeeId"
+                                  required
+                                  defaultValue={plan.primary_employee_id ?? ""}
+                                  className={inputClass}
+                                >
+                                  <option value="">Mitarbeiter auswählen</option>
+                                  {schedulableEmployees.map((employee) => (
+                                    <option key={employee.id} value={employee.id}>
+                                      {employee.full_name}
                                     </option>
-                                  ),
-                                )}
-                              </select>
-                            </Field>
-                            <Field label="Besuche je Zeitraum">
-                              <input
-                                name="visitsPerPeriod"
-                                type="number"
-                                min="1"
-                                max="31"
-                                required
-                                defaultValue={plan.visits_per_period}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field label="Primärer Mitarbeiter">
-                              <select
-                                name="primaryEmployeeId"
-                                required
-                                defaultValue={plan.primary_employee_id ?? ""}
-                                className={inputClass}
-                              >
-                                <option value="">Mitarbeiter auswählen</option>
-                                {schedulableEmployees.map((employee) => (
-                                  <option key={employee.id} value={employee.id}>
-                                    {employee.full_name}
-                                  </option>
-                                ))}
-                              </select>
-                            </Field>
-                            <Field label="Gewünschte Uhrzeit">
-                              <input
-                                name="desiredTime"
-                                type="time"
-                                defaultValue={plan.desired_time?.slice(0, 5) ?? ""}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field label="Zeitfenster von">
-                              <input
-                                name="windowStart"
-                                type="time"
-                                defaultValue={plan.window_start?.slice(0, 5) ?? ""}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field label="Zeitfenster bis">
-                              <input
-                                name="windowEnd"
-                                type="time"
-                                defaultValue={plan.window_end?.slice(0, 5) ?? ""}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field label="Maximale Einsatzdauer">
-                              <input
-                                name="maxVisitMinutes"
-                                type="number"
-                                min="1"
-                                max="1440"
-                                required
-                                defaultValue={plan.max_visit_minutes}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field label="Startdatum">
-                              <input
-                                name="startDate"
-                                type="date"
-                                required
-                                defaultValue={plan.start_date}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field label="Enddatum optional">
-                              <input
-                                name="endDate"
-                                type="date"
-                                defaultValue={plan.end_date ?? ""}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <fieldset className="rounded-lg border border-slate-200 p-3 sm:col-span-2">
-                              <legend className="px-1 text-sm font-bold">Wochentage</legend>
-                              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                {weekdays.map(([value, label]) => (
-                                  <label key={value} className="flex items-center gap-2 text-sm font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      name="weekday"
-                                      value={value}
-                                      defaultChecked={planWeekdays.has(value)}
-                                    />
-                                    {label}
-                                  </label>
-                                ))}
+                                  ))}
+                                </select>
+                              </Field>
+                              <Field label="Maximale Einsatzdauer in Minuten">
+                                <input
+                                  name="maxVisitMinutes"
+                                  type="number"
+                                  min="1"
+                                  max="1440"
+                                  required
+                                  defaultValue={plan.max_visit_minutes}
+                                  className={inputClass}
+                                />
+                              </Field>
+                            </div>
+
+                            <VisitPlanScheduleFields
+                              initialFrequency={plan.frequency}
+                              initialRepeatEvery={plan.repeat_every ?? 1}
+                              initialWeekdays={plan.weekdays ?? []}
+                              initialMonthDays={plan.month_days ?? []}
+                              initialDesiredTime={plan.desired_time}
+                              initialWindowStart={plan.window_start}
+                              initialWindowEnd={plan.window_end}
+                              initialStartDate={plan.start_date}
+                              initialEndDate={plan.end_date}
+                            />
+
+                            <details className="rounded-2xl border border-slate-200 bg-white p-4">
+                              <summary className="cursor-pointer text-sm font-extrabold text-brand">
+                                Weitere Einstellungen: Gebäude und zusätzliches Team
+                              </summary>
+                              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                <fieldset className="rounded-xl border border-slate-200 p-3">
+                                  <legend className="px-1 text-sm font-bold">Gebäude</legend>
+                                  <div className="grid gap-2">
+                                    {(buildings ?? [])
+                                      .filter((building) => building.status === "active")
+                                      .map((building) => (
+                                        <label key={building.id} className="flex items-center gap-2 text-sm font-semibold">
+                                          <input
+                                            type="checkbox"
+                                            name="buildingId"
+                                            value={building.id}
+                                            defaultChecked={planBuildingIds.has(building.id)}
+                                          />
+                                          {building.label || building.formatted_address}
+                                        </label>
+                                      ))}
+                                  </div>
+                                  <p className="mt-2 text-xs text-slate-500">
+                                    Ohne Auswahl umfasst der Plan alle aktiven Gebäude.
+                                  </p>
+                                </fieldset>
+                                <fieldset className="rounded-xl border border-slate-200 p-3">
+                                  <legend className="px-1 text-sm font-bold">Weitere Mitarbeiter</legend>
+                                  <div className="grid gap-2">
+                                    {schedulableEmployees.map((employee) => (
+                                      <label key={employee.id} className="flex items-center gap-2 text-sm font-semibold">
+                                        <input
+                                          type="checkbox"
+                                          name="additionalEmployeeId"
+                                          value={employee.id}
+                                          defaultChecked={planEmployeeIds.has(employee.id)}
+                                        />
+                                        {employee.full_name}
+                                      </label>
+                                    ))}
+                                  </div>
+                                </fieldset>
                               </div>
-                            </fieldset>
-                            <fieldset className="rounded-lg border border-slate-200 p-3 sm:col-span-2">
-                              <legend className="px-1 text-sm font-bold">Monatstage</legend>
-                              <div className="grid grid-cols-7 gap-2">
-                                {Array.from({ length: 31 }, (_, index) => index + 1).map(
-                                  (day) => (
-                                    <label key={day} className="flex items-center gap-1 text-xs font-semibold">
-                                      <input
-                                        type="checkbox"
-                                        name="monthDay"
-                                        value={day}
-                                        defaultChecked={planMonthDays.has(day)}
-                                      />
-                                      {day}
-                                    </label>
-                                  ),
-                                )}
-                              </div>
-                            </fieldset>
-                            <fieldset className="rounded-lg border border-slate-200 p-3 sm:col-span-2">
-                              <legend className="px-1 text-sm font-bold">Gebäude</legend>
-                              <div className="grid gap-2 sm:grid-cols-2">
-                                {(buildings ?? []).filter((building) => building.status === "active").map(
-                                  (building) => (
-                                    <label key={building.id} className="flex items-center gap-2 text-sm font-semibold">
-                                      <input
-                                        type="checkbox"
-                                        name="buildingId"
-                                        value={building.id}
-                                        defaultChecked={planBuildingIds.has(building.id)}
-                                      />
-                                      {building.label || building.formatted_address}
-                                    </label>
-                                  ),
-                                )}
-                              </div>
-                              <p className="mt-2 text-xs text-slate-500">
-                                Ohne Auswahl umfasst der Plan alle aktiven Gebäude.
-                              </p>
-                            </fieldset>
-                            <fieldset className="rounded-lg border border-slate-200 p-3 sm:col-span-2">
-                              <legend className="px-1 text-sm font-bold">Weitere Mitarbeiter</legend>
-                              <div className="grid gap-2 sm:grid-cols-2">
-                                {schedulableEmployees.map((employee) => (
-                                  <label key={employee.id} className="flex items-center gap-2 text-sm font-semibold">
-                                    <input
-                                      type="checkbox"
-                                      name="additionalEmployeeId"
-                                      value={employee.id}
-                                      defaultChecked={planEmployeeIds.has(employee.id)}
-                                    />
-                                    {employee.full_name}
-                                  </label>
-                                ))}
-                              </div>
-                            </fieldset>
-                            <p className="text-xs leading-5 text-slate-500 sm:col-span-2">
+                            </details>
+                            <p className="text-xs leading-5 text-slate-500">
                               Änderungen bilden nur zukünftige, noch nicht gestartete und nicht manuell angepasste Termine neu. Mitarbeiter müssen zuvor im Bereich Team aktiv zugeordnet sein.
                             </p>
                             <button
                               disabled={!schedulableEmployees.length}
-                              className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2`}
+                              className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                             >
                               Besuchsplan aktualisieren
                             </button>
@@ -2838,183 +2754,107 @@ export default async function AdminPropertyDetailPage({
               </summary>
               <form
                 action={createVisitPlanAction}
-                className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+                className="mt-4 grid gap-4"
               >
                 <input type="hidden" name="propertyId" value={id} />
-                <Field label="Bezeichnung">
-                  <input
-                    name="label"
-                    required
-                    placeholder="z. B. Regelbetreuung Montag und Donnerstag"
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Häufigkeit">
-                  <select
-                    name="frequency"
-                    required
-                    defaultValue="weekly"
-                    className={inputClass}
-                  >
-                    <option value="weekly">Wöchentlich</option>
-                    <option value="monthly">Monatlich</option>
-                    <option value="quarterly">Quartalsweise</option>
-                    <option value="individual">Individuell</option>
-                  </select>
-                </Field>
-                <Field label="Besuche je Zeitraum">
-                  <input
-                    name="visitsPerPeriod"
-                    type="number"
-                    min="1"
-                    max="31"
-                    required
-                    defaultValue="1"
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Primärer Mitarbeiter">
-                  <select
-                    name="primaryEmployeeId"
-                    required
-                    defaultValue=""
-                    className={inputClass}
-                  >
-                    <option value="">Mitarbeiter auswählen</option>
-                    {schedulableEmployees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.full_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Gewünschte Uhrzeit">
-                  <input
-                    name="desiredTime"
-                    type="time"
-                    defaultValue="09:00"
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Zeitfenster von">
-                  <input
-                    name="windowStart"
-                    type="time"
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Zeitfenster bis">
-                  <input name="windowEnd" type="time" className={inputClass} />
-                </Field>
-                <p className="text-xs leading-5 text-slate-500 md:col-span-2 xl:col-span-3">
-                  Verwenden Sie entweder eine feste Uhrzeit oder ein vollständiges
-                  Zeitfenster von/bis.
-                </p>
-                <Field label="Maximale Einsatzdauer">
-                  <input
-                    name="maxVisitMinutes"
-                    type="number"
-                    min="1"
-                    max="1440"
-                    required
-                    defaultValue={maxVisitMinutes}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Startdatum">
-                  <input
-                    name="startDate"
-                    type="date"
-                    required
-                    defaultValue={berlinIsoDate()}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Enddatum optional">
-                  <input name="endDate" type="date" className={inputClass} />
-                </Field>
-                <fieldset className="rounded-lg border border-slate-200 p-3 md:col-span-2">
-                  <legend className="px-1 text-sm font-bold">Wochentage</legend>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {weekdays.map(([value, label]) => (
-                      <label
-                        key={value}
-                        className="flex items-center gap-2 text-sm font-semibold"
-                      >
-                        <input type="checkbox" name="weekday" value={value} />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <fieldset className="rounded-lg border border-slate-200 p-3 md:col-span-2">
-                  <legend className="px-1 text-sm font-bold">Monatstage</legend>
-                  <div className="grid grid-cols-7 gap-2">
-                    {Array.from({ length: 31 }, (_, index) => index + 1).map(
-                      (day) => (
-                        <label
-                          key={day}
-                          className="flex items-center gap-1 text-xs font-semibold"
-                        >
-                          <input type="checkbox" name="monthDay" value={day} />
-                          {day}
-                        </label>
-                      ),
-                    )}
-                  </div>
-                </fieldset>
-                <fieldset className="rounded-lg border border-slate-200 p-3 md:col-span-2">
-                  <legend className="px-1 text-sm font-bold">Gebäude</legend>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(buildings ?? [])
-                      .filter((building) => building.status === "active")
-                      .map((building) => (
-                      <label
-                        key={building.id}
-                        className="flex items-center gap-2 text-sm font-semibold"
-                      >
-                        <input
-                          type="checkbox"
-                          name="buildingId"
-                          value={building.id}
-                        />
-                        {building.label || building.formatted_address}
-                      </label>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="Bezeichnung">
+                    <input
+                      name="label"
+                      required
+                      placeholder="z. B. Regelbetreuung Parleweg"
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Primärer Mitarbeiter">
+                    <select
+                      name="primaryEmployeeId"
+                      required
+                      defaultValue=""
+                      className={inputClass}
+                    >
+                      <option value="">Mitarbeiter auswählen</option>
+                      {schedulableEmployees.map((employee) => (
+                        <option key={employee.id} value={employee.id}>
+                          {employee.full_name}
+                        </option>
                       ))}
+                    </select>
+                  </Field>
+                  <Field label="Maximale Einsatzdauer in Minuten">
+                    <input
+                      name="maxVisitMinutes"
+                      type="number"
+                      min="1"
+                      max="1440"
+                      required
+                      defaultValue={maxVisitMinutes}
+                      className={inputClass}
+                    />
+                  </Field>
+                </div>
+
+                <VisitPlanScheduleFields initialStartDate={berlinIsoDate()} />
+
+                <details className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                  <summary className="cursor-pointer text-sm font-extrabold text-brand">
+                    Weitere Einstellungen: Gebäude und zusätzliches Team
+                  </summary>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <fieldset className="rounded-xl border border-slate-200 bg-white p-3">
+                      <legend className="px-1 text-sm font-bold">Gebäude</legend>
+                      <div className="grid gap-2">
+                        {(buildings ?? [])
+                          .filter((building) => building.status === "active")
+                          .map((building) => (
+                            <label
+                              key={building.id}
+                              className="flex items-center gap-2 text-sm font-semibold"
+                            >
+                              <input
+                                type="checkbox"
+                                name="buildingId"
+                                value={building.id}
+                              />
+                              {building.label || building.formatted_address}
+                            </label>
+                          ))}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Ohne Auswahl umfasst der Plan alle aktiven Gebäude.
+                      </p>
+                    </fieldset>
+                    <fieldset className="rounded-xl border border-slate-200 bg-white p-3">
+                      <legend className="px-1 text-sm font-bold">
+                        Weitere Mitarbeiter
+                      </legend>
+                      <div className="grid gap-2">
+                        {schedulableEmployees.map((employee) => (
+                          <label
+                            key={employee.id}
+                            className="flex items-center gap-2 text-sm font-semibold"
+                          >
+                            <input
+                              type="checkbox"
+                              name="additionalEmployeeId"
+                              value={employee.id}
+                            />
+                            {employee.full_name}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">
-                    Ohne Auswahl umfasst der Plan alle aktiven Gebäude.
-                  </p>
-                </fieldset>
-                <fieldset className="rounded-lg border border-slate-200 p-3 md:col-span-2">
-                  <legend className="px-1 text-sm font-bold">
-                    Weitere Mitarbeiter
-                  </legend>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {schedulableEmployees.map((employee) => (
-                      <label
-                        key={employee.id}
-                        className="flex items-center gap-2 text-sm font-semibold"
-                      >
-                        <input
-                          type="checkbox"
-                          name="additionalEmployeeId"
-                          value={employee.id}
-                        />
-                        {employee.full_name}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
+                </details>
                 {!schedulableEmployees.length ? (
-                  <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900 md:col-span-2 xl:col-span-4">
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
                     Weisen Sie der Immobilie zuerst mindestens einen aktiven
                     Mitarbeiter im Bereich Team zu.
                   </p>
                 ) : null}
                 <button
                   disabled={!schedulableEmployees.length}
-                  className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2 xl:col-span-4`}
+                  className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   Besuchsplan und Termine erstellen
                 </button>

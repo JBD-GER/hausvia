@@ -1197,7 +1197,7 @@ export async function createVisitPlanAction(formData: FormData) {
     propertyId,
     label: formValue(formData, "label"),
     frequency: formValue(formData, "frequency"),
-    visitsPerPeriod: formValue(formData, "visitsPerPeriod"),
+    repeatEvery: formValue(formData, "repeatEvery"),
     weekdays: formValues(formData, "weekday"),
     monthDays: formValues(formData, "monthDay"),
     desiredTime: formValue(formData, "desiredTime"),
@@ -1220,11 +1220,11 @@ export async function createVisitPlanAction(formData: FormData) {
       ),
     ),
   );
-  const { error } = await supabase.rpc("create_visit_plan_configuration", {
+  const { error } = await supabase.rpc("create_visit_plan_configuration_v2", {
     p_property_id: value.propertyId,
     p_label: value.label,
     p_frequency: value.frequency,
-    p_visits_per_period: value.visitsPerPeriod,
+    p_repeat_every: value.repeatEvery,
     p_weekdays: value.weekdays,
     p_month_days: value.monthDays,
     p_desired_time: value.desiredTime || null,
@@ -1266,7 +1266,7 @@ export async function updateVisitPlanAction(formData: FormData) {
     propertyId,
     label: formValue(formData, "label"),
     frequency: formValue(formData, "frequency"),
-    visitsPerPeriod: formValue(formData, "visitsPerPeriod"),
+    repeatEvery: formValue(formData, "repeatEvery"),
     weekdays: formValues(formData, "weekday"),
     monthDays: formValues(formData, "monthDay"),
     desiredTime: formValue(formData, "desiredTime"),
@@ -1289,13 +1289,13 @@ export async function updateVisitPlanAction(formData: FormData) {
       ),
     ),
   );
-  const { error } = await supabase.rpc("update_visit_plan_configuration", {
+  const { error } = await supabase.rpc("update_visit_plan_configuration_v2", {
     p_property_id: value.propertyId,
     p_visit_plan_id: visitPlanId,
     p_expected_updated_at: expectedUpdatedAt,
     p_label: value.label,
     p_frequency: value.frequency,
-    p_visits_per_period: value.visitsPerPeriod,
+    p_repeat_every: value.repeatEvery,
     p_weekdays: value.weekdays,
     p_month_days: value.monthDays,
     p_desired_time: value.desiredTime || null,

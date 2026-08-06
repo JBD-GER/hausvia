@@ -29,6 +29,7 @@ import {
   parseBerlinDateTimeLocal,
 } from "@/lib/portal/core";
 import { requireAdminContext } from "@/lib/portal/access";
+import { getVisitScheduleSummary } from "@/lib/portal/visitRecurrence";
 
 type SearchParams = Promise<{
   error?: string | string[];
@@ -59,13 +60,6 @@ const invitationStatusLabels: Record<string, string> = {
   accepted: "Angenommen",
   expired: "Abgelaufen",
   revoked: "Widerrufen",
-};
-
-const visitPlanFrequencyLabels: Record<string, string> = {
-  weekly: "Wöchentlich",
-  monthly: "Monatlich",
-  quarterly: "Quartalsweise",
-  individual: "Einzeltermin",
 };
 
 const operationalCategoryLabels: Record<string, string> = {
@@ -223,7 +217,7 @@ export default async function AdminEmployeeDetailPage({
     supabase
       .from("visit_plans")
       .select(
-        "id,property_id,label,frequency,visits_per_period,desired_time,window_start,window_end,start_date,end_date,status,primary_employee_id,properties(id,name,status)",
+        "id,property_id,label,frequency,repeat_every,weekdays,month_days,desired_time,window_start,window_end,start_date,end_date,status,primary_employee_id,properties(id,name,status)",
       )
       .eq("primary_employee_id", id)
       .order("created_at", { ascending: false }),
@@ -257,7 +251,7 @@ export default async function AdminEmployeeDetailPage({
     ? await supabase
         .from("visit_plans")
         .select(
-          "id,property_id,label,frequency,visits_per_period,desired_time,window_start,window_end,start_date,end_date,status,primary_employee_id,properties(id,name,status)",
+          "id,property_id,label,frequency,repeat_every,weekdays,month_days,desired_time,window_start,window_end,start_date,end_date,status,primary_employee_id,properties(id,name,status)",
         )
         .in("id", additionalPlanIds)
         .order("created_at", { ascending: false })
@@ -759,21 +753,26 @@ export default async function AdminEmployeeDetailPage({
                       <div>
                         <p className="font-extrabold text-slate-950">{plan.label}</p>
                         <p className="mt-1 text-sm text-slate-600">
-                          {property?.name ?? "Immobilie"} ·{" "}
-                          {visitPlanFrequencyLabels[plan.frequency] ?? plan.frequency}
+                          {property?.name ?? "Immobilie"}
                         </p>
                       </div>
                       <StatusPill>{plan.status}</StatusPill>
                     </div>
                     <p className="mt-3 text-sm text-slate-650">
-                      {isPrimary ? "Hauptmitarbeiter" : "Zusätzlich zugewiesen"} ·{" "}
-                      {plan.visits_per_period} Einsatz/Einsätze pro Zeitraum
+                      {isPrimary ? "Hauptmitarbeiter" : "Zusätzlich zugewiesen"}
                     </p>
-                    <p className="mt-1 text-sm text-slate-650">
-                      Ab {formatGermanDate(`${plan.start_date}T12:00:00Z`)}
-                      {plan.end_date
-                        ? ` bis ${formatGermanDate(`${plan.end_date}T12:00:00Z`)}`
-                        : " · ohne Enddatum"}
+                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-650">
+                      {getVisitScheduleSummary({
+                        frequency: plan.frequency,
+                        repeatEvery: plan.repeat_every ?? 1,
+                        weekdays: plan.weekdays ?? [],
+                        monthDays: plan.month_days ?? [],
+                        startDate: plan.start_date,
+                        endDate: plan.end_date,
+                        desiredTime: plan.desired_time,
+                        windowStart: plan.window_start,
+                        windowEnd: plan.window_end,
+                      })}
                     </p>
                   </article>
                 );
