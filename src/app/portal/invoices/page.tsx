@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { EmptyState, PageHeader, Panel, StatusPill } from "@/components/portal/PortalUI";
 import { asText, formatDate, formatEuro } from "@/lib/portal/format";
-import { requireProfile } from "@/lib/supabase/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireCustomerContext } from "@/lib/portal/access";
 
 function statusLabel(status: string) {
   if (status === "released") return "Erstellt";
@@ -14,12 +13,9 @@ function statusLabel(status: string) {
 }
 
 export default async function CustomerInvoicesPage() {
-  const profile = await requireProfile(["customer"]);
-  const supabase = await createSupabaseServerClient();
-  const { data: customer } = await supabase.from("customers").select("id").eq("portal_user_id", profile.id).maybeSingle();
-  const { data: invoices } = customer
-    ? await supabase.from("invoices").select("id,status,invoice_number,title,due_date,gross_total,invoice_items(title,quantity,unit,total_net)").eq("customer_id", customer.id).order("created_at", { ascending: false })
-    : { data: [] };
+  const { customerId, supabase } = await requireCustomerContext();
+  const { data: invoices, error } = await supabase.from("invoices").select("id,status,invoice_number,title,due_date,gross_total,invoice_items(title,quantity,unit,total_net)").eq("customer_id", customerId).order("created_at", { ascending: false });
+  if (error) throw new Error("Die Rechnungen konnten nicht geladen werden.");
 
   return (
     <>

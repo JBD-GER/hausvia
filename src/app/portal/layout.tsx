@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   PortalShell,
   type PortalNavItem,
@@ -6,9 +7,18 @@ import { requireProfile } from "@/lib/supabase/auth";
 
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: "Kundenportal | Hausvia",
+  robots: { index: false, follow: false },
+};
+
 const navItems = [
-  { label: "Immobilien", href: "/portal/properties", icon: "properties" },
-  { label: "Angebote", href: "/portal/offers", icon: "offers" },
+  { label: "Übersicht", href: "/portal", icon: "dashboard", group: "Übersicht", mobile: true },
+  { label: "Immobilien", href: "/portal/properties", icon: "properties", group: "Meine Objekte", mobile: true },
+  { label: "Betreuung", href: "/portal/care", icon: "care", group: "Meine Objekte" },
+  { label: "Angebote", href: "/portal/offers", icon: "offers", group: "Dokumente", mobile: true },
+  { label: "Rechnungen", href: "/portal/invoices", icon: "invoices", group: "Dokumente" },
+  { label: "Meine Anfrage", href: "/portal/request", icon: "request", group: "Service" },
 ] satisfies PortalNavItem[];
 
 export default async function CustomerPortalLayout({
@@ -22,7 +32,7 @@ export default async function CustomerPortalLayout({
       profile={profile}
       title="Kundenportal"
       navItems={navItems}
-      homeHref="/portal/properties"
+      homeHref="/portal"
       notificationsHref="/portal/notifications"
       settingsHref="/portal/profile"
     >

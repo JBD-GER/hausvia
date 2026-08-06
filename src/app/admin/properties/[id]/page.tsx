@@ -3159,7 +3159,6 @@ export default async function AdminPropertyDetailPage({
                   </summary>
                   <form
                     action={createAdminDamageAction}
-                    encType="multipart/form-data"
                     className="mt-4 grid gap-3"
                   >
                     <input type="hidden" name="propertyId" value={id} />

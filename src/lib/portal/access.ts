@@ -1,6 +1,5 @@
 import "server-only";
 
-import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/supabase/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -14,35 +13,43 @@ export async function requireAdminContext() {
 export async function requireEmployeeContext() {
   const profile = await requireProfile(["employee"]);
   const supabase = await createSupabaseServerClient();
-  const { data: employee } = await supabase
+  const { data: employee, error } = await supabase
     .from("employee_profiles")
     .select("id,user_id,first_name,last_name,full_name")
     .eq("user_id", profile.id)
     .maybeSingle();
-  if (!employee) redirect("/login?status=missing-profile");
+  if (error || !employee) {
+    throw new Error("Das Mitarbeiterkonto ist nicht vollständig mit einem Mitarbeiterprofil verknüpft.");
+  }
   return { profile, employee, supabase };
 }
 
 export async function requireCustomerContext() {
   const profile = await requireProfile(["customer"]);
   const supabase = await createSupabaseServerClient();
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from("customer_users")
     .select("customer_id,customers(id,status,company_name,contact_name)")
     .eq("user_id", profile.id)
     .eq("active", true)
     .maybeSingle();
 
+  if (membershipError) {
+    throw new Error("Die Kundenmitgliedschaft konnte nicht eindeutig geladen werden.");
+  }
+
   if (membership?.customer_id) {
     return { profile, customerId: membership.customer_id, customer: membership.customers, supabase };
   }
 
-  const { data: legacyCustomer } = await supabase
+  const { data: legacyCustomer, error: legacyError } = await supabase
     .from("customers")
     .select("id,status,company_name,contact_name")
     .eq("portal_user_id", profile.id)
     .maybeSingle();
-  if (!legacyCustomer) redirect("/portal?status=missing-customer");
+  if (legacyError || !legacyCustomer) {
+    throw new Error("Das Kundenkonto ist nicht vollständig mit einem Kundenstamm verknüpft.");
+  }
   return { profile, customerId: legacyCustomer.id, customer: legacyCustomer, supabase };
 }
 

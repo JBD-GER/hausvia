@@ -259,7 +259,6 @@ export function PropertyChat({
       ) : (
         <form
           action={sendMessageAction}
-          encType="multipart/form-data"
           className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
         >
         <input type="hidden" name="propertyId" value={propertyId} />

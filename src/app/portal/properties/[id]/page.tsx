@@ -432,7 +432,6 @@ export default async function CustomerPropertyPage({
           <Panel title="Schaden melden">
             <form
               action={createCustomerDamageAction}
-              encType="multipart/form-data"
               className="grid gap-3"
             >
               <input type="hidden" name="propertyId" value={property.id} />
@@ -497,7 +496,6 @@ export default async function CustomerPropertyPage({
             </p>
             <form
               action={createCustomerComplaintAction}
-              encType="multipart/form-data"
               className="grid gap-3"
             >
               <input type="hidden" name="propertyId" value={property.id} />

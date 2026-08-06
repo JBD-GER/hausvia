@@ -472,7 +472,6 @@ export default async function EmployeeVisitPage({
                                     ) ? (
                                       <form
                                         action={updateVisitTaskAction}
-                                        encType="multipart/form-data"
                                         className="mt-4 grid gap-3"
                                       >
                                         <input
@@ -648,7 +647,6 @@ export default async function EmployeeVisitPage({
             </summary>
             <form
               action={createEmployeeDamageAction}
-              encType="multipart/form-data"
               className="mt-4 grid gap-3"
             >
               <input type="hidden" name="visitId" value={visit.id} />
@@ -699,7 +697,6 @@ export default async function EmployeeVisitPage({
             </summary>
             <form
               action={createOperationalReportAction}
-              encType="multipart/form-data"
               className="mt-4 grid gap-3"
             >
               <input

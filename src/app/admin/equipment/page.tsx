@@ -225,7 +225,6 @@ export default async function AdminEquipmentPage({
           <Panel title="Equipment anlegen">
           <form
             action={createEquipmentAction}
-            encType="multipart/form-data"
             className="grid gap-4 sm:grid-cols-2"
           >
             <Field label="Name">
@@ -663,7 +662,6 @@ export default async function AdminEquipmentPage({
                             <div className="mt-4 grid gap-4 lg:grid-cols-2">
                               <form
                                 action={uploadEquipmentPhotoAction}
-                                encType="multipart/form-data"
                                 className="rounded-lg bg-slate-50 p-3"
                               >
                                 <input type="hidden" name="equipmentId" value={item.id} />

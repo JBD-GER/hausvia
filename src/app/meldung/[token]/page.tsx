@@ -53,7 +53,7 @@ export default async function PublicDamagePage({
             <h1 className="mt-2 text-3xl font-black">Schaden sicher melden</h1>
             <p className="mt-3 text-sm leading-6 text-blue-100">{building.label ? `${building.label} · ` : ""}{building.formatted_address}</p>
           </div>
-          <form action={submitPublicDamageAction} className="grid gap-5 p-6 sm:p-8" encType="multipart/form-data">
+          <form action={submitPublicDamageAction} className="grid gap-5 p-6 sm:p-8">
             <input type="hidden" name="token" value={token} />
             {query.error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">{query.error}</p> : null}
             <label className="grid gap-2 text-sm font-extrabold text-slate-800">

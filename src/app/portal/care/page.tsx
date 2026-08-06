@@ -1,18 +1,14 @@
 import { EmptyState, PageHeader, Panel, StatusPill } from "@/components/portal/PortalUI";
 import { asText, firstRelation, formatDateTime } from "@/lib/portal/format";
-import { requireProfile } from "@/lib/supabase/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireCustomerContext } from "@/lib/portal/access";
 
 export default async function CustomerCarePage() {
-  const profile = await requireProfile(["customer"]);
-  const supabase = await createSupabaseServerClient();
-  const { data: customer } = await supabase.from("customers").select("id").eq("portal_user_id", profile.id).maybeSingle();
-  const [{ data: projects }, { data: shifts }] = customer
-    ? await Promise.all([
-        supabase.from("projects").select("id,status,name,object_address,object_type,public_notes,project_tasks(title,interval_label,seasonal)").eq("customer_id", customer.id),
-        supabase.from("shifts").select("id,started_at,ended_at,net_minutes,projects(name)").eq("customer_id", customer.id).eq("customer_visible", true).eq("status", "approved").order("started_at", { ascending: false }),
-      ])
-    : [{ data: [] }, { data: [] }];
+  const { customerId, supabase } = await requireCustomerContext();
+  const [{ data: projects, error: projectsError }, { data: shifts, error: shiftsError }] = await Promise.all([
+    supabase.from("projects").select("id,status,name,object_address,object_type,public_notes,project_tasks(title,interval_label,seasonal)").eq("customer_id", customerId),
+    supabase.from("shifts").select("id,started_at,ended_at,net_minutes,projects(name)").eq("customer_id", customerId).eq("customer_visible", true).eq("status", "approved").order("started_at", { ascending: false }),
+  ]);
+  if (projectsError || shiftsError) throw new Error("Die Objektbetreuung konnte nicht vollständig geladen werden.");
 
   return (
     <>

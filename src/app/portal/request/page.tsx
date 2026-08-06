@@ -1,21 +1,17 @@
 import { PageHeader, Panel, EmptyState, StatusPill } from "@/components/portal/PortalUI";
 import { asText, formatDateTime } from "@/lib/portal/format";
-import { requireProfile } from "@/lib/supabase/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireCustomerContext } from "@/lib/portal/access";
 
 export default async function CustomerRequestPage() {
-  const profile = await requireProfile(["customer"]);
-  const supabase = await createSupabaseServerClient();
-  const { data: customer } = await supabase.from("customers").select("id").eq("portal_user_id", profile.id).maybeSingle();
-  const { data: leads } = customer
-    ? await supabase
-        .from("leads")
-        .select(
-          "id,status,object_address,object_type,requested_services,frequency,message,created_at",
-        )
-        .eq("customer_id", customer.id)
-        .order("created_at", { ascending: false })
-    : { data: [] };
+  const { customerId, supabase } = await requireCustomerContext();
+  const { data: leads, error } = await supabase
+    .from("leads")
+    .select(
+      "id,status,object_address,object_type,requested_services,frequency,message,created_at",
+    )
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error("Die Anfragedaten konnten nicht geladen werden.");
 
   return (
     <>

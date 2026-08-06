@@ -42,6 +42,143 @@ img {
   height: auto;
 }
 
+/* Portal application design system — intentionally scoped away from the public website. */
+.portal-app {
+  --portal-navy-950: #04142f;
+  --portal-navy-900: #061f47;
+  --portal-navy-800: #082b61;
+  --portal-navy-700: #0e417f;
+  --portal-teal: #08aeb4;
+  --portal-teal-dark: #087f83;
+  --portal-teal-soft: #e7f8f9;
+  --portal-gold: #f5c542;
+  --portal-canvas: #f3f6fa;
+  --portal-surface: #ffffff;
+  --portal-surface-muted: #eef3f8;
+  --portal-border: #dfe7f0;
+  --portal-text: #101828;
+  --portal-muted: #667085;
+  --portal-shadow-card: 0 12px 40px rgba(4, 20, 47, 0.065);
+  --portal-shadow-float: 0 20px 55px rgba(4, 20, 47, 0.16);
+
+  min-width: 0;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(8, 174, 180, 0.055), transparent 22rem),
+    var(--portal-canvas);
+  color: var(--portal-text);
+  font-family: "Avenir Next", Avenir, Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.portal-app :where(a, button, input, select, textarea, summary) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.portal-app :where(button, input, select, textarea) {
+  font: inherit;
+}
+
+.portal-app :where(input, select, textarea):focus-visible {
+  outline: 2px solid var(--portal-teal);
+  outline-offset: 2px;
+}
+
+.portal-app .portal-content > div > * {
+  animation: portal-page-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.portal-app .portal-content :where(table) {
+  border-spacing: 0;
+}
+
+.portal-app .portal-content :where(thead th) {
+  color: #526071;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.portal-app .portal-content :where(tbody tr) {
+  transition: background-color 160ms ease;
+}
+
+.portal-app .portal-content :where(tbody tr:hover) {
+  background: rgba(231, 248, 249, 0.42);
+}
+
+.portal-app .portal-content :where([class~="overflow-x-auto"]) {
+  scrollbar-color: rgba(8, 43, 97, 0.28) transparent;
+  scrollbar-width: thin;
+}
+
+.portal-app .portal-content :where(details) {
+  scroll-margin-top: 6rem;
+}
+
+.portal-sidebar-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  scrollbar-width: thin;
+}
+
+.portal-sidebar-scroll::-webkit-scrollbar,
+.portal-app .portal-content :where([class~="overflow-x-auto"])::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.portal-sidebar-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.portal-app .portal-content :where([class~="overflow-x-auto"])::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(8, 43, 97, 0.24);
+}
+
+.portal-menu-backdrop {
+  animation: portal-backdrop-in 180ms ease-out both;
+}
+
+.portal-mobile-sheet {
+  animation: portal-sheet-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  overscroll-behavior: contain;
+}
+
+@keyframes portal-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes portal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes portal-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(2rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes hausvia-float {
   0%,
   100% {
@@ -212,6 +349,15 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .portal-app *,
+  .portal-app *::before,
+  .portal-app *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .animate-hausvia-snowfall {
     display: none;
   }

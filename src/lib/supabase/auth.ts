@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AppRole, UserProfile } from "@/lib/supabase/types";
 
 export function portalPathForRole(role: AppRole) {
-  if (role === "admin") return "/admin/properties";
+  if (role === "admin") return "/admin";
   if (role === "employee") return "/app";
   return "/portal";
 }
