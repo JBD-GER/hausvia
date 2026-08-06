@@ -42,6 +42,17 @@ function go(path: string, key: "error" | "status", message: string): never {
   redirect(`${path}${separator}${key}=${encodeURIComponent(message)}`);
 }
 
+function offerDetailPath(
+  offerId: string,
+  versionId: string,
+  view: "overview" | "content" | "history" | "decision" = "overview",
+) {
+  const version = uuidSchema.safeParse(versionId).success
+    ? `version=${encodeURIComponent(versionId)}&`
+    : "";
+  return `/admin/offers/${offerId}?${version}view=${encodeURIComponent(view)}`;
+}
+
 function errorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) return error.message;
   if (error && typeof error === "object" && "message" in error) {
@@ -111,7 +122,10 @@ async function persistOfferDraft({
 export async function saveOfferDraftAction(formData: FormData) {
   await requireProfile(["admin"]);
   const offerId = formText(formData, "offerId") || null;
-  const fallback = offerId ? `/admin/offers/${offerId}` : "/admin/offers/new";
+  const versionId = formText(formData, "versionId");
+  const fallback = offerId
+    ? offerDetailPath(offerId, versionId, "content")
+    : "/admin/offers/new";
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(formText(formData, "payload"));
@@ -135,7 +149,11 @@ export async function saveOfferDraftAction(formData: FormData) {
   }
   revalidatePath("/admin/offers");
   revalidatePath(`/admin/offers/${saved.offerId}`);
-  go(`/admin/offers/${saved.offerId}`, "status", "Entwurf gespeichert.");
+  go(
+    offerDetailPath(saved.offerId, saved.versionId, "content"),
+    "status",
+    "Entwurf gespeichert.",
+  );
 }
 
 const pricingRuleFormSchema = z.object({
@@ -446,7 +464,9 @@ export async function sendOfferVersionAction(formData: FormData) {
   await requireProfile(["admin"]);
   const offerId = formText(formData, "offerId");
   const versionId = formText(formData, "versionId");
-  const fallback = uuidSchema.safeParse(offerId).success ? `/admin/offers/${offerId}` : "/admin/offers";
+  const fallback = uuidSchema.safeParse(offerId).success
+    ? offerDetailPath(offerId, versionId)
+    : "/admin/offers";
   if (!uuidSchema.safeParse(versionId).success) go(fallback, "error", "Ungültige Angebotsversion.");
   let result: Awaited<ReturnType<typeof deliverOfferVersion>>;
   try {
@@ -457,14 +477,20 @@ export async function sendOfferVersionAction(formData: FormData) {
   revalidatePath("/admin/offers");
   revalidatePath(`/admin/offers/${result.offerId}`);
   revalidatePath("/portal/offers");
-  go(`/admin/offers/${result.offerId}`, "status", "Angebot gespeichert, versiegelt und versendet.");
+  go(
+    offerDetailPath(result.offerId, versionId),
+    "status",
+    "Angebot gespeichert, versiegelt und versendet.",
+  );
 }
 
 export async function resendOfferVersionAction(formData: FormData) {
   await requireProfile(["admin"]);
   const offerId = formText(formData, "offerId");
   const versionId = formText(formData, "versionId");
-  const fallback = uuidSchema.safeParse(offerId).success ? `/admin/offers/${offerId}` : "/admin/offers";
+  const fallback = uuidSchema.safeParse(offerId).success
+    ? offerDetailPath(offerId, versionId)
+    : "/admin/offers";
   if (!uuidSchema.safeParse(versionId).success) go(fallback, "error", "Ungültige Angebotsversion.");
   let result: Awaited<ReturnType<typeof deliverOfferVersion>>;
   try {
@@ -473,14 +499,20 @@ export async function resendOfferVersionAction(formData: FormData) {
     go(fallback, "error", errorMessage(error, "Das Angebot konnte nicht erneut versendet werden."));
   }
   revalidatePath(`/admin/offers/${result.offerId}`);
-  go(`/admin/offers/${result.offerId}`, "status", "Das unveränderte Original wurde erneut versendet.");
+  go(
+    offerDetailPath(result.offerId, versionId),
+    "status",
+    "Das unveränderte Original wurde erneut versendet.",
+  );
 }
 
 export async function withdrawOfferVersionAction(formData: FormData) {
   await requireProfile(["admin"]);
   const offerId = formText(formData, "offerId");
   const versionId = formText(formData, "versionId");
-  const fallback = uuidSchema.safeParse(offerId).success ? `/admin/offers/${offerId}` : "/admin/offers";
+  const fallback = uuidSchema.safeParse(offerId).success
+    ? offerDetailPath(offerId, versionId)
+    : "/admin/offers";
   if (!uuidSchema.safeParse(versionId).success) go(fallback, "error", "Ungültige Angebotsversion.");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("withdraw_offer_version", {
@@ -489,7 +521,7 @@ export async function withdrawOfferVersionAction(formData: FormData) {
   });
   if (error) go(fallback, "error", error.message || "Das Angebot konnte nicht zurückgezogen werden.");
   revalidatePath("/admin/offers");
-  revalidatePath(fallback);
+  revalidatePath(`/admin/offers/${offerId}`);
   revalidatePath("/portal/offers");
   go(fallback, "status", "Das Angebot wurde zurückgezogen.");
 }
@@ -498,7 +530,9 @@ export async function duplicateOfferAction(formData: FormData) {
   await requireProfile(["admin"]);
   const offerId = formText(formData, "offerId");
   const versionId = formText(formData, "versionId");
-  const fallback = uuidSchema.safeParse(offerId).success ? `/admin/offers/${offerId}` : "/admin/offers";
+  const fallback = uuidSchema.safeParse(offerId).success
+    ? offerDetailPath(offerId, versionId)
+    : "/admin/offers";
   if (!uuidSchema.safeParse(versionId).success) go(fallback, "error", "Ungültige Angebotsversion.");
   const admin = createSupabaseAdminClient();
   const [versionResult, itemsResult, discountsResult] = await Promise.all([
@@ -529,7 +563,11 @@ export async function duplicateOfferAction(formData: FormData) {
     go(fallback, "error", errorMessage(error, "Das Angebot konnte nicht dupliziert werden."));
   }
   revalidatePath("/admin/offers");
-  go(`/admin/offers/${saved.offerId}`, "status", "Angebot als neuer Entwurf mit neuer Nummer dupliziert.");
+  go(
+    offerDetailPath(saved.offerId, saved.versionId),
+    "status",
+    "Angebot als neuer Entwurf mit neuer Nummer dupliziert.",
+  );
 }
 
 export async function linkOfferToPropertyAction(formData: FormData) {
@@ -537,7 +575,9 @@ export async function linkOfferToPropertyAction(formData: FormData) {
   const offerId = formText(formData, "offerId");
   const versionId = formText(formData, "versionId");
   const propertyId = formText(formData, "propertyId");
-  const fallback = uuidSchema.safeParse(offerId).success ? `/admin/offers/${offerId}` : "/admin/offers";
+  const fallback = uuidSchema.safeParse(offerId).success
+    ? offerDetailPath(offerId, versionId, "decision")
+    : "/admin/offers";
   if (!uuidSchema.safeParse(versionId).success || !uuidSchema.safeParse(propertyId).success) {
     go(fallback, "error", "Bitte wählen Sie eine gültige Immobilie.");
   }
@@ -564,7 +604,7 @@ export async function linkOfferToPropertyAction(formData: FormData) {
   });
   if (error) go(fallback, "error", error.message || "Das Angebot konnte nicht verknüpft werden.");
   revalidatePath("/admin/offers");
-  revalidatePath(fallback);
+  revalidatePath(`/admin/offers/${offerId}`);
   revalidatePath(`/admin/properties/${propertyId}`);
   revalidatePath("/portal/offers");
   go(fallback, "status", "Angebot und vereinbarte Leistungen wurden mit der Immobilie verknüpft.");
@@ -625,8 +665,11 @@ export async function acceptOfferVersionAction(formData: FormData) {
 export async function retryOfferAcceptanceDeliveryAction(formData: FormData) {
   await requireProfile(["admin"]);
   const offerId = formText(formData, "offerId");
+  const versionId = formText(formData, "versionId");
   const jobId = formText(formData, "jobId");
-  const fallback = uuidSchema.safeParse(offerId).success ? `/admin/offers/${offerId}` : "/admin/offers";
+  const fallback = uuidSchema.safeParse(offerId).success
+    ? offerDetailPath(offerId, versionId, "decision")
+    : "/admin/offers";
   if (!uuidSchema.safeParse(jobId).success) go(fallback, "error", "Ungültiger Zustellauftrag.");
   try {
     const result = await processOfferAcceptanceDelivery({ jobId });
@@ -634,7 +677,7 @@ export async function retryOfferAcceptanceDeliveryAction(formData: FormData) {
   } catch (error) {
     go(fallback, "error", errorMessage(error, "Die Annahmebestätigung konnte nicht erneut zugestellt werden."));
   }
-  revalidatePath(fallback);
+  revalidatePath(`/admin/offers/${offerId}`);
   go(fallback, "status", "Annahmebestätigung und E-Mails wurden erfolgreich zugestellt.");
 }
 

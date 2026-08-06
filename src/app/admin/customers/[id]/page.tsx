@@ -17,6 +17,7 @@ import {
   buttonClass,
   inputClass,
 } from "@/components/portal/PortalUI";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   CUSTOMER_CATEGORY_LABELS,
   PROPERTY_TYPE_LABELS,
@@ -27,6 +28,7 @@ import { requireAdminContext } from "@/lib/portal/access";
 type SearchParams = Promise<{
   error?: string | string[];
   status?: string | string[];
+  view?: string | string[];
 }>;
 
 const customerStatusLabels: Record<string, string> = {
@@ -126,6 +128,10 @@ export default async function AdminCustomerDetailPage({
   const category = customer.category as keyof typeof CUSTOMER_CATEGORY_LABELS;
   const statusMessage = queryValue(query.status);
   const errorMessage = queryValue(query.error);
+  const requestedView = queryValue(query.view);
+  const activeView = ["overview", "details", "properties"].includes(requestedView)
+    ? requestedView
+    : "overview";
 
   return (
     <>
@@ -160,7 +166,22 @@ export default async function AdminCustomerDetailPage({
         </p>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+      <PortalTabs
+        activeId={activeView}
+        label="Kundenbereiche"
+        items={[
+          { id: "overview", label: "Übersicht", href: `/admin/customers/${id}?view=overview` },
+          { id: "details", label: "Stammdaten", href: `/admin/customers/${id}?view=details` },
+          {
+            id: "properties",
+            label: "Immobilien",
+            href: `/admin/customers/${id}?view=properties`,
+            badge: propertiesResult.data?.length ?? 0,
+          },
+        ]}
+      />
+
+      {activeView === "details" ? (
         <Panel title="Stammdaten bearbeiten">
           <form
             action={updateCustomerAction}
@@ -316,6 +337,38 @@ export default async function AdminCustomerDetailPage({
           </form>
         </Panel>
 
+      ) : null}
+
+      {activeView === "overview" ? (
+        <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+          <Panel title="Kundenprofil">
+            <dl className="grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-1">
+              <div>
+                <dt className="font-bold text-slate-500">Kontakt</dt>
+                <dd className="mt-1 font-semibold text-slate-950">
+                  {customer.email} · {customer.phone || "Keine Telefonnummer"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-bold text-slate-500">Rechnungsanschrift</dt>
+                <dd className="mt-1 font-semibold leading-6 text-slate-950">
+                  {[customer.billing_street, customer.billing_house_number]
+                    .filter(Boolean)
+                    .join(" ") || "Keine Straße hinterlegt"}
+                  <br />
+                  {[customer.billing_postal_code, customer.billing_city]
+                    .filter(Boolean)
+                    .join(" ") || "Kein Ort hinterlegt"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-bold text-slate-500">Immobilien</dt>
+                <dd className="mt-1 text-2xl font-black text-brand">
+                  {propertiesResult.data?.length ?? 0}
+                </dd>
+              </div>
+            </dl>
+          </Panel>
         <div className="grid content-start gap-5">
           <Panel title="Konto und Status">
             <div className="flex flex-wrap gap-2">
@@ -425,9 +478,11 @@ export default async function AdminCustomerDetailPage({
             </form>
           </Panel>
         </div>
-      </div>
+        </div>
+      ) : null}
 
-      <div className="mt-5">
+      {activeView === "properties" ? (
+      <div>
         <Panel title={`Zugeordnete Immobilien (${propertiesResult.data?.length ?? 0})`}>
           {propertiesResult.data?.length ? (
             <div className="grid gap-4 lg:grid-cols-2">
@@ -489,6 +544,7 @@ export default async function AdminCustomerDetailPage({
           )}
         </Panel>
       </div>
+      ) : null}
     </>
   );
 }

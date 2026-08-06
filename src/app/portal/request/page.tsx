@@ -1,4 +1,5 @@
-import { PageHeader, Panel, EmptyState, StatusPill } from "@/components/portal/PortalUI";
+import { ClipboardList } from "lucide-react";
+import { CompactSection, PageHeader, EmptyState, StatusPill } from "@/components/portal/PortalUI";
 import { asText, formatDateTime } from "@/lib/portal/format";
 import { requireCustomerContext } from "@/lib/portal/access";
 
@@ -15,33 +16,43 @@ export default async function CustomerRequestPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Anfrage" title="Ihre Anfrage" text="Die übermittelten Objekt- und Leistungsdaten aus dem Kostencheck." />
-      <Panel title="Funnel-Anfrage">
+      <PageHeader
+        eyebrow="Anfrage"
+        title="Ihre Anfragen"
+        text="Status und Eckdaten Ihrer übermittelten Kostenchecks."
+        icon={<ClipboardList aria-hidden="true" size={20} />}
+        compact
+      />
+      <div className="grid gap-3">
         {leads?.length ? (
-          <div className="grid gap-4">
-            {leads.map((lead) => (
-              <article key={lead.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+          leads.map((lead, index) => (
+            <CompactSection
+              key={lead.id}
+              title={asText(lead.object_address)}
+              description={`${asText(lead.object_type)} · ${formatDateTime(lead.created_at)}`}
+              badge={<StatusPill>{lead.status}</StatusPill>}
+              defaultOpen={index === 0}
+            >
+              <article>
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
+                  <div className="min-w-0">
                     <p className="font-extrabold text-slate-950">{asText(lead.object_address)}</p>
                     <p className="mt-1 text-sm text-slate-650">{asText(lead.object_type)} · {asText(lead.frequency)}</p>
                     <p className="mt-2 text-sm leading-6 text-slate-700">{asText(lead.message)}</p>
-                    <p className="mt-2 text-xs font-bold text-slate-500">{formatDateTime(lead.created_at)}</p>
                   </div>
-                  <StatusPill>{lead.status}</StatusPill>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {(lead.requested_services ?? []).map((service: string) => (
-                    <span key={service} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-650">{service}</span>
+                    <span key={service} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-650">{service}</span>
                   ))}
                 </div>
               </article>
-            ))}
-          </div>
+            </CompactSection>
+          ))
         ) : (
           <EmptyState title="Keine Anfrage gefunden" text="Sobald eine Anfrage zugeordnet ist, wird sie hier angezeigt." />
         )}
-      </Panel>
+      </div>
     </>
   );
 }

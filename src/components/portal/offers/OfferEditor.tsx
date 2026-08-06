@@ -882,6 +882,7 @@ export function OfferEditor({
   return (
     <form action={saveOfferDraftAction} className="grid gap-5">
       {metadata.offerId ? <input type="hidden" name="offerId" value={metadata.offerId} /> : null}
+      {metadata.versionId ? <input type="hidden" name="versionId" value={metadata.versionId} /> : null}
       {metadata.expectedUpdatedAt ? <input type="hidden" name="expectedUpdatedAt" value={metadata.expectedUpdatedAt} /> : null}
       <input type="hidden" name="payload" value={payload} />
       <div aria-live="polite" className="sr-only">{announcement}</div>

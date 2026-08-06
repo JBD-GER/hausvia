@@ -1,4 +1,5 @@
 import { updateCompanySettingsAction } from "@/app/actions/portalAdmin";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   Field,
   PageHeader,
@@ -31,6 +32,10 @@ export default async function AdminSettingsPage({
     .maybeSingle();
   const validation = validateCompanySettings(settings);
   const hourlyRateCents = Number(settings?.default_hourly_rate_cents ?? 6000);
+  const requestedView = queryValue(params, "view");
+  const activeView = ["company", "billing", "automation"].includes(requestedView)
+    ? requestedView
+    : "company";
 
   return (
     <>
@@ -75,8 +80,19 @@ export default async function AdminSettingsPage({
         </div>
       )}
 
-      <form action={updateCompanySettingsAction} className="grid gap-5">
-        <Panel title="Rechnungsaussteller">
+      <PortalTabs
+        activeId={activeView}
+        label="Einstellungsbereiche"
+        items={[
+          { id: "company", label: "Unternehmen", href: "/admin/settings?view=company" },
+          { id: "billing", label: "Bank & Abrechnung", href: "/admin/settings?view=billing" },
+          { id: "automation", label: "Automationen", href: "/admin/settings?view=automation" },
+        ]}
+      />
+
+      <form action={updateCompanySettingsAction} noValidate className="grid gap-5">
+        <input type="hidden" name="returnView" value={activeView} />
+        <Panel title="Rechnungsaussteller" className={activeView === "company" ? "" : "hidden"}>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Rechtlicher Firmenname">
               <input
@@ -178,7 +194,7 @@ export default async function AdminSettingsPage({
           </div>
         </Panel>
 
-        <Panel title="Bank und Rechnungslauf">
+        <Panel title="Bank und Rechnungslauf" className={activeView === "billing" ? "" : "hidden"}>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Bankname">
               <input
@@ -269,7 +285,7 @@ export default async function AdminSettingsPage({
           </div>
         </Panel>
 
-        <Panel title="Automationen und sichere Dateien">
+        <Panel title="Automationen und sichere Dateien" className={activeView === "automation" ? "" : "hidden"}>
           <div className="grid gap-3 text-sm leading-6 text-slate-700 md:grid-cols-3">
             <div className="rounded-lg bg-slate-50 p-4">
               <p className="font-extrabold text-slate-950">Monatsrechnung</p>
@@ -295,9 +311,11 @@ export default async function AdminSettingsPage({
           </div>
         </Panel>
 
-        <button className={`${buttonClass} justify-self-start px-6`}>
-          Unternehmensdaten speichern
-        </button>
+        {activeView !== "automation" ? (
+          <button className={`${buttonClass} justify-self-start px-6`}>
+            Einstellungen speichern
+          </button>
+        ) : null}
       </form>
     </>
   );

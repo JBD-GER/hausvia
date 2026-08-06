@@ -5,6 +5,7 @@ import {
   Panel,
   StatusPill,
   buttonClass,
+  secondaryButtonClass,
 } from "@/components/portal/PortalUI";
 import { formatDateTime } from "@/lib/portal/format";
 import { requireAdminContext } from "@/lib/portal/access";
@@ -50,23 +51,17 @@ export default async function AdminInvitationsPage() {
         eyebrow="Einladungen"
         title="Portal-Einladungen"
         text="Einladungen sind fest mit einem zuvor angelegten Kunden oder Mitarbeiter verknüpft und 30 Tage gültig."
+        actions={(
+          <>
+            <Link href="/admin/customers" className={buttonClass}>Zu den Kunden</Link>
+            <Link href="/admin/employees" className={secondaryButtonClass}>Zu den Mitarbeitern</Link>
+          </>
+        )}
       />
-      <Panel title="Neue Einladung vorbereiten">
-        <p className="text-sm leading-6 text-slate-650">
-          Legen Sie zuerst den zugehörigen Stammdatensatz an. Von dort können Sie
-          die Einladung kontrolliert senden, erneut senden oder widerrufen.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link href="/admin/customers" className={buttonClass}>
-            Zu den Kunden
-          </Link>
-          <Link href="/admin/employees" className={buttonClass}>
-            Zu den Mitarbeitern
-          </Link>
-        </div>
-      </Panel>
-      <div className="mt-5">
-        <Panel title="Einladungsverlauf">
+      <Panel
+        title="Einladungsverlauf"
+        description="Versand und Widerruf steuern Sie direkt im jeweiligen Kunden- oder Mitarbeiterprofil."
+      >
           {invitations?.length ? (
             <div className="grid gap-3">
               {invitations.map((invitation) => {
@@ -117,8 +112,7 @@ export default async function AdminInvitationsPage() {
               text="Neue Kunden- und Mitarbeitereinladungen erscheinen hier."
             />
           )}
-        </Panel>
-      </div>
+      </Panel>
     </>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { markNotificationReadAction } from "@/app/actions/portalAdmin";
 import { PaginationNav } from "@/components/portal/PaginationNav";
-import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { CompactSection, EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { formatGermanDate } from "@/lib/portal/core";
 import { requireAdminContext } from "@/lib/portal/access";
 import { paginateItems } from "@/lib/portal/listing";
@@ -48,7 +48,7 @@ export default async function AdminNotificationsPage({ searchParams }: { searchP
   return (
     <>
       <PageHeader eyebrow="Benachrichtigungen" title="Aktuelle Hinweise" text="Einsätze, Schäden, Meldungen, Equipment und Abrechnungsereignisse an einem Ort." />
-      <Panel title="Filtern">
+      <CompactSection title="Suchen und filtern" description="Typ, Zeitraum und Lesestatus eingrenzen">
         <form method="get" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Field label="Suche"><input name="q" defaultValue={queryValue(params, "q")} placeholder="Titel, Text oder Typ …" className={inputClass} /></Field>
           <Field label="Typ"><select name="type" defaultValue={typeFilter} className={inputClass}><option value="">Alle Typen</option>{types.map((type) => <option key={type} value={type}>{type}</option>)}</select></Field>
@@ -56,7 +56,7 @@ export default async function AdminNotificationsPage({ searchParams }: { searchP
           <label className="flex min-h-11 items-center gap-2 self-end rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-700"><input type="checkbox" name="unread" value="true" defaultChecked={unreadOnly} /> nur ungelesene</label>
           <div className="flex items-end gap-2"><button className={buttonClass}>Anwenden</button><Link href="/admin/notifications" className="inline-flex min-h-11 items-center text-sm font-bold text-brand underline">Zurücksetzen</Link></div>
         </form>
-      </Panel>
+      </CompactSection>
       <div className="mt-5">
         <Panel title={`Benachrichtigungen (${filteredNotifications.length})`}>
           {filteredNotifications.length ? (

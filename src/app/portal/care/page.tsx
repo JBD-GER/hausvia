@@ -1,4 +1,11 @@
-import { EmptyState, PageHeader, Panel, StatusPill } from "@/components/portal/PortalUI";
+import { Activity, Clock3, ListChecks } from "lucide-react";
+import {
+  CompactSection,
+  EmptyState,
+  PageHeader,
+  Panel,
+  StatusPill,
+} from "@/components/portal/PortalUI";
 import { asText, firstRelation, formatDateTime } from "@/lib/portal/format";
 import { requireCustomerContext } from "@/lib/portal/access";
 
@@ -12,13 +19,22 @@ export default async function CustomerCarePage() {
 
   return (
     <>
-      <PageHeader eyebrow="Betreuung" title="Ihre Objektbetreuung" text="Beauftragte Leistungen, Intervalle und freigegebene Einsätze in kundenfreundlicher Übersicht." />
-      <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
-        <Panel title="Objekte und Leistungen">
+      <PageHeader
+        eyebrow="Betreuung"
+        title="Ihre Objektbetreuung"
+        text="Leistungen und geprüfte Einsätze – kompakt je Objekt."
+        icon={<Activity aria-hidden="true" size={20} />}
+        compact
+      />
+      <div className="grid gap-4">
+        <Panel
+          title="Objekte und Leistungen"
+          description="Das Wichtigste steht direkt oben; einzelne Leistungspläne lassen sich bei Bedarf öffnen."
+        >
           {projects?.length ? (
             <div className="grid gap-4">
               {projects.map((project) => (
-                <article key={project.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <article key={project.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-extrabold text-slate-950">{project.name}</p>
@@ -26,14 +42,23 @@ export default async function CustomerCarePage() {
                     </div>
                     <StatusPill>{project.status}</StatusPill>
                   </div>
-                  <div className="mt-4 grid gap-2">
-                    {(project.project_tasks ?? []).map((task: { title: string; interval_label: string; seasonal: boolean }) => (
-                      <div key={task.title} className="rounded-md bg-white p-3 text-sm">
-                        <p className="font-extrabold text-slate-950">{task.title}</p>
-                        <p className="mt-1 text-slate-650">{task.interval_label}{task.seasonal ? " · saisonal" : ""}</p>
-                      </div>
-                    ))}
-                  </div>
+                  <details className="group mt-4 rounded-xl border border-slate-200 bg-white">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-black text-slate-800 marker:hidden [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2">
+                        <ListChecks aria-hidden="true" size={17} className="text-brand" />
+                        {project.project_tasks?.length ?? 0} Leistungen anzeigen
+                      </span>
+                      <span aria-hidden="true" className="text-brand transition group-open:rotate-45">+</span>
+                    </summary>
+                    <div className="grid gap-2 border-t border-slate-100 p-3">
+                      {(project.project_tasks ?? []).map((task: { title: string; interval_label: string; seasonal: boolean }) => (
+                        <div key={task.title} className="rounded-lg bg-slate-50 p-3 text-sm">
+                          <p className="font-extrabold text-slate-950">{task.title}</p>
+                          <p className="mt-1 text-slate-650">{task.interval_label}{task.seasonal ? " · saisonal" : ""}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 </article>
               ))}
             </div>
@@ -41,7 +66,15 @@ export default async function CustomerCarePage() {
             <EmptyState title="Noch keine Betreuung" text="Nach Angebotsannahme oder Admin-Freigabe wird die Betreuung hier sichtbar." />
           )}
         </Panel>
-        <Panel title="Freigegebene Einsätze">
+        <CompactSection
+          title="Freigegebene Einsätze"
+          description="Geprüfte Arbeitszeiten und Einsatznachweise"
+          badge={
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-black text-brand">
+              <Clock3 aria-hidden="true" size={14} /> {shifts?.length ?? 0}
+            </span>
+          }
+        >
           {shifts?.length ? (
             <div className="grid gap-3">
               {shifts.map((shift) => (
@@ -54,7 +87,7 @@ export default async function CustomerCarePage() {
           ) : (
             <EmptyState title="Keine freigegebenen Einsätze" text="Geprüfte Einsätze erscheinen nach Admin-Freigabe." />
           )}
-        </Panel>
+        </CompactSection>
       </div>
     </>
   );

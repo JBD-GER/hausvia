@@ -1,6 +1,6 @@
-import { ChevronRight, Download, FileText } from "lucide-react";
+import { ChevronRight, Download, FileCheck2, FileText } from "lucide-react";
 import Link from "next/link";
-import { EmptyState, PageHeader } from "@/components/portal/PortalUI";
+import { CompactSection, EmptyState, PageHeader } from "@/components/portal/PortalUI";
 import { berlinIsoDate } from "@/lib/portal/core";
 import { requireCustomerContext } from "@/lib/portal/access";
 import {
@@ -46,7 +46,9 @@ export default async function CustomerOffersPage({
       <PageHeader
         eyebrow="Angebote"
         title="Ihre Angebote"
-        text="Prüfen Sie Leistungsumfang und Preise in Ruhe. Jede angezeigte Version bleibt unverändert nachvollziehbar."
+        text="Offene Entscheidungen zuerst, frühere Versionen kompakt darunter."
+        icon={<FileCheck2 aria-hidden="true" size={20} />}
+        compact
       />
 
       {query.status ? (
@@ -61,7 +63,7 @@ export default async function CustomerOffersPage({
       ) : null}
 
       {versions.length ? (
-        <div className="grid gap-7">
+        <div className="grid gap-4">
           {groupDefinitions.map((group) => {
             const groupVersions = versions.filter(
               (version) => offerGroup(version.effectiveStatus) === group.key,
@@ -69,23 +71,21 @@ export default async function CustomerOffersPage({
             if (!groupVersions.length) return null;
 
             return (
-              <section key={group.key} aria-labelledby={`offers-${group.key}`}>
-                <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                  <div>
-                    <h2 id={`offers-${group.key}`} className="text-xl font-black text-slate-950">
-                      {group.title}
-                    </h2>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{group.text}</p>
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-slate-600 shadow-sm">
-                    {groupVersions.length} {groupVersions.length === 1 ? "Angebot" : "Angebote"}
+              <CompactSection
+                key={group.key}
+                title={group.title}
+                description={group.text}
+                defaultOpen={group.key === "open"}
+                badge={
+                  <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-extrabold text-brand">
+                    {groupVersions.length}
                   </span>
-                </div>
-
-                <div className="grid gap-4">
+                }
+              >
+                <div className="grid gap-3">
                   {groupVersions.map((version) => (
                     <article key={version.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,.9fr)]">
+                      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,.75fr)]">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <OfferStatusBadge status={version.effectiveStatus} />
@@ -96,7 +96,7 @@ export default async function CustomerOffersPage({
                           <p className="mt-3 text-xs font-black uppercase tracking-[0.12em] text-brand">
                             {version.offer_number}
                           </p>
-                          <h3 className="mt-1 text-xl font-black leading-tight text-slate-950">{version.title}</h3>
+                          <h3 className="mt-1 text-lg font-black leading-tight text-slate-950">{version.title}</h3>
                           <div className="mt-2"><OfferDateLine version={version} /></div>
                         </div>
 
@@ -129,7 +129,7 @@ export default async function CustomerOffersPage({
                     </article>
                   ))}
                 </div>
-              </section>
+              </CompactSection>
             );
           })}
         </div>

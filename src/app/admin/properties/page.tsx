@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { generateVisitsAction } from "@/app/actions/portalAdmin";
 import { CreatePropertyWizard } from "@/components/portal/CreatePropertyWizard";
-import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { PortalDialog } from "@/components/portal/PortalDialog";
+import { CompactSection, EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { PaginationNav } from "@/components/portal/PaginationNav";
 import { CUSTOMER_CATEGORY_LABELS, PROPERTY_TYPE_LABELS, berlinIsoDate, formatCents, formatGermanDate } from "@/lib/portal/core";
 import { requireAdminContext } from "@/lib/portal/access";
@@ -116,6 +118,21 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
     return String(right.created_at).localeCompare(String(left.created_at));
   });
   const propertyPage = paginateItems(filteredProperties, queryValue(params, "page"));
+  const createWizard = (
+    <CreatePropertyWizard
+      careStartDate={berlinIsoDate()}
+      customers={selectableCustomers.map((customer) => {
+        const category = customer.category as keyof typeof CUSTOMER_CATEGORY_LABELS;
+        const categoryLabel = CUSTOMER_CATEGORY_LABELS[category] ?? (customer.category ? String(customer.category) : "Kunde");
+        const emailLabel = customer.email ? ` · ${customer.email}` : "";
+        return {
+          id: customer.id,
+          label: `${customerLabel(customer)} · ${categoryLabel}${emailLabel}`,
+        };
+      })}
+      offers={acceptedOfferOptions}
+    />
+  );
 
   return (
     <>
@@ -123,26 +140,27 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
         eyebrow="Immobilien"
         title="Immobilien und Gebäude"
         text="Immobilien sind die zentrale Vertrags-, Einsatz- und Abrechnungseinheit. Das erste Gebäude wird direkt mit angelegt."
+        actions={(
+          <PortalDialog
+            triggerLabel="Immobilie anlegen"
+            triggerIcon={<Plus aria-hidden="true" size={18} />}
+            title="Neue Immobilie"
+            description="Kunde, Vertragsdaten und erstes Gebäude in drei kurzen Schritten."
+            size="wide"
+          >
+            {createWizard}
+          </PortalDialog>
+        )}
       />
       {queryValue(params, "status") ? <p className="mb-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900" role="status">{queryValue(params, "status")}</p> : null}
       {queryValue(params, "error") ? <p className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900" role="alert">{queryValue(params, "error")}</p> : null}
 
       <div className="grid gap-5">
-        <CreatePropertyWizard
-          careStartDate={berlinIsoDate()}
-          customers={selectableCustomers.map((customer) => {
-            const category = customer.category as keyof typeof CUSTOMER_CATEGORY_LABELS;
-            const categoryLabel = CUSTOMER_CATEGORY_LABELS[category] ?? (customer.category ? String(customer.category) : "Kunde");
-            const emailLabel = customer.email ? ` · ${customer.email}` : "";
-            return {
-              id: customer.id,
-              label: `${customerLabel(customer)} · ${categoryLabel}${emailLabel}`,
-            };
-          })}
-          offers={acceptedOfferOptions}
-        />
-
-        <Panel title="Immobilien filtern">
+        <CompactSection
+          title="Suchen und filtern"
+          description="Filter nur öffnen, wenn die Liste eingegrenzt werden soll."
+          badge={filteredProperties.length ? <StatusPill tone="muted">{filteredProperties.length}</StatusPill> : undefined}
+        >
           <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <Field label="Suche"><input name="q" defaultValue={queryValue(params, "q")} placeholder="Name, Schlüssel, Ort …" className={inputClass} /></Field>
             <Field label="Kunde"><select name="customerId" defaultValue={customerFilter} className={inputClass}><option value="">Alle Kunden</option>{(customers ?? []).map((customer) => <option key={customer.id} value={customer.id}>{customerLabel(customer)}</option>)}</select></Field>
@@ -161,7 +179,7 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
             <Link href="/admin/properties" className="text-sm font-bold text-brand underline">Filter zurücksetzen</Link>
             <form action={generateVisitsAction}><button className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-white px-4 py-2 text-sm font-extrabold text-brand hover:bg-brand-soft">Termine für 90 Tage ergänzen</button></form>
           </div>
-        </Panel>
+        </CompactSection>
 
         <Panel title={`Immobilienliste (${filteredProperties.length})`}>
           {filteredProperties.length ? (

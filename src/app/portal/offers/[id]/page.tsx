@@ -12,8 +12,9 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { acceptOfferVersionAction, rejectOfferVersionAction } from "@/app/actions/offers";
+import { PortalDialog } from "@/components/portal/PortalDialog";
 import { OfferViewedTracker } from "@/components/portal/offers/OfferViewedTracker";
-import { Field, PageHeader, inputClass } from "@/components/portal/PortalUI";
+import { CompactSection, Field, PageHeader, inputClass } from "@/components/portal/PortalUI";
 import {
   offerDiscountsForPdf,
   offerVersionItemsForPdf,
@@ -146,7 +147,9 @@ export default async function CustomerOfferDetailPage({
       <PageHeader
         eyebrow={`${version.offer_number} · Version ${version.version_number}`}
         title={version.title}
-        text="Diese Ansicht zeigt genau die unveränderlich gespeicherte Angebotsversion."
+        text="Preis und Entscheidung zuerst – Details öffnen Sie nur bei Bedarf."
+        icon={<FileCheck2 aria-hidden="true" size={20} />}
+        compact
       />
 
       {query.status ? (
@@ -205,9 +208,12 @@ export default async function CustomerOfferDetailPage({
             {version.intro ? <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-slate-700">{version.intro}</p> : null}
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="text-xl font-black text-slate-950">Leistungspositionen</h2>
-            <div className="mt-4 grid gap-3">
+          <CompactSection
+            title="Leistungspositionen"
+            description="Mengen, Intervalle und Einzelkalkulationen"
+            badge={<span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-black text-brand">{sortedItems.length}</span>}
+          >
+            <div className="grid gap-3">
               {sortedItems.map((item, index) => {
                 const winterDetails = item.item_kind === "winter"
                   ? (pdfItems[index]?.details ?? []).filter((detail) => (
@@ -256,12 +262,15 @@ export default async function CustomerOfferDetailPage({
                 );
               })}
             </div>
-          </section>
+          </CompactSection>
 
           {discounts.length ? (
-            <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 sm:p-6">
-              <h2 className="text-xl font-black text-emerald-950">Berücksichtigte Rabatte</h2>
-              <div className="mt-3 grid gap-2">
+            <CompactSection
+              title="Berücksichtigte Rabatte"
+              description="Alle Nachlässe dieser Angebotsversion"
+              badge={<span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">{discounts.length}</span>}
+            >
+              <div className="grid gap-2">
                 {discounts.map((discount, index) => (
                   <div key={`${discount.label}-${index}`} className="flex items-start justify-between gap-4 rounded-xl bg-white p-3 text-sm">
                     <div>
@@ -272,15 +281,15 @@ export default async function CustomerOfferDetailPage({
                   </div>
                 ))}
               </div>
-            </section>
+            </CompactSection>
           ) : null}
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="text-xl font-black text-slate-950">Preisübersicht</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Einmalige, monatliche, saisonale und einsatzbezogene Beträge werden bewusst getrennt ausgewiesen.
-            </p>
-            <div className="mt-4">
+          <CompactSection
+            title="Preisübersicht"
+            description="Einmalige, monatliche, saisonale und einsatzbezogene Beträge"
+            defaultOpen
+          >
+            <div>
               <OfferPriceSummary
                 billingTotals={version.billing_totals}
                 netTotalCents={version.net_total_cents}
@@ -288,23 +297,32 @@ export default async function CustomerOfferDetailPage({
                 grossTotalCents={version.gross_total_cents}
               />
             </div>
-          </section>
+          </CompactSection>
 
           {version.visible_note || version.payment_terms || version.contract_terms ? (
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-              <h2 className="text-xl font-black text-slate-950">Hinweise & Bedingungen</h2>
-              <div className="mt-4 grid gap-4">
+            <CompactSection
+              title="Hinweise & Bedingungen"
+              description="Leistungs-, Zahlungs- und Vertragsbedingungen"
+            >
+              <div className="grid gap-4">
                 {version.visible_note ? <div><h3 className="font-extrabold text-slate-900">Hinweise zum Leistungsumfang</h3><p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-700">{version.visible_note}</p></div> : null}
                 {version.payment_terms ? <div><h3 className="font-extrabold text-slate-900">Zahlungsbedingungen</h3><p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-700">{version.payment_terms}</p></div> : null}
                 {version.contract_terms ? <div><h3 className="font-extrabold text-slate-900">Vertragsbedingungen</h3><p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-700">{version.contract_terms}</p></div> : null}
               </div>
-            </section>
+            </CompactSection>
           ) : null}
         </div>
 
-        <aside className="grid content-start gap-5">
+        <aside className="order-first grid content-start gap-4 xl:order-none">
           {canRespond ? (
-            <section className="rounded-2xl border border-brand/20 bg-white p-4 shadow-sm sm:p-5">
+            <PortalDialog
+              triggerLabel="Angebot beantworten"
+              triggerIcon={<ShieldCheck aria-hidden="true" size={18} />}
+              title="Angebot verbindlich beantworten"
+              description="Prüfen Sie Ihren Namen und bestätigen Sie Ihre Entscheidung."
+              size="md"
+              triggerClassName="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"
+            >
               <div className="flex items-start gap-3">
                 <span className="rounded-xl bg-emerald-100 p-2 text-emerald-700"><ShieldCheck aria-hidden="true" size={22} /></span>
                 <div>
@@ -343,7 +361,7 @@ export default async function CustomerOfferDetailPage({
                   </button>
                 </form>
               </details>
-            </section>
+            </PortalDialog>
           ) : null}
 
           {acceptance ? (

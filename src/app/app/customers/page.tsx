@@ -1,4 +1,5 @@
-import { PageHeader, Panel, EmptyState } from "@/components/portal/PortalUI";
+import { ContactRound } from "lucide-react";
+import { CompactSection, PageHeader, EmptyState } from "@/components/portal/PortalUI";
 import { asText, firstRelation } from "@/lib/portal/format";
 import { requireProfile } from "@/lib/supabase/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -14,27 +15,42 @@ export default async function EmployeeCustomersPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Kunden" title="Zugewiesene Kunden" text="Nur Kunden und Objekte, denen Sie zugewiesen sind. Preise, Angebote und Rechnungen bleiben ausgeblendet." />
-      <Panel title="Kundenübersicht">
+      <PageHeader
+        eyebrow="Kunden"
+        title="Zugewiesene Kontakte"
+        text="Kontaktdaten passend zu Ihren aktuellen Objekten."
+        icon={<ContactRound aria-hidden="true" size={20} />}
+        compact
+      />
+      <div className="grid gap-3 md:grid-cols-2">
         {assignments?.length ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            {assignments.map((assignment, index) => (
-              <article key={`${firstRelation(assignment.projects)?.name}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="font-extrabold text-slate-950">
-                  {asText(firstRelation(firstRelation(assignment.projects)?.customers)?.company_name || firstRelation(firstRelation(assignment.projects)?.customers)?.contact_name)}
-                </p>
-                <p className="mt-1 text-sm text-slate-650">
-                  {asText(firstRelation(firstRelation(assignment.projects)?.customers)?.email)} · {asText(firstRelation(firstRelation(assignment.projects)?.customers)?.phone)}
-                </p>
-                <p className="mt-3 text-sm font-bold text-slate-800">{asText(firstRelation(assignment.projects)?.name)}</p>
-                <p className="mt-1 text-sm text-slate-650">{asText(firstRelation(assignment.projects)?.object_address)}</p>
-              </article>
-            ))}
-          </div>
+          assignments.map((assignment, index) => {
+            const project = firstRelation(assignment.projects);
+            const customer = firstRelation(project?.customers);
+            const customerName = asText(customer?.company_name || customer?.contact_name);
+            return (
+              <CompactSection
+                key={`${project?.name}-${index}`}
+                title={customerName}
+                description={asText(project?.name)}
+              >
+                <article>
+                  <p className="font-extrabold text-slate-950">
+                    {customerName}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-650">
+                    {asText(customer?.email)} · {asText(customer?.phone)}
+                  </p>
+                  <p className="mt-3 text-sm font-bold text-slate-800">{asText(project?.name)}</p>
+                  <p className="mt-1 text-sm text-slate-650">{asText(project?.object_address)}</p>
+                </article>
+              </CompactSection>
+            );
+          })
         ) : (
           <EmptyState title="Keine Kunden" text="Zuweisungen nimmt der Admin vor." />
         )}
-      </Panel>
+      </div>
     </>
   );
 }

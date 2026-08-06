@@ -8,12 +8,14 @@ import {
 } from "@/app/actions/admin";
 import { DocumentEditor } from "@/components/portal/DocumentEditor";
 import {
+  CompactSection,
   PageHeader,
   Panel,
   StatusPill,
   buttonClass,
   inputClass,
 } from "@/components/portal/PortalUI";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   canCancelInvoice,
   canMarkInvoicePaid,
@@ -93,7 +95,7 @@ export default async function AdminInvoiceDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; error?: string; view?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -142,6 +144,7 @@ export default async function AdminInvoiceDetailPage({
       label: asText(project.name || project.object_address),
       customerId: project.customer_id,
     })) ?? [];
+  const activeView = query.view === "content" ? "content" : "overview";
 
   return (
     <>
@@ -186,7 +189,17 @@ export default async function AdminInvoiceDetailPage({
         </p>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
+      <PortalTabs
+        activeId={activeView}
+        label="Rechnungsbereiche"
+        items={[
+          { id: "overview", label: "Übersicht & Status", href: `/admin/invoices/${id}?view=overview` },
+          { id: "content", label: "Inhalt & Positionen", href: `/admin/invoices/${id}?view=content` },
+        ]}
+      />
+
+      {activeView === "content" ? (
+      <div>
         {contentIsImmutable ? (
           <Panel title="Rechnungsinhalt (unveränderlich)">
             <div className="grid gap-4">
@@ -260,8 +273,11 @@ export default async function AdminInvoiceDetailPage({
             />
           </Panel>
         )}
+      </div>
+      ) : null}
 
-        <div className="grid content-start gap-5">
+      {activeView === "overview" ? (
+        <div className="grid items-start gap-5 xl:grid-cols-2">
           <Panel title="Status & Versand">
             <div className="grid gap-3">
               <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -334,7 +350,11 @@ export default async function AdminInvoiceDetailPage({
             </div>
           </Panel>
 
-          <Panel title="Zahlung & Storno">
+          <div className="grid content-start gap-5">
+          <CompactSection
+            title="Zahlung & Storno"
+            description="Manuelle Zahlung, Audit-Wiederholung oder Stornierung verwalten."
+          >
             {invoice.processing_token ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
                 Während der automatischen Verarbeitung sind manuelle Statusänderungen gesperrt.
@@ -414,7 +434,7 @@ export default async function AdminInvoiceDetailPage({
                 ) : null}
               </div>
             )}
-          </Panel>
+          </CompactSection>
 
           {invoice.error_code || invoice.error_message ? (
             <Panel title={processingError ? "Abrechnung wird verarbeitet" : "Abrechnungsfehler"}>
@@ -437,8 +457,9 @@ export default async function AdminInvoiceDetailPage({
               </div>
             </Panel>
           ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
     </>
   );
 }

@@ -17,6 +17,7 @@ import {
   buttonClass,
   inputClass,
 } from "@/components/portal/PortalUI";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   BERLIN_TIME_ZONE,
   EMPLOYEE_CATEGORY_LABELS,
@@ -33,6 +34,7 @@ type SearchParams = Promise<{
   error?: string | string[];
   status?: string | string[];
   month?: string | string[];
+  view?: string | string[];
 }>;
 
 type BuildingReference = {
@@ -346,6 +348,17 @@ export default async function AdminEmployeeDetailPage({
     month: "long",
     year: "numeric",
   }).format(new Date(monthRange.start));
+  const requestedView = queryValue(query.view);
+  const activeView = [
+    "overview",
+    "details",
+    "assignments",
+    "calendar",
+    "time",
+    "reports",
+  ].includes(requestedView)
+    ? requestedView
+    : "overview";
 
   return (
     <>
@@ -380,7 +393,35 @@ export default async function AdminEmployeeDetailPage({
         </p>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+      <PortalTabs
+        activeId={activeView}
+        label="Mitarbeiterbereiche"
+        items={[
+          { id: "overview", label: "Übersicht", href: `/admin/employees/${id}?view=overview` },
+          { id: "details", label: "Stammdaten", href: `/admin/employees/${id}?view=details` },
+          {
+            id: "assignments",
+            label: "Objekte & Pläne",
+            href: `/admin/employees/${id}?view=assignments`,
+            badge: assignmentsResult.data?.length ?? 0,
+          },
+          {
+            id: "calendar",
+            label: "Kalender",
+            href: `/admin/employees/${id}?view=calendar`,
+            badge: upcomingVisits.length,
+          },
+          { id: "time", label: "Zeiten", href: `/admin/employees/${id}?view=time&month=${selectedMonth}` },
+          {
+            id: "reports",
+            label: "Meldungen",
+            href: `/admin/employees/${id}?view=reports`,
+            badge: operationalReportsResult.data?.length ?? 0,
+          },
+        ]}
+      />
+
+      {activeView === "details" ? (
         <Panel title="Stammdaten bearbeiten">
           <form
             action={updateEmployeeAction}
@@ -524,6 +565,32 @@ export default async function AdminEmployeeDetailPage({
           </form>
         </Panel>
 
+      ) : null}
+
+      {activeView === "overview" ? (
+        <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+          <Panel title="Mitarbeiterprofil">
+            <dl className="grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-1">
+              <div>
+                <dt className="font-bold text-slate-500">Kontakt</dt>
+                <dd className="mt-1 font-semibold text-slate-950">
+                  {employee.email} · {employee.phone || "Keine Telefonnummer"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-bold text-slate-500">Kategorie</dt>
+                <dd className="mt-1 font-semibold text-slate-950">
+                  {EMPLOYEE_CATEGORY_LABELS[category] ?? employee.category}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-bold text-slate-500">Aktuelle Zuordnungen</dt>
+                <dd className="mt-1 text-2xl font-black text-brand">
+                  {(assignmentsResult.data ?? []).filter((assignment) => assignment.active).length}
+                </dd>
+              </div>
+            </dl>
+          </Panel>
         <Panel title="Konto und Einladung">
           <div className="flex flex-wrap gap-2">
             <StatusPill>
@@ -625,9 +692,11 @@ export default async function AdminEmployeeDetailPage({
             <button className={buttonClass}>Status speichern</button>
           </form>
         </Panel>
-      </div>
+        </div>
+      ) : null}
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      {activeView === "assignments" ? (
+      <div className="grid gap-5 xl:grid-cols-2">
         <Panel title={`Zugeordnete Immobilien (${assignmentsResult.data?.length ?? 0})`}>
           {assignmentsResult.data?.length ? (
             <div className="grid gap-3">
@@ -718,8 +787,10 @@ export default async function AdminEmployeeDetailPage({
           )}
         </Panel>
       </div>
+      ) : null}
 
-      <div className="mt-5">
+      {activeView === "calendar" ? (
+      <div>
         <Panel title={`Kommende Einsätze / Kalender (${upcomingVisits.length})`}>
           {upcomingVisits.length ? (
             <div className="grid gap-3 lg:grid-cols-2">
@@ -755,7 +826,7 @@ export default async function AdminEmployeeDetailPage({
                       {visitAddress(visit)}
                     </p>
                     <Link
-                      href={`/admin/properties/${visit.property_id}#einsatzplanung`}
+                      href={`/admin/properties/${visit.property_id}?view=einsaetze`}
                       className="mt-3 inline-flex text-sm font-extrabold text-brand underline"
                     >
                       Einsatz in Immobilie öffnen
@@ -772,13 +843,16 @@ export default async function AdminEmployeeDetailPage({
           )}
         </Panel>
       </div>
+      ) : null}
 
-      <div className="mt-5">
+      {activeView === "time" ? (
+      <div>
         <Panel title={`Arbeitszeiten · ${monthLabel}`}>
           <form
             method="get"
             className="mb-5 flex max-w-md flex-col gap-3 sm:flex-row sm:items-end"
           >
+            <input type="hidden" name="view" value="time" />
             <Field label="Monat">
               <input
                 name="month"
@@ -860,8 +934,10 @@ export default async function AdminEmployeeDetailPage({
           )}
         </Panel>
       </div>
+      ) : null}
 
-      <div className="mt-5">
+      {activeView === "reports" ? (
+      <div>
         <Panel
           title={`Eigene betriebliche Meldungen (${operationalReportsResult.data?.length ?? 0})`}
         >
@@ -930,6 +1006,7 @@ export default async function AdminEmployeeDetailPage({
           )}
         </Panel>
       </div>
+      ) : null}
     </>
   );
 }

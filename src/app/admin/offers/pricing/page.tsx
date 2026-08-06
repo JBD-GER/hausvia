@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Calculator, Search } from "lucide-react";
 import { saveServicePricingRuleAction } from "@/app/actions/offers";
 import { offerCalculationTypeLabels, offerBillingTypeLabels } from "@/components/portal/offers/types";
-import { EmptyState, Field, PageHeader, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { CompactSection, EmptyState, Field, PageHeader, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { requireAdminContext } from "@/lib/portal/access";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -68,13 +68,13 @@ export default async function OfferPricingRulesPage({ searchParams }: { searchPa
       {queryValue(params, "status") ? <p role="status" className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">{queryValue(params, "status")}</p> : null}
       {queryValue(params, "error") ? <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900">{queryValue(params, "error")}</p> : null}
 
-      <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <CompactSection title="Katalog durchsuchen" description="Leistung oder Kategorie eingrenzen" className="mb-5">
         <form method="get" className="grid gap-3 sm:grid-cols-[1.4fr_0.8fr_auto] sm:items-end">
           <Field label="Leistung suchen"><div className="relative"><Search size={17} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 mt-1 -translate-y-1/2 text-slate-400" /><input name="q" defaultValue={queryValue(params, "q")} placeholder="Name, Kategorie, Beschreibung …" className={`${inputClass} pl-10`} /></div></Field>
           <Field label="Kategorie"><select name="category" defaultValue={category} className={inputClass}><option value="">Alle Kategorien</option>{categories.map((entry) => <option key={entry}>{entry}</option>)}</select></Field>
           <div className="flex gap-2"><button className={buttonClass}>Anwenden</button><Link href="/admin/offers/pricing" className="inline-flex min-h-11 items-center text-sm font-bold text-brand underline">Zurücksetzen</Link></div>
         </form>
-      </section>
+      </CompactSection>
 
       {visible.length ? (
         <div className="grid gap-4">

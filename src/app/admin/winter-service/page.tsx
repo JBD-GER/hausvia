@@ -89,7 +89,7 @@ export default async function AdminWinterServicePage() {
                     <div><dt className="font-bold text-slate-500">Nächster Einsatz</dt><dd className="mt-1 text-slate-800">{nextVisit ? `${formatGermanDate(`${nextVisit.scheduled_date}T12:00:00Z`)}${nextVisit.planned_start_time ? ` · ${nextVisit.planned_start_time.slice(0, 5)} Uhr` : ""}` : "nicht geplant"}</dd></div>
                     <div><dt className="font-bold text-slate-500">Letzter Einsatz</dt><dd className="mt-1 text-slate-800">{lastVisit ? formatGermanDate(lastVisit.completed_at || `${lastVisit.scheduled_date}T12:00:00Z`) : "noch keiner"}</dd></div>
                   </dl>
-                  <Link href={`/admin/properties/${property.id}#leistungen`} className={`${buttonClass} mt-4`}>Immobilie öffnen</Link>
+                  <Link href={`/admin/properties/${property.id}?view=leistungen`} className={`${buttonClass} mt-4`}>Immobilie öffnen</Link>
                 </article>
               );
             })}

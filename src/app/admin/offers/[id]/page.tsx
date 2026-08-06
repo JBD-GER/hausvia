@@ -11,6 +11,8 @@ import {
 import { OfferEditor } from "@/components/portal/offers/OfferEditor";
 import { OfferLinkWizard } from "@/components/portal/offers/OfferLinkWizard";
 import { OfferStatusBadge } from "@/components/portal/offers/OfferStatusBadge";
+import { PortalDialog } from "@/components/portal/PortalDialog";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   offerCatalogItems,
   offerCustomerOptions,
@@ -199,6 +201,11 @@ export default async function AdminOfferDetailPage({
   };
   const billingTotals = jsonObject(selectedVersion.billing_totals);
   const billingRows = (Object.entries(billingTotals) as Array<[BillingBucket, unknown]>).filter(([bucket]) => bucket in billingBucketLabels).map(([bucket, value]) => ({ bucket, values: jsonObject(value) }));
+  const requestedView = queryValue(query, "view");
+  const activeView = ["overview", "content", "history", "decision"].includes(requestedView)
+    ? requestedView
+    : "overview";
+  const versionQuery = `version=${encodeURIComponent(text(selectedVersion.id))}`;
 
   return (
     <>
@@ -211,22 +218,45 @@ export default async function AdminOfferDetailPage({
       {successMessage ? <p role="status" className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">{successMessage}</p> : null}
       {queryValue(query, "error") ? <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900">{queryValue(query, "error")}</p> : null}
 
-      <div className="mb-5 grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+      <PortalTabs
+        activeId={activeView}
+        label="Angebotsbereiche"
+        items={[
+          { id: "overview", label: "Übersicht", href: `/admin/offers/${id}?${versionQuery}&view=overview` },
+          { id: "content", label: "Inhalt", href: `/admin/offers/${id}?${versionQuery}&view=content` },
+          { id: "history", label: "Versionen", href: `/admin/offers/${id}?${versionQuery}&view=history`, badge: versions?.length ?? 0 },
+          { id: "decision", label: "Entscheidung", href: `/admin/offers/${id}?${versionQuery}&view=decision` },
+        ]}
+      />
+
+      {activeView === "overview" ? (
+      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
         <Panel title="Version & Aktionen">
           <div className="flex flex-wrap gap-2">
             {isDraftLifecycle && isSelectedDraft && !selectedVersion.sent_at ? <form action={sendOfferVersionAction}><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><button className={buttonClass}><Send size={17} aria-hidden="true" /> {selectedVersion.frozen_at ? "Versand fortsetzen" : "Version versiegeln und senden"}</button></form> : null}
             {selectedVersion.sent_at && selectedVersion.original_pdf_path ? <form action={resendOfferVersionAction}><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><button className={secondaryButton()}><Mail size={17} aria-hidden="true" /> Erneut senden</button></form> : null}
             {selectedVersion.original_pdf_path ? <Link href={`/api/documents/offers/${id}?version=${selectedVersion.id}`} className={secondaryButton()}><FileDown size={17} aria-hidden="true" /> Original-PDF</Link> : null}
             <form action={duplicateOfferAction}><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><button className={secondaryButton()}><Copy size={17} aria-hidden="true" /> Als neues Angebot duplizieren</button></form>
+            {["sent", "viewed"].includes(status) && isSelectedActive ? (
+              <PortalDialog
+                triggerLabel="Angebot zurückziehen"
+                title="Angebot verbindlich zurückziehen"
+                description="Der Grund wird dauerhaft am Angebot dokumentiert."
+                size="md"
+                triggerClassName={secondaryButton("danger")}
+              >
+                <form action={withdrawOfferVersionAction} className="grid gap-4">
+                  <input type="hidden" name="offerId" value={id} />
+                  <input type="hidden" name="versionId" value={selectedVersion.id} />
+                  <label className="block">
+                    <span className="text-sm font-bold text-red-900">Grund für das Zurückziehen</span>
+                    <textarea name="reason" required minLength={3} maxLength={1000} rows={4} placeholder="z. B. Leistungsumfang wird neu abgestimmt" className={inputClass} />
+                  </label>
+                  <button className={secondaryButton("danger")}>Angebot zurückziehen</button>
+                </form>
+              </PortalDialog>
+            ) : null}
           </div>
-          {["sent", "viewed"].includes(status) && isSelectedActive ? (
-            <form action={withdrawOfferVersionAction} className="mt-4 grid gap-3 rounded-lg border border-red-200 bg-red-50 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
-              <input type="hidden" name="offerId" value={id} />
-              <input type="hidden" name="versionId" value={selectedVersion.id} />
-              <label className="block"><span className="text-sm font-bold text-red-900">Grund für das Zurückziehen</span><input name="reason" required minLength={3} maxLength={1000} placeholder="z. B. Leistungsumfang wird neu abgestimmt" className={inputClass} /></label>
-              <button className={secondaryButton("danger")}>Angebot zurückziehen</button>
-            </form>
-          ) : null}
           {selectedVersion.last_email_error ? <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-950">Letzter E-Mail-Versand: {text(selectedVersion.last_email_error)}</p> : null}
         </Panel>
 
@@ -239,20 +269,24 @@ export default async function AdminOfferDetailPage({
           {billingRows.length ? <div className="mt-4 grid gap-2">{billingRows.map(({ bucket, values }) => <div key={bucket} className="flex items-center justify-between gap-3 border-t border-slate-100 pt-2 text-sm"><span className="font-bold text-slate-650">{billingBucketLabels[bucket]}</span><span className="font-extrabold text-slate-950">{formatCents(Number(values.gross_cents ?? values.grossCents ?? 0))} brutto</span></div>)}</div> : null}
         </Panel>
       </div>
+      ) : null}
 
-      <div className="mb-5 grid gap-5 xl:grid-cols-[0.72fr_1.28fr]">
+      {activeView === "history" ? (
         <Panel title="Versionsverlauf">
           <ol className="grid gap-3">
             {(versions ?? []).map((version) => {
               const selected = text(version.id) === text(selectedVersion.id);
-              return <li key={version.id}><Link href={`/admin/offers/${id}?version=${version.id}`} aria-current={selected ? "page" : undefined} className={`block rounded-lg border p-3 transition ${selected ? "border-brand bg-brand-soft" : "border-slate-200 bg-slate-50 hover:border-brand/50"}`}><div className="flex items-center justify-between gap-2"><p className="font-extrabold text-slate-950">Version {version.version_number}</p><OfferStatusBadge status={text(version.lifecycle_status)} /></div><p className="mt-2 text-xs font-semibold text-slate-600">Erstellt {dateLabel(version.created_at, true)}{version.sent_at ? ` · versendet ${dateLabel(version.sent_at, true)}` : ""}</p></Link></li>;
+              return <li key={version.id}><Link href={`/admin/offers/${id}?version=${version.id}&view=history`} aria-current={selected ? "page" : undefined} className={`block rounded-lg border p-3 transition ${selected ? "border-brand bg-brand-soft" : "border-slate-200 bg-slate-50 hover:border-brand/50"}`}><div className="flex items-center justify-between gap-2"><p className="font-extrabold text-slate-950">Version {version.version_number}</p><OfferStatusBadge status={text(version.lifecycle_status)} /></div><p className="mt-2 text-xs font-semibold text-slate-600">Erstellt {dateLabel(version.created_at, true)}{version.sent_at ? ` · versendet ${dateLabel(version.sent_at, true)}` : ""}</p></Link></li>;
             })}
           </ol>
         </Panel>
+      ) : null}
 
+      {activeView === "decision" ? (
+      <div className="grid gap-5">
         <Panel title="Nachweis & Kundenentscheidung">
           {acceptanceResult.data ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><div className="flex items-center gap-2 font-extrabold"><ShieldCheck size={19} aria-hidden="true" /> Verbindlich angenommen</div><p className="mt-2 leading-6">{text(acceptanceResult.data.accepted_name)} · {dateLabel(acceptanceResult.data.accepted_at, true)} · rechnerische Vergleichssumme {formatCents(Number(acceptanceResult.data.confirmed_gross_total_cents || 0))}</p><p className="mt-1 text-xs leading-5">Verbindlich bleiben die getrennten Abrechnungsbeträge der angenommenen Version; die Vergleichssumme ist kein einheitlicher Zahlbetrag.</p>{acceptanceResult.data.comment ? <p className="mt-2 leading-6">Kommentar: {text(acceptanceResult.data.comment)}</p> : null}{acceptanceResult.data.confirmation_pdf_path ? <Link href={`/api/documents/offers/${id}/acceptance?version=${selectedVersion.id}`} className={`${secondaryButton()} mt-3`}><FileDown size={16} aria-hidden="true" /> Annahmebestätigung</Link> : null}{acceptanceDeliveryJob.status && acceptanceDeliveryJob.status !== "sent" ? <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950"><p className="font-extrabold">Bestätigungszustellung: {acceptanceDeliveryJob.status === "processing" ? "wird verarbeitet" : acceptanceDeliveryJob.status === "failed" ? "erneuter Versuch vorgesehen" : "ausstehend"}</p>{acceptanceDeliveryJob.last_error ? <p className="mt-1 text-xs leading-5">Letzter Fehler: {text(acceptanceDeliveryJob.last_error)}</p> : null}{["pending", "failed"].includes(text(acceptanceDeliveryJob.status)) ? <form action={retryOfferAcceptanceDeliveryAction} className="mt-3"><input type="hidden" name="offerId" value={id} /><input type="hidden" name="jobId" value={text(acceptanceDeliveryJob.id)} /><button className={secondaryButton()}>Jetzt erneut zustellen</button></form> : null}</div> : null}</div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><div className="flex items-center gap-2 font-extrabold"><ShieldCheck size={19} aria-hidden="true" /> Verbindlich angenommen</div><p className="mt-2 leading-6">{text(acceptanceResult.data.accepted_name)} · {dateLabel(acceptanceResult.data.accepted_at, true)} · rechnerische Vergleichssumme {formatCents(Number(acceptanceResult.data.confirmed_gross_total_cents || 0))}</p><p className="mt-1 text-xs leading-5">Verbindlich bleiben die getrennten Abrechnungsbeträge der angenommenen Version; die Vergleichssumme ist kein einheitlicher Zahlbetrag.</p>{acceptanceResult.data.comment ? <p className="mt-2 leading-6">Kommentar: {text(acceptanceResult.data.comment)}</p> : null}{acceptanceResult.data.confirmation_pdf_path ? <Link href={`/api/documents/offers/${id}/acceptance?version=${selectedVersion.id}`} className={`${secondaryButton()} mt-3`}><FileDown size={16} aria-hidden="true" /> Annahmebestätigung</Link> : null}{acceptanceDeliveryJob.status && acceptanceDeliveryJob.status !== "sent" ? <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950"><p className="font-extrabold">Bestätigungszustellung: {acceptanceDeliveryJob.status === "processing" ? "wird verarbeitet" : acceptanceDeliveryJob.status === "failed" ? "erneuter Versuch vorgesehen" : "ausstehend"}</p>{acceptanceDeliveryJob.last_error ? <p className="mt-1 text-xs leading-5">Letzter Fehler: {text(acceptanceDeliveryJob.last_error)}</p> : null}{["pending", "failed"].includes(text(acceptanceDeliveryJob.status)) ? <form action={retryOfferAcceptanceDeliveryAction} className="mt-3"><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><input type="hidden" name="jobId" value={text(acceptanceDeliveryJob.id)} /><button className={secondaryButton()}>Jetzt erneut zustellen</button></form> : null}</div> : null}</div>
           ) : rejectionResult.data ? (
             <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950"><p className="font-extrabold">Im Kundenportal abgelehnt</p><p className="mt-2 leading-6">{text(rejectionResult.data.rejected_name) || "Kunde"} · {dateLabel(rejectionResult.data.rejected_at, true)}</p>{rejectionResult.data.comment ? <p className="mt-2 leading-6">Kommentar: {text(rejectionResult.data.comment)}</p> : null}</div>
           ) : (
@@ -260,19 +294,20 @@ export default async function AdminOfferDetailPage({
           )}
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt className="font-bold text-slate-500">Angebotsdatum</dt><dd className="mt-1 font-semibold text-slate-950">{dateLabel(selectedVersion.offer_date)}</dd></div><div><dt className="font-bold text-slate-500">Gültig bis</dt><dd className="mt-1 font-semibold text-slate-950">{dateLabel(selectedVersion.valid_until)}</dd></div><div><dt className="font-bold text-slate-500">Versiegelt</dt><dd className="mt-1 font-semibold text-slate-950">{dateLabel(selectedVersion.frozen_at, true)}</dd></div><div><dt className="font-bold text-slate-500">Letzte E-Mail</dt><dd className="mt-1 font-semibold text-slate-950">{dateLabel(selectedVersion.last_email_sent_at, true)}</dd></div></dl>
         </Panel>
-      </div>
 
       {status === "accepted" && isSelectedActive && !propertyLink ? (
-        <div className="mb-5"><Panel title="Angenommenes Angebot mit Immobilie verknüpfen"><OfferLinkWizard offerId={id} versionId={text(selectedVersion.id)} items={(itemsResult.data ?? []).map((item) => ({ id: text(item.id), title: text(item.title) }))} properties={propertyOptions} /></Panel></div>
+        <Panel title="Angenommenes Angebot mit Immobilie verknüpfen"><OfferLinkWizard offerId={id} versionId={text(selectedVersion.id)} items={(itemsResult.data ?? []).map((item) => ({ id: text(item.id), title: text(item.title) }))} properties={propertyOptions} /></Panel>
       ) : propertyLink ? (
-        <div className="mb-5"><Panel title="Verknüpfte Immobilie"><div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 p-4"><div><p className="font-extrabold text-teal-950">{text(linkedProperty.name, "Immobilie")}</p><p className="mt-1 text-sm text-teal-900">{propertyAddressById.get(text(propertyLink.property_id)) || "Adresse über Gebäude hinterlegt"} · verknüpft {dateLabel(propertyLink.linked_at, true)}</p></div><Link href={`/admin/properties/${propertyLink.property_id}`} className={secondaryButton()}>Immobilie öffnen</Link></div></Panel></div>
+        <Panel title="Verknüpfte Immobilie"><div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 p-4"><div><p className="font-extrabold text-teal-950">{text(linkedProperty.name, "Immobilie")}</p><p className="mt-1 text-sm text-teal-900">{propertyAddressById.get(text(propertyLink.property_id)) || "Adresse über Gebäude hinterlegt"} · verknüpft {dateLabel(propertyLink.linked_at, true)}</p></div><Link href={`/admin/properties/${propertyLink.property_id}`} className={secondaryButton()}>Immobilie öffnen</Link></div></Panel>
+      ) : null}
+      </div>
       ) : null}
 
-      {editorItems.length ? (
+      {activeView === "content" && editorItems.length ? (
         <OfferEditor customers={offerCustomerOptions(customersResult.data ?? [])} catalog={catalogItems} initial={initial} readOnly={!isEditableDraft} allowRevision={canCreateRevision} />
-      ) : (
+      ) : activeView === "content" ? (
         <EmptyState title="Keine Angebotspositionen" text="Diese Version enthält keine lesbaren Positionen." />
-      )}
+      ) : null}
     </>
   );
 }

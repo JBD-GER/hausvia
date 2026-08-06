@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   EmptyState,
+  CompactSection,
   MetricCard,
   PageHeader,
   Panel,
@@ -160,7 +161,9 @@ export default async function CustomerPortalPage() {
       <PageHeader
         eyebrow="Kundenübersicht"
         title={`Willkommen, ${customerName}.`}
-        text="Alle wichtigen Informationen zu Ihren Immobilien, Terminen, Angeboten und Rechnungen an einem Ort."
+        text="Was jetzt wichtig ist – ohne Umwege."
+        icon={<Sparkles aria-hidden="true" size={20} />}
+        compact
       />
 
       <section
@@ -193,7 +196,7 @@ export default async function CustomerPortalPage() {
       <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Link
           href="/portal/properties"
-          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
             <Building2 size={21} aria-hidden="true" />
@@ -207,7 +210,7 @@ export default async function CustomerPortalPage() {
         </Link>
         <Link
           href="/portal/offers"
-          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
             <FileCheck2 size={21} aria-hidden="true" />
@@ -221,7 +224,7 @@ export default async function CustomerPortalPage() {
         </Link>
         <Link
           href="/portal/invoices"
-          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
             <BadgeEuro size={21} aria-hidden="true" />
@@ -235,7 +238,7 @@ export default async function CustomerPortalPage() {
         </Link>
         <Link
           href="/portal/care"
-          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
             <Handshake size={21} aria-hidden="true" />
@@ -249,7 +252,7 @@ export default async function CustomerPortalPage() {
         </Link>
       </section>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="mt-5">
         <Panel title="Nächste Termine">
           {upcomingVisits.length ? (
             <div className="grid gap-3">
@@ -296,28 +299,14 @@ export default async function CustomerPortalPage() {
           )}
         </Panel>
 
-        <section className="rounded-2xl bg-brand p-5 text-white shadow-lg">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15">
-            <Sparkles size={23} aria-hidden="true" />
-          </span>
-          <p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-white/65">
-            Hausvia Betreuung
-          </p>
-          <p className="mt-2 text-2xl font-black">Digital. Zuverlässig. Vor Ort.</p>
-          <p className="mt-2 text-sm leading-6 text-white/75">
-            Termine, Berichte und Dokumente werden transparent in Ihrem Portal zusammengeführt.
-          </p>
-          <Link
-            href="/portal/care"
-            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-brand transition hover:bg-brand-soft"
-          >
-            Betreuung ansehen <ArrowRight size={17} aria-hidden="true" />
-          </Link>
-        </section>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <Panel title="Ihre Immobilien">
+        <CompactSection
+          title="Ihre Immobilien"
+          description="Direktzugriff auf Ihre zuletzt angezeigten Objekte"
+          badge={<span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-black text-brand">{properties.length}</span>}
+        >
           {properties.length ? (
             <div className="grid gap-3">
               {properties.slice(0, 3).map((property) => {
@@ -359,9 +348,13 @@ export default async function CustomerPortalPage() {
               text="Nach der Zuordnung erscheint Ihre Immobilie automatisch in diesem Bereich."
             />
           )}
-        </Panel>
+        </CompactSection>
 
-        <Panel title="Angebote & Rechnungen">
+        <CompactSection
+          title="Angebote & Rechnungen"
+          description="Offene Dokumente kompakt zusammengefasst"
+          badge={<span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-black text-brand">{offers.length + invoices.length}</span>}
+        >
           <div className="grid gap-5">
             <section aria-labelledby="dashboard-offers">
               <div className="flex items-center justify-between gap-3">
@@ -445,10 +438,15 @@ export default async function CustomerPortalPage() {
               )}
             </section>
           </div>
-        </Panel>
+        </CompactSection>
       </div>
 
-      <Panel title="Ihre laufende Betreuung">
+      <CompactSection
+        title="Ihre laufende Betreuung"
+        description="Leistungen und aktive Betreuungsobjekte"
+        badge={<span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-black text-brand">{activeCareCount}</span>}
+        className="mt-5"
+      >
         <div className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
           <div className="rounded-2xl bg-brand-soft p-5">
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-brand shadow-sm">
@@ -501,7 +499,7 @@ export default async function CustomerPortalPage() {
             </div>
           )}
         </div>
-      </Panel>
+      </CompactSection>
     </>
   );
 }

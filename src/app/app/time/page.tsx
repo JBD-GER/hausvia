@@ -13,6 +13,7 @@ import {
   TimerReset,
 } from "lucide-react";
 import { startVisitAction } from "@/app/actions/portalEmployee";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   EmptyState,
   PageHeader,
@@ -157,9 +158,10 @@ function reportQueryError(
 export default async function EmployeeTimePage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string | string[] }>;
+  searchParams: Promise<{ month?: string | string[]; view?: string }>;
 }) {
-  const { month: monthParam } = await searchParams;
+  const { month: monthParam, view: viewParam } = await searchParams;
+  const view = viewParam === "history" || monthParam !== undefined ? "history" : "today";
   const now = berlinDateParts();
   const currentMonth = `${now.year}-${String(now.month).padStart(2, "0")}`;
   const requestedMonth =
@@ -234,8 +236,30 @@ export default async function EmployeeTimePage({
       <PageHeader
         eyebrow="Arbeitszeit"
         title="Dein Arbeitstag im Blick"
-        text="Einsätze starten, laufende Arbeit fortsetzen und abgeschlossene Zeiten transparent nachvollziehen."
+        text="Jetzt starten oder laufende Arbeit fortsetzen. Die Historie bleibt separat verfügbar."
         icon={<Clock3 aria-hidden="true" size={20} />}
+        compact
+      />
+
+      <PortalTabs
+        activeId={view}
+        label="Bereiche der Zeiterfassung"
+        items={[
+          {
+            id: "today",
+            label: "Jetzt",
+            href: "/app/time?view=today",
+            icon: <TimerReset aria-hidden="true" size={17} />,
+            badge: activeVisit ? <span className="size-2 rounded-full bg-emerald-300" /> : undefined,
+          },
+          {
+            id: "history",
+            label: "Historie",
+            href: `/app/time?view=history&month=${selectedMonth.value}`,
+            icon: <CalendarCheck2 aria-hidden="true" size={17} />,
+            badge: <span className="rounded-full bg-current/10 px-1.5 py-0.5 text-[0.65rem]">{completedVisits.length}</span>,
+          },
+        ]}
       />
 
       {invalidMonth ? (
@@ -255,7 +279,8 @@ export default async function EmployeeTimePage({
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+      <div className="grid gap-5">
+        {view === "today" ? (
         <section aria-label="Aktueller Einsatz">
           {activeVisitResult.error ? (
             <QueryErrorNotice text="Der Status eines laufenden Einsatzes ist unbekannt. Neue Starts bleiben vorsorglich gesperrt." />
@@ -341,7 +366,9 @@ export default async function EmployeeTimePage({
             </div>
           )}
         </section>
+        ) : null}
 
+        {view === "history" ? (
         <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_20px_50px_rgba(8,43,97,0.07)] sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -374,8 +401,10 @@ export default async function EmployeeTimePage({
             Einsätzen.
           </div>
         </div>
+        ) : null}
       </div>
 
+      {view === "today" ? (
       <div className="mt-5">
         <Panel
           title="Jetzt startbar"
@@ -466,7 +495,10 @@ export default async function EmployeeTimePage({
           )}
         </Panel>
       </div>
+      ) : null}
 
+      {view === "history" ? (
+      <>
       <section
         id="month-times"
         aria-labelledby="month-times-title"
@@ -490,6 +522,7 @@ export default async function EmployeeTimePage({
           </div>
 
           <form className="grid gap-3 min-[420px]:grid-cols-[minmax(0,1fr)_auto] min-[420px]:items-end">
+            <input type="hidden" name="view" value="history" />
             <label
               htmlFor="employee-time-month"
               className="text-sm font-extrabold text-slate-800"
@@ -517,7 +550,7 @@ export default async function EmployeeTimePage({
         >
           {canGoPrevious ? (
             <Link
-              href={`/app/time?month=${selectedMonth.previousValue}#month-times`}
+              href={`/app/time?view=history&month=${selectedMonth.previousValue}#month-times`}
               className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-brand/25 hover:text-brand"
             >
               <ChevronLeft aria-hidden="true" size={17} /> Vorheriger
@@ -532,7 +565,7 @@ export default async function EmployeeTimePage({
           )}
           {canGoNext ? (
             <Link
-              href={`/app/time?month=${selectedMonth.nextValue}#month-times`}
+              href={`/app/time?view=history&month=${selectedMonth.nextValue}#month-times`}
               className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-brand/25 hover:text-brand"
             >
               Nächster <ChevronRight aria-hidden="true" size={17} />
@@ -706,6 +739,8 @@ export default async function EmployeeTimePage({
           )}
         </Panel>
       </div>
+      </>
+      ) : null}
     </>
   );
 }

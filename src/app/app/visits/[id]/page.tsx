@@ -2,8 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
+  CircleAlert,
   ClipboardCheck,
+  Info,
   ListChecks,
   MapPin,
   Navigation,
@@ -18,7 +21,10 @@ import {
   startVisitAction,
   updateVisitTaskAction,
 } from "@/app/actions/portalEmployee";
+import { PortalDialog } from "@/components/portal/PortalDialog";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
+  CompactSection,
   EmptyState,
   Field,
   PageHeader,
@@ -87,6 +93,8 @@ const operationalUrgencyLabels: Record<string, string> = {
   urgent: "Dringend",
 };
 
+const VISIT_VIEWS = new Set(["work", "info", "reports"]);
+
 function relation<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
@@ -96,7 +104,7 @@ export default async function EmployeeVisitPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; error?: string; view?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -259,6 +267,19 @@ export default async function EmployeeVisitPage({
     }));
   const allResolved = areVisitTasksResolved(tasks);
   const address = buildings[0]?.formatted_address;
+  const reportStatus = Boolean(
+    query.status?.includes("Schaden") || query.status?.includes("Meldung"),
+  );
+  const view = query.view && VISIT_VIEWS.has(query.view)
+    ? query.view
+    : reportStatus
+      ? "reports"
+    : visit.status === "completed"
+      ? "info"
+      : "work";
+  const unresolvedTaskCount = tasks.filter(
+    (task) => !["done", "blocked"].includes(task.status),
+  ).length;
 
   return (
     <>
@@ -271,6 +292,13 @@ export default async function EmployeeVisitPage({
         })}
         title={property?.name ?? "Einsatz"}
         text={address}
+        icon={<ClipboardCheck aria-hidden="true" size={20} />}
+        compact
+        actions={
+          <Link href="/app/today" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-brand hover:text-brand">
+            <ArrowLeft aria-hidden="true" size={17} /> Kalender
+          </Link>
+        }
       />
       {query.error ? (
         <p
@@ -285,11 +313,47 @@ export default async function EmployeeVisitPage({
           Einsatz wurde abgeschlossen und als Leistungsnachweis gespeichert.
         </p>
       ) : null}
+      {query.status && query.status !== "completed" && query.status !== "started" ? (
+        <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">
+          {query.status}
+        </p>
+      ) : null}
       {visit.status === "started" && visit.started_at ? (
         <VisitTimer startedAt={visit.started_at} />
       ) : null}
-      <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
+
+      <div className="mt-4">
+        <PortalTabs
+          activeId={view}
+          label="Einsatzbereiche"
+          items={[
+            {
+              id: "work",
+              label: visit.status === "scheduled" ? "Start" : "Aufgaben",
+              href: `/app/visits/${visit.id}?view=work`,
+              icon: <ListChecks aria-hidden="true" size={17} />,
+              badge: unresolvedTaskCount ? <span className="rounded-full bg-current/10 px-1.5 py-0.5 text-[0.65rem]">{unresolvedTaskCount}</span> : undefined,
+            },
+            {
+              id: "info",
+              label: "Infos",
+              href: `/app/visits/${visit.id}?view=info`,
+              icon: <Info aria-hidden="true" size={17} />,
+            },
+            {
+              id: "reports",
+              label: "Meldungen",
+              href: `/app/visits/${visit.id}?view=reports`,
+              icon: <CircleAlert aria-hidden="true" size={17} />,
+              badge: operationalReports.length ? <span className="rounded-full bg-current/10 px-1.5 py-0.5 text-[0.65rem]">{operationalReports.length}</span> : undefined,
+            },
+          ]}
+        />
+      </div>
+      <div className="grid gap-4">
+        {view !== "reports" ? (
         <div className="grid content-start gap-5">
+          {view === "info" ? (
           <Panel title="Einsatzübersicht">
             <div className="grid gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -334,7 +398,8 @@ export default async function EmployeeVisitPage({
               ) : null}
             </div>
           </Panel>
-          {visit.status === "scheduled" ? (
+          ) : null}
+          {view === "work" && visit.status === "scheduled" ? (
             <form
               action={startVisitAction}
               className="rounded-2xl border border-amber-300 bg-amber-50 p-5"
@@ -350,26 +415,28 @@ export default async function EmployeeVisitPage({
               </button>
             </form>
           ) : null}
-          <Panel title="Aufgaben">
+          {view === "work" ? (
+          <Panel title="Aufgaben" description={`${tasks.length} Aufgaben · ${unresolvedTaskCount} offen`}>
             <div className="grid gap-4">
               {taskGroups.length ? (
                 <div className="grid gap-5">
-                  {taskGroups.map((buildingGroup) => (
-                    <section
+                  {taskGroups.map((buildingGroup, buildingIndex) => (
+                    <details
                       key={buildingGroup.key}
+                      open={buildingIndex === 0}
                       className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
                     >
-                      <header className="border-b border-slate-200 bg-slate-100 px-4 py-3">
-                        <h3 className="font-black text-slate-950">
+                      <summary className="cursor-pointer list-none bg-slate-100 px-4 py-3 marker:hidden [&::-webkit-details-marker]:hidden">
+                        <span className="block font-black text-slate-950">
                           {buildingGroup.label}
-                        </h3>
+                        </span>
                         {buildingGroup.address ? (
                           <p className="mt-1 flex items-start gap-2 text-xs font-semibold text-slate-600">
                             <MapPin size={14} className="mt-0.5 shrink-0" />
                             {buildingGroup.address}
                           </p>
                         ) : null}
-                      </header>
+                      </summary>
                       <div className="grid gap-5 p-3 sm:p-4">
                         {buildingGroup.categories.map((categoryGroup) => (
                           <section key={categoryGroup.label}>
@@ -390,9 +457,10 @@ export default async function EmployeeVisitPage({
                                     task.checklist_snapshot,
                                   );
                                 return (
-                                  <article
+                                  <details
                                     key={task.id}
-                                    className={`rounded-2xl border p-4 ${
+                                    open={!["done", "blocked"].includes(task.status)}
+                                    className={`overflow-hidden rounded-2xl border ${
                                       task.status === "done"
                                         ? "border-emerald-200 bg-emerald-50"
                                         : task.status === "blocked"
@@ -400,22 +468,23 @@ export default async function EmployeeVisitPage({
                                           : "border-slate-200 bg-white"
                                     }`}
                                   >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div>
-                                        <h5 className="font-black text-slate-950">
+                                    <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 p-4 marker:hidden [&::-webkit-details-marker]:hidden">
+                                      <span className="min-w-0">
+                                        <span className="block font-black text-slate-950">
                                           {task.title}
-                                        </h5>
-                                        {task.description ? (
-                                          <p className="mt-2 text-sm leading-6 text-slate-600">
-                                            {task.description}
-                                          </p>
-                                        ) : null}
-                                      </div>
+                                        </span>
+                                      </span>
                                       <StatusPill>
                                         {TASK_STATUS_LABELS[task.status] ??
                                           task.status}
                                       </StatusPill>
-                                    </div>
+                                    </summary>
+                                    <div className="border-t border-current/10 px-4 pb-4">
+                                    {task.description ? (
+                                      <p className="mt-3 text-sm leading-6 text-slate-600">
+                                        {task.description}
+                                      </p>
+                                    ) : null}
                                     {internalInstruction ? (
                                       <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
                                         <p className="text-xs font-black uppercase tracking-wide text-brand">
@@ -427,16 +496,19 @@ export default async function EmployeeVisitPage({
                                       </div>
                                     ) : null}
                                     {checklist.length ? (
-                                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                        <p className="flex items-center gap-2 text-sm font-black text-slate-900">
+                                      <details className="group mt-3 rounded-xl border border-slate-200 bg-slate-50">
+                                        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-black text-slate-900 marker:hidden [&::-webkit-details-marker]:hidden">
+                                          <span className="flex items-center gap-2">
                                           <ListChecks
                                             aria-hidden="true"
                                             size={17}
                                             className="text-brand"
                                           />
-                                          Checkliste
-                                        </p>
-                                        <ol className="mt-2 grid gap-2">
+                                          Checkliste · {checklist.length} Punkte
+                                          </span>
+                                          <span aria-hidden="true" className="text-brand transition group-open:rotate-45">+</span>
+                                        </summary>
+                                        <ol className="grid gap-2 border-t border-slate-200 p-3">
                                           {checklist.map((item, index) => (
                                             <li
                                               key={`${task.id}-${item.id ?? "item"}-${index}`}
@@ -459,20 +531,25 @@ export default async function EmployeeVisitPage({
                                             </li>
                                           ))}
                                         </ol>
-                                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                                        <p className="px-3 pb-3 text-xs leading-5 text-slate-500">
                                           Die beim Einsatzstart gespeicherte
                                           Checkliste dient als Arbeitsvorgabe.
                                           Bewertet wird die Aufgabe insgesamt.
                                         </p>
-                                      </div>
+                                      </details>
                                     ) : null}
                                     {visit.status === "started" &&
                                     !["done", "blocked"].includes(
                                       task.status,
                                     ) ? (
+                                      <details className="group mt-4 rounded-xl border border-brand/20 bg-brand-soft/50">
+                                        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-black text-brand marker:hidden [&::-webkit-details-marker]:hidden">
+                                          Aufgabe bearbeiten
+                                          <span aria-hidden="true" className="transition group-open:rotate-45">+</span>
+                                        </summary>
                                       <form
                                         action={updateVisitTaskAction}
-                                        className="mt-4 grid gap-3"
+                                        className="grid gap-3 border-t border-brand/10 bg-white p-3"
                                       >
                                         <input
                                           type="hidden"
@@ -527,20 +604,22 @@ export default async function EmployeeVisitPage({
                                           Aufgabe speichern
                                         </button>
                                       </form>
+                                      </details>
                                     ) : task.blocked_reason ? (
                                       <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm text-slate-700">
                                         <strong>Begründung:</strong>{" "}
                                         {task.blocked_reason}
                                       </p>
                                     ) : null}
-                                  </article>
+                                    </div>
+                                  </details>
                                 );
                               })}
                             </div>
                           </section>
                         ))}
                       </div>
-                    </section>
+                    </details>
                   ))}
                 </div>
               ) : visit.status === "scheduled" ? (
@@ -556,7 +635,8 @@ export default async function EmployeeVisitPage({
               )}
             </div>
           </Panel>
-          {visit.status === "started" ? (
+          ) : null}
+          {view === "work" && visit.status === "started" ? (
             <form
               action={completeVisitAction}
               className={`rounded-2xl border p-5 ${allResolved ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}
@@ -589,14 +669,21 @@ export default async function EmployeeVisitPage({
             </form>
           ) : null}
         </div>
+        ) : null}
         <aside className="grid content-start gap-5">
-          <Panel title="Internes Briefing">
+          {view === "info" ? (
+          <>
+          <CompactSection title="Internes Briefing" description="Objekthinweise vor Beginn" defaultOpen>
             <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
               {briefing?.internal_briefing ||
                 "Für diese Immobilie ist kein internes Briefing hinterlegt."}
             </p>
-          </Panel>
-          <Panel title="Benötigtes Equipment">
+          </CompactSection>
+          <CompactSection
+            title="Benötigtes Equipment"
+            description="Mengen, Zustand und Bereitstellung"
+            badge={<StatusPill>{equipment?.length ?? 0}</StatusPill>}
+          >
             <div className="grid gap-3">
               {equipment?.length ? (
                 equipment.map((assignment) => {
@@ -639,15 +726,23 @@ export default async function EmployeeVisitPage({
                 </p>
               )}
             </div>
-          </Panel>
-          <details className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <summary className="flex cursor-pointer items-center gap-2 font-black text-slate-950">
-              <AlertTriangle size={19} className="text-amber-600" /> Schaden
-              melden
-            </summary>
+          </CompactSection>
+          </>
+          ) : null}
+          {view === "reports" ? (
+          <>
+          <div className="grid gap-3 sm:grid-cols-2">
+          <PortalDialog
+            triggerLabel="Schaden melden"
+            triggerIcon={<AlertTriangle aria-hidden="true" size={18} />}
+            title="Schaden dokumentieren"
+            description="Die Meldung wird dem Gebäude und diesem Einsatz zugeordnet."
+            size="md"
+            triggerClassName="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 font-black text-amber-950 transition hover:bg-amber-100"
+          >
             <form
               action={createEmployeeDamageAction}
-              className="mt-4 grid gap-3"
+              className="grid gap-3"
             >
               <input type="hidden" name="visitId" value={visit.id} />
               <label className="text-sm font-bold">
@@ -690,14 +785,18 @@ export default async function EmployeeVisitPage({
               </Field>
               <button className={buttonClass}>Schaden übermitteln</button>
             </form>
-          </details>
-          <details className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <summary className="flex cursor-pointer items-center gap-2 font-black text-slate-950">
-              <Wrench size={19} className="text-brand" /> Betriebliche Meldung
-            </summary>
+          </PortalDialog>
+          <PortalDialog
+            triggerLabel="Betriebliche Meldung"
+            triggerIcon={<Wrench aria-hidden="true" size={18} />}
+            title="Betriebliche Meldung erstellen"
+            description="Material, Equipment oder Zugangsprobleme direkt intern melden."
+            size="md"
+            triggerClassName="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border border-brand/20 bg-brand-soft px-4 font-black text-brand transition hover:bg-white"
+          >
             <form
               action={createOperationalReportAction}
-              className="mt-4 grid gap-3"
+              className="grid gap-3"
             >
               <input
                 type="hidden"
@@ -792,8 +891,14 @@ export default async function EmployeeVisitPage({
               </Field>
               <button className={buttonClass}>Intern an Admin melden</button>
             </form>
-          </details>
-          <Panel title="Meine betrieblichen Meldungen">
+          </PortalDialog>
+          </div>
+          <CompactSection
+            title="Meine betrieblichen Meldungen"
+            description="Status und Rückblick zu diesem Einsatz"
+            badge={<StatusPill>{operationalReports.length}</StatusPill>}
+            defaultOpen={operationalReports.length > 0}
+          >
             {operationalReports.length ? (
               <div className="grid gap-3">
                 {operationalReports.map((report) => {
@@ -879,13 +984,9 @@ export default async function EmployeeVisitPage({
                 eingereicht.
               </p>
             )}
-          </Panel>
-          <Link
-            href="/app/today"
-            className="text-center text-sm font-black text-brand underline"
-          >
-            Zurück zum Kalender
-          </Link>
+          </CompactSection>
+          </>
+          ) : null}
         </aside>
       </div>
     </>

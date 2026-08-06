@@ -4,7 +4,7 @@ import { duplicateOfferAction, resendOfferVersionAction } from "@/app/actions/of
 import { OfferStatusBadge } from "@/components/portal/offers/OfferStatusBadge";
 import type { OfferLifecycleStatus } from "@/components/portal/offers/types";
 import { PaginationNav } from "@/components/portal/PaginationNav";
-import { EmptyState, Field, PageHeader, Panel, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { CompactSection, EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { formatCents } from "@/lib/offerPricing";
 import { requireAdminContext } from "@/lib/portal/access";
 import { paginateItems } from "@/lib/portal/listing";
@@ -153,19 +153,27 @@ export default async function AdminOffersPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader eyebrow="Angebote" title="Angebote professionell steuern" text="Entwürfe, versendete Versionen, Kundenreaktionen und Immobilienverknüpfungen in einer revisionssicheren Übersicht." />
-        <div className="flex flex-wrap gap-2">
-          <Link href="/admin/offers/pricing" className={actionIconButton()}><SlidersHorizontal size={17} aria-hidden="true" /> Preisregeln</Link>
-          <Link href="/admin/offers/new" className={buttonClass}><Plus size={17} aria-hidden="true" /> Neues Angebot</Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Angebote"
+        title="Angebote professionell steuern"
+        text="Entwürfe, versendete Versionen, Kundenreaktionen und Immobilienverknüpfungen in einer revisionssicheren Übersicht."
+        actions={(
+          <>
+            <Link href="/admin/offers/pricing" className={actionIconButton()}><SlidersHorizontal size={17} aria-hidden="true" /> Preisregeln</Link>
+            <Link href="/admin/offers/new" className={buttonClass}><Plus size={17} aria-hidden="true" /> Neues Angebot</Link>
+          </>
+        )}
+      />
 
       {successMessage ? <p role="status" className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">{successMessage}</p> : null}
       {queryValue(params, "error") ? <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900">{queryValue(params, "error")}</p> : null}
 
       <div className="grid gap-5">
-        <Panel title="Suchen und filtern">
+        <CompactSection
+          title="Suchen und filtern"
+          description="Status, Zeitraum, offene Angebote und Sortierung"
+          badge={(search || statusFilter || from || to || openOnly || sort !== "newest") ? <StatusPill tone="info">Filter aktiv</StatusPill> : null}
+        >
           <form method="get" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
             <Field label="Suche"><input name="q" defaultValue={queryValue(params, "q")} placeholder="Nummer, Titel, Kunde …" className={inputClass} /></Field>
             <Field label="Status"><select name="status" defaultValue={statusFilter} className={inputClass}><option value="">Alle Status</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
@@ -175,7 +183,7 @@ export default async function AdminOffersPage({ searchParams }: { searchParams: 
             <label className="flex min-h-11 items-center gap-3 self-end rounded-md border border-slate-300 bg-white px-3 text-sm font-bold text-slate-750 sm:mt-2"><input type="checkbox" name="open" value="1" defaultChecked={openOnly} className="h-5 w-5 rounded border-slate-300 text-brand focus:ring-brand" /> Nur offen</label>
             <div className="flex items-end gap-2"><button className={buttonClass}>Anwenden</button><Link href="/admin/offers" className="inline-flex min-h-11 items-center px-1 text-sm font-bold text-brand underline">Zurücksetzen</Link></div>
           </form>
-        </Panel>
+        </CompactSection>
 
         <Panel title={`Angebotsliste (${list.length})`}>
           {page.items.length ? (
@@ -186,7 +194,7 @@ export default async function AdminOffersPage({ searchParams }: { searchParams: 
                   <tbody className="divide-y divide-slate-100">
                     {page.items.map((offer) => (
                       <tr key={offer.id} className="align-top hover:bg-slate-50/80">
-                        <td className="border-b border-slate-100 px-3 py-4"><Link href={`/admin/offers/${offer.id}?version=${offer.versionId}`} className="font-extrabold text-slate-950 hover:text-brand hover:underline">{offer.title}</Link><p className="mt-1 font-mono text-xs font-bold text-slate-500">{offer.number}</p>{offer.hasParallelDraft ? <Link href={`/admin/offers/${offer.id}?version=${offer.draftVersionId}`} className="mt-2 block text-xs font-bold text-brand hover:underline">Entwurf V{offer.draftVersionNumber}: {offer.draftTitle || offer.title}</Link> : null}</td>
+                        <td className="border-b border-slate-100 px-3 py-4"><Link href={`/admin/offers/${offer.id}?version=${offer.versionId}`} className="font-extrabold text-slate-950 hover:text-brand hover:underline">{offer.title}</Link><p className="mt-1 font-mono text-xs font-bold text-slate-500">{offer.number}</p>{offer.hasParallelDraft ? <Link href={`/admin/offers/${offer.id}?version=${offer.draftVersionId}&view=content`} className="mt-2 block text-xs font-bold text-brand hover:underline">Entwurf V{offer.draftVersionNumber}: {offer.draftTitle || offer.title}</Link> : null}</td>
                         <td className="border-b border-slate-100 px-3 py-4 font-semibold text-slate-750">{offer.customerName}</td>
                         <td className="border-b border-slate-100 px-3 py-4 text-slate-650"><p>{dateLabel(offer.offerDate)}</p><p className="mt-1 text-xs">gültig bis {dateLabel(offer.validUntil)}</p></td>
                         <td className="border-b border-slate-100 px-3 py-4"><p className="font-extrabold text-slate-950">{formatCents(offer.grossCents)} brutto</p><p className="mt-1 text-xs text-slate-500">{formatCents(offer.netCents)} netto · {formatCents(offer.taxCents)} USt.</p></td>
@@ -202,7 +210,7 @@ export default async function AdminOffersPage({ searchParams }: { searchParams: 
               <div className="grid gap-4 lg:hidden">
                 {page.items.map((offer) => (
                   <article key={offer.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs font-bold text-slate-500">{offer.number}</p><h2 className="mt-1 text-lg font-extrabold text-slate-950">{offer.title}</h2><p className="mt-1 text-sm font-semibold text-slate-650">{offer.customerName}</p>{offer.hasParallelDraft ? <Link href={`/admin/offers/${offer.id}?version=${offer.draftVersionId}`} className="mt-2 block text-xs font-bold text-brand hover:underline">Entwurf V{offer.draftVersionNumber}: {offer.draftTitle || offer.title}</Link> : null}</div><div className="grid justify-items-end gap-2"><OfferStatusBadge status={offer.status} />{offer.hasParallelDraft ? <><OfferStatusBadge status="draft" /><span className="text-xs font-semibold text-slate-500">V{offer.draftVersionNumber} in Arbeit</span></> : null}</div></div>
+                    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs font-bold text-slate-500">{offer.number}</p><h2 className="mt-1 text-lg font-extrabold text-slate-950">{offer.title}</h2><p className="mt-1 text-sm font-semibold text-slate-650">{offer.customerName}</p>{offer.hasParallelDraft ? <Link href={`/admin/offers/${offer.id}?version=${offer.draftVersionId}&view=content`} className="mt-2 block text-xs font-bold text-brand hover:underline">Entwurf V{offer.draftVersionNumber}: {offer.draftTitle || offer.title}</Link> : null}</div><div className="grid justify-items-end gap-2"><OfferStatusBadge status={offer.status} />{offer.hasParallelDraft ? <><OfferStatusBadge status="draft" /><span className="text-xs font-semibold text-slate-500">V{offer.draftVersionNumber} in Arbeit</span></> : null}</div></div>
                     <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-white p-3 text-sm"><div><dt className="text-xs font-bold text-slate-500">Datum</dt><dd className="mt-1 font-semibold text-slate-900">{dateLabel(offer.offerDate)}</dd></div><div><dt className="text-xs font-bold text-slate-500">Gültig bis</dt><dd className="mt-1 font-semibold text-slate-900">{dateLabel(offer.validUntil)}</dd></div><div><dt className="text-xs font-bold text-slate-500">Brutto</dt><dd className="mt-1 font-extrabold text-slate-950">{formatCents(offer.grossCents)}</dd></div><div><dt className="text-xs font-bold text-slate-500">Immobilie</dt><dd className="mt-1 font-semibold text-slate-900">{offer.propertyName || "Noch offen"}</dd></div></dl>
                     <div className="mt-4 flex flex-wrap gap-2"><Link href={`/admin/offers/${offer.id}?version=${offer.versionId}`} className={actionIconButton("brand")}>Angebot öffnen</Link>{offer.pdfAvailable ? <Link href={`/api/documents/offers/${offer.id}?version=${offer.deliveryVersionId}`} className={actionIconButton()}><FileDown size={15} aria-hidden="true" /> PDF</Link> : null}{["sent", "viewed", "accepted", "rejected", "expired", "withdrawn", "linked"].includes(offer.deliveryStatus) && offer.deliveryVersionId ? <form action={resendOfferVersionAction}><input type="hidden" name="offerId" value={offer.id} /><input type="hidden" name="versionId" value={offer.deliveryVersionId} /><button className={actionIconButton()}><Mail size={15} aria-hidden="true" /> Erneut senden</button></form> : null}<form action={duplicateOfferAction}><input type="hidden" name="offerId" value={offer.id} />{offer.versionId ? <input type="hidden" name="versionId" value={offer.versionId} /> : null}<button className={actionIconButton()}><Copy size={15} aria-hidden="true" /> Duplizieren</button></form></div>
                   </article>

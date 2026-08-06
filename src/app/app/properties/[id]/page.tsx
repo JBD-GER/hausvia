@@ -1,6 +1,8 @@
+import Link from "next/link";
+import { Building2, MessageCircle } from "lucide-react";
 import { notFound } from "next/navigation";
 import { sendEmployeePropertyMessageAction } from "@/app/actions/portalEmployee";
-import { PageHeader, Panel, StatusPill } from "@/components/portal/PortalUI";
+import { CompactSection, PageHeader, Panel, StatusPill } from "@/components/portal/PortalUI";
 import { PropertyChat } from "@/components/portal/PropertyChat";
 import { PropertyRealtimeRefresh } from "@/components/portal/PropertyRealtimeRefresh";
 import { requireEmployeeContext } from "@/lib/portal/access";
@@ -11,10 +13,11 @@ export default async function EmployeePropertyPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; view?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
+  const view = query.view === "chat" ? "chat" : "overview";
   const { profile, supabase } = await requireEmployeeContext();
   const { data: property } = await supabase
     .from("properties")
@@ -87,6 +90,8 @@ export default async function EmployeePropertyPage({
         eyebrow="Zugewiesene Immobilie"
         title={property.name}
         text={`${property.buildings?.length ?? 0} Gebäude`}
+        icon={<Building2 aria-hidden="true" size={20} />}
+        compact
       />
       {query.error ? (
         <p
@@ -96,9 +101,25 @@ export default async function EmployeePropertyPage({
           {query.error}
         </p>
       ) : null}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="grid content-start gap-5">
-          <Panel title="Gebäude & Zugang">
+      <nav aria-label="Objektbereiche" className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <Link
+          href={`/app/properties/${property.id}?view=overview`}
+          aria-current={view === "overview" ? "page" : undefined}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition ${view === "overview" ? "bg-brand text-white" : "text-slate-600 hover:bg-slate-50"}`}
+        >
+          <Building2 aria-hidden="true" size={17} /> Übersicht
+        </Link>
+        <Link
+          href={`/app/properties/${property.id}?view=chat`}
+          aria-current={view === "chat" ? "page" : undefined}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition ${view === "chat" ? "bg-brand text-white" : "text-slate-600 hover:bg-slate-50"}`}
+        >
+          <MessageCircle aria-hidden="true" size={17} /> Chat
+        </Link>
+      </nav>
+      {view === "overview" ? (
+        <div className="grid gap-4">
+          <CompactSection title="Gebäude & Zugang" description="Adressen und objektspezifische Zugangshinweise" defaultOpen>
             <div className="grid gap-3">
               {property.buildings?.map((building) => (
                 <article
@@ -119,13 +140,17 @@ export default async function EmployeePropertyPage({
                 </article>
               ))}
             </div>
-          </Panel>
-          <Panel title="Internes Briefing">
+          </CompactSection>
+          <CompactSection title="Internes Briefing" description="Wichtige Hinweise vor dem Einsatz">
             <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
               {briefing?.internal_briefing || "Kein Briefing hinterlegt."}
             </p>
-          </Panel>
-          <Panel title="Aktive Leistungen">
+          </CompactSection>
+          <CompactSection
+            title="Aktive Leistungen"
+            description="Interne Arbeitsanweisungen je Leistung"
+            badge={<StatusPill>{property.property_services?.filter((service) => service.status === "active").length ?? 0}</StatusPill>}
+          >
             <div className="grid gap-3">
               {property.property_services
                 ?.filter((service) => service.status === "active")
@@ -153,10 +178,10 @@ export default async function EmployeePropertyPage({
                   </article>
                 ))}
             </div>
-          </Panel>
+          </CompactSection>
         </div>
-        <div className="grid content-start gap-5">
-          <Panel title="Immobilien-Chat">
+      ) : (
+          <Panel title="Immobilien-Chat" description="Nachrichten und Anhänge zur Immobilie">
             <PropertyChat
               propertyId={property.id}
               currentUserId={profile.id}
@@ -165,8 +190,7 @@ export default async function EmployeePropertyPage({
               sendMessageAction={sendEmployeePropertyMessageAction}
             />
           </Panel>
-        </div>
-      </div>
+      )}
     </>
   );
 }

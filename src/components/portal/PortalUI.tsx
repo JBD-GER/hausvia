@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 type PageHeaderProps = {
@@ -266,6 +267,45 @@ export function Panel({
       </div>
       <div className={`${flush ? "" : "p-4 sm:p-5"} ${contentClassName}`}>{children}</div>
     </section>
+  );
+}
+
+export function CompactSection({
+  title,
+  description,
+  badge,
+  children,
+  defaultOpen = false,
+  className = "",
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  badge?: ReactNode;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className={`group overflow-hidden rounded-2xl border border-slate-200/85 bg-white shadow-[0_10px_32px_rgba(8,43,97,0.055)] ${className}`}
+    >
+      <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 marker:hidden sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block font-black tracking-[-0.015em] text-slate-950">{title}</span>
+          {description ? (
+            <span className="mt-1 block text-xs leading-5 text-slate-500">{description}</span>
+          ) : null}
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {badge}
+          <span className="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-600 transition group-open:rotate-180 group-open:bg-brand-soft group-open:text-brand">
+            <ChevronDown aria-hidden="true" size={18} />
+          </span>
+        </span>
+      </summary>
+      <div className="border-t border-slate-100 p-4 sm:p-5">{children}</div>
+    </details>
   );
 }
 

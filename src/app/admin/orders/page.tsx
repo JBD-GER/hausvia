@@ -1,5 +1,6 @@
 import { updateMaterialRequestStatusAction } from "@/app/actions/admin";
-import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { PortalDialog } from "@/components/portal/PortalDialog";
+import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass, secondaryButtonClass } from "@/components/portal/PortalUI";
 import { asText, firstRelation, formatDateTime } from "@/lib/portal/format";
 import { requireAdminContext } from "@/lib/portal/access";
 
@@ -26,25 +27,36 @@ export default async function AdminOrdersPage() {
                       {asText(firstRelation(request.projects)?.name)} · {asText(firstRelation(request.employee_profiles)?.full_name)}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-700">{asText(request.note)}</p>
+                    {request.admin_comment ? <p className="mt-2 text-sm font-semibold text-slate-600">Admin: {asText(request.admin_comment)}</p> : null}
                     <p className="mt-2 text-xs font-bold text-slate-500">{formatDateTime(request.created_at)}</p>
                   </div>
                   <StatusPill>{request.status}</StatusPill>
                 </div>
-                <form action={updateMaterialRequestStatusAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                  <input type="hidden" name="requestId" value={request.id} />
-                  <Field label="Status">
-                    <select name="status" className={inputClass} defaultValue={request.status}>
-                      <option value="requested">angefragt</option>
-                      <option value="approved">genehmigt</option>
-                      <option value="ordered">bestellt</option>
-                      <option value="delivered">geliefert</option>
-                      <option value="rejected">abgelehnt</option>
-                      <option value="canceled">storniert</option>
-                    </select>
-                  </Field>
-                  <Field label="Admin-Kommentar"><input name="adminComment" className={inputClass} defaultValue={request.admin_comment ?? ""} /></Field>
-                  <button className={`${buttonClass} self-end`}>Speichern</button>
-                </form>
+                <div className="mt-4">
+                  <PortalDialog
+                    triggerLabel="Anforderung bearbeiten"
+                    triggerClassName={secondaryButtonClass}
+                    title={request.title}
+                    description={`${asText(firstRelation(request.projects)?.name)} · ${asText(firstRelation(request.employee_profiles)?.full_name)}`}
+                    size="md"
+                  >
+                    <form action={updateMaterialRequestStatusAction} className="grid gap-4">
+                      <input type="hidden" name="requestId" value={request.id} />
+                      <Field label="Status">
+                        <select name="status" className={inputClass} defaultValue={request.status}>
+                          <option value="requested">angefragt</option>
+                          <option value="approved">genehmigt</option>
+                          <option value="ordered">bestellt</option>
+                          <option value="delivered">geliefert</option>
+                          <option value="rejected">abgelehnt</option>
+                          <option value="canceled">storniert</option>
+                        </select>
+                      </Field>
+                      <Field label="Admin-Kommentar"><input name="adminComment" className={inputClass} defaultValue={request.admin_comment ?? ""} /></Field>
+                      <button className={buttonClass}>Änderungen speichern</button>
+                    </form>
+                  </PortalDialog>
+                </div>
               </article>
             ))}
           </div>

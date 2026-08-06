@@ -92,7 +92,9 @@ export default async function EmployeeTodayPage({
       <PageHeader
         eyebrow="Mitarbeiterportal"
         title="Kalender & Heute"
-        text="Alle zugewiesenen Einsätze mit Gebäudegruppe, Adresse und benötigtem Equipment."
+        text="Nächster Einsatz, Adresse und Start – Details nur bei Bedarf."
+        icon={<CalendarDays aria-hidden="true" size={20} />}
+        compact
       />
       {activeVisit ? (
         <Link
@@ -203,31 +205,40 @@ export default async function EmployeeTodayPage({
                         {mainAddress}
                       </p>
                     </div>
-                    {buildings.length > 1 ? (
-                      <ul className="mt-3 grid gap-1 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
-                        {buildings.map((building) => (
-                          <li key={building.id}>
-                            <strong>{building.label || "Gebäude"}:</strong>{" "}
-                            {building.formatted_address}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {equipment.length ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {equipment.map(({ assignment, item }) => (
-                          <span
-                            key={assignment.equipment_id}
-                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${assignment.rental ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-700"}`}
-                            title={assignment.provision_note ?? undefined}
-                          >
-                            <PackageCheck size={14} />
-                            {item?.name} · {assignment.required_quantity}{" "}
-                            {item?.unit || "Stück"}
-                            {assignment.rental ? " · Mietequipment" : ""}
-                          </span>
-                        ))}
-                      </div>
+                    {buildings.length > 1 || equipment.length ? (
+                      <details className="group mt-3 rounded-xl border border-slate-200 bg-slate-50">
+                        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-xs font-black text-slate-700 marker:hidden [&::-webkit-details-marker]:hidden">
+                          <span>{buildings.length} Gebäude · {equipment.length} Equipment</span>
+                          <span aria-hidden="true" className="text-brand transition group-open:rotate-45">+</span>
+                        </summary>
+                        <div className="grid gap-3 border-t border-slate-200 p-3">
+                          {buildings.length > 1 ? (
+                            <ul className="grid gap-1 text-xs text-slate-600">
+                              {buildings.map((building) => (
+                                <li key={building.id}>
+                                  <strong>{building.label || "Gebäude"}:</strong>{" "}
+                                  {building.formatted_address}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          {equipment.length ? (
+                            <div className="flex flex-wrap gap-2">
+                              {equipment.map(({ assignment, item }) => (
+                                <span
+                                  key={assignment.equipment_id}
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${assignment.rental ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-700"}`}
+                                  title={assignment.provision_note ?? undefined}
+                                >
+                                  <PackageCheck aria-hidden="true" size={14} />
+                                  {item?.name} · {assignment.required_quantity} {item?.unit || "Stück"}
+                                  {assignment.rental ? " · Mietequipment" : ""}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </details>
                     ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link

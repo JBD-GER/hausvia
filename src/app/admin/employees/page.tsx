@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { revokeInvitationAction, sendInvitationAction } from "@/app/actions/auth";
 import { createEmployeeAction, updateEmployeeStatusAction } from "@/app/actions/portalAdmin";
-import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { PortalDialog } from "@/components/portal/PortalDialog";
+import { CompactSection, EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass, secondaryButtonClass } from "@/components/portal/PortalUI";
 import { PaginationNav } from "@/components/portal/PaginationNav";
 import { EMPLOYEE_CATEGORY_LABELS, berlinIsoDate, formatGermanDate, parseBerlinDateTimeLocal } from "@/lib/portal/core";
 import { requireAdminContext } from "@/lib/portal/access";
@@ -97,37 +98,45 @@ export default async function AdminEmployeesPage({ searchParams }: { searchParam
         eyebrow="Mitarbeiter"
         title="Mitarbeiter verwalten"
         text="Beschäftigungsart, Adresse, Portalstatus, Immobilienzuweisungen und Monatsstunden zentral verwalten."
+        actions={(
+          <PortalDialog
+            triggerLabel="Mitarbeiter anlegen"
+            title="Neuen Mitarbeiter anlegen"
+            description="Erfassen Sie die Stammdaten. Die Einladung kann danach gezielt aus der Liste versendet werden."
+            size="xl"
+          >
+            <form action={createEmployeeAction} className="grid gap-4 sm:grid-cols-2">
+              <Field label="Vorname"><input name="firstName" required autoComplete="given-name" className={inputClass} /></Field>
+              <Field label="Nachname"><input name="lastName" required autoComplete="family-name" className={inputClass} /></Field>
+              <Field label="Mitarbeiterkategorie">
+                <select name="category" required defaultValue="minijob" className={inputClass}>
+                  {Object.entries(EMPLOYEE_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </Field>
+              <Field label="Firma (nur Freelancer)"><input name="companyName" autoComplete="organization" className={inputClass} /></Field>
+              <Field label="E-Mail"><input name="email" type="email" required autoComplete="email" className={inputClass} /></Field>
+              <Field label="Telefon"><input name="phone" type="tel" required autoComplete="tel" className={inputClass} /></Field>
+              <Field label="Straße"><input name="street" required autoComplete="address-line1" className={inputClass} /></Field>
+              <Field label="Hausnummer"><input name="houseNumber" required className={inputClass} /></Field>
+              <Field label="Postleitzahl"><input name="postalCode" required inputMode="numeric" autoComplete="postal-code" pattern="[0-9]{5}" className={inputClass} /></Field>
+              <Field label="Ort"><input name="city" required autoComplete="address-level2" className={inputClass} /></Field>
+              <Field label="Land"><input name="country" required defaultValue="Deutschland" autoComplete="country-name" className={inputClass} /></Field>
+              <label className="block sm:col-span-2"><span className="text-sm font-bold text-slate-800">Interne Notiz</span><textarea name="notes" rows={3} className={inputClass} /></label>
+              <button className={`${buttonClass} sm:col-span-2`}>Mitarbeiter speichern</button>
+            </form>
+          </PortalDialog>
+        )}
       />
 
       {queryValue(params, "status") ? <p className="mb-5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900" role="status">{queryValue(params, "status")}</p> : null}
       {queryValue(params, "error") ? <p className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900" role="alert">{queryValue(params, "error")}</p> : null}
 
-      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-        <Panel title="Mitarbeiter anlegen">
-          <form action={createEmployeeAction} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Vorname"><input name="firstName" required autoComplete="given-name" className={inputClass} /></Field>
-            <Field label="Nachname"><input name="lastName" required autoComplete="family-name" className={inputClass} /></Field>
-            <Field label="Mitarbeiterkategorie">
-              <select name="category" required defaultValue="minijob" className={inputClass}>
-                {Object.entries(EMPLOYEE_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </Field>
-            <Field label="Firma (nur Freelancer)"><input name="companyName" autoComplete="organization" className={inputClass} /></Field>
-            <Field label="E-Mail"><input name="email" type="email" required autoComplete="email" className={inputClass} /></Field>
-            <Field label="Telefon"><input name="phone" type="tel" required autoComplete="tel" className={inputClass} /></Field>
-            <Field label="Straße"><input name="street" required autoComplete="address-line1" className={inputClass} /></Field>
-            <Field label="Hausnummer"><input name="houseNumber" required className={inputClass} /></Field>
-            <Field label="Postleitzahl"><input name="postalCode" required inputMode="numeric" autoComplete="postal-code" pattern="[0-9]{5}" className={inputClass} /></Field>
-            <Field label="Ort"><input name="city" required autoComplete="address-level2" className={inputClass} /></Field>
-            <Field label="Land"><input name="country" required defaultValue="Deutschland" autoComplete="country-name" className={inputClass} /></Field>
-            <label className="block sm:col-span-2"><span className="text-sm font-bold text-slate-800">Interne Notiz</span><textarea name="notes" rows={3} className={inputClass} /></label>
-            <p className="text-xs leading-5 text-slate-500 sm:col-span-2">Nach dem Speichern kann die Einladung gezielt aus der Mitarbeiterliste versendet werden.</p>
-            <button className={`${buttonClass} sm:col-span-2`}>Mitarbeiter speichern</button>
-          </form>
-        </Panel>
-
-        <div className="grid content-start gap-5">
-          <Panel title="Suchen und filtern">
+      <div className="grid gap-4 sm:gap-5">
+          <CompactSection
+            title="Suchen und filtern"
+            description="Suche, Kategorie, Kontostatus, Stundenmonat und Sortierung"
+            badge={(search || categoryFilter || statusFilter || sort !== "newest") ? <StatusPill tone="info">Filter aktiv</StatusPill> : null}
+          >
             <form method="get" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
               <Field label="Suche"><input name="q" defaultValue={queryValue(params, "q")} placeholder="Name, E-Mail, Ort …" className={inputClass} /></Field>
               <Field label="Kategorie"><select name="category" defaultValue={categoryFilter} className={inputClass}><option value="">Alle Kategorien</option>{Object.entries(EMPLOYEE_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
@@ -136,7 +145,7 @@ export default async function AdminEmployeesPage({ searchParams }: { searchParam
               <Field label="Sortierung"><select name="sort" defaultValue={sort} className={inputClass}><option value="newest">Neueste zuerst</option><option value="oldest">Älteste zuerst</option><option value="name">Name A–Z</option></select></Field>
               <div className="flex items-end gap-2"><button className={buttonClass}>Anwenden</button><Link href="/admin/employees" className="inline-flex min-h-11 items-center px-2 text-sm font-bold text-brand underline">Zurücksetzen</Link></div>
             </form>
-          </Panel>
+          </CompactSection>
 
           <Panel title={`Mitarbeiterliste (${filteredEmployees.length})`}>
             {filteredEmployees.length ? (
@@ -182,18 +191,35 @@ export default async function AdminEmployeesPage({ searchParams }: { searchParam
 
                       <div className="mt-4 flex flex-wrap gap-3">
                         <Link
-                          href={`/admin/employees/${employee.id}`}
-                          className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-white px-4 py-2 text-sm font-extrabold text-brand hover:bg-brand-soft"
+                          href={`/admin/employees/${employee.id}?view=details`}
+                          className={buttonClass}
                         >
                           Details bearbeiten
                         </Link>
-                        {invitation?.id && inviteStatus !== "accepted" ? <form action={sendInvitationAction}><input type="hidden" name="invitationId" value={String(invitation.id)} /><button className={buttonClass}>{["sent", "pending"].includes(inviteStatus) ? "Einladung erneut senden" : "Einladung senden"}</button></form> : null}
-                        {invitation?.id && ["sent", "pending"].includes(inviteStatus) ? <form action={revokeInvitationAction}><input type="hidden" name="invitationId" value={String(invitation.id)} /><button className="inline-flex min-h-11 items-center justify-center rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-extrabold text-red-700 hover:bg-red-50">Einladung widerrufen</button></form> : null}
-                        <form action={updateEmployeeStatusAction} className="flex flex-1 flex-wrap gap-2 sm:justify-end">
-                          <input type="hidden" name="employeeId" value={employee.id} />
-                          <select name="status" defaultValue={employee.status === "disabled" ? "disabled" : "active"} aria-label={`Status für ${employee.full_name}`} className="min-h-11 rounded-md border border-slate-300 bg-white px-3 text-sm font-bold"><option value="active">Aktiv</option><option value="disabled">Deaktiviert</option></select>
-                          <button className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 hover:border-brand hover:text-brand">Status speichern</button>
-                        </form>
+                        <PortalDialog
+                          triggerLabel="Zugang verwalten"
+                          triggerClassName={secondaryButtonClass}
+                          title={employee.full_name}
+                          description="Einladung senden oder den Kontostatus ändern."
+                          size="md"
+                        >
+                          <div className="grid gap-5">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                              <p className="text-xs font-black uppercase tracking-wide text-slate-500">Einladung</p>
+                              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                                {invitation?.id && inviteStatus !== "accepted" ? <form action={sendInvitationAction}><input type="hidden" name="invitationId" value={String(invitation.id)} /><button className={buttonClass}>{["sent", "pending"].includes(inviteStatus) ? "Einladung erneut senden" : "Einladung senden"}</button></form> : <p className="text-sm font-semibold text-slate-600">{inviteStatus === "accepted" ? "Einladung angenommen" : "Keine Einladung verfügbar"}</p>}
+                                {invitation?.id && ["sent", "pending"].includes(inviteStatus) ? <form action={revokeInvitationAction}><input type="hidden" name="invitationId" value={String(invitation.id)} /><button className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-red-200 bg-white px-5 py-2.5 text-sm font-extrabold text-red-700 hover:bg-red-50 sm:w-auto">Einladung widerrufen</button></form> : null}
+                              </div>
+                            </div>
+                            <form action={updateEmployeeStatusAction} className="grid gap-3">
+                              <input type="hidden" name="employeeId" value={employee.id} />
+                              <Field label="Kontostatus">
+                                <select name="status" defaultValue={employee.status === "disabled" ? "disabled" : "active"} aria-label={`Status für ${employee.full_name}`} className={inputClass}><option value="active">Aktiv</option><option value="disabled">Deaktiviert</option></select>
+                              </Field>
+                              <button className={buttonClass}>Status speichern</button>
+                            </form>
+                          </div>
+                        </PortalDialog>
                       </div>
                     </article>
                   );
@@ -209,7 +235,6 @@ export default async function AdminEmployeesPage({ searchParams }: { searchParam
               </>
             ) : <EmptyState title="Keine Mitarbeiter gefunden" text="Passen Sie die Filter an oder legen Sie den ersten Mitarbeiter an." />}
           </Panel>
-        </div>
       </div>
     </>
   );

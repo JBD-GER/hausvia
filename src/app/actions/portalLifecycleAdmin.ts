@@ -9,8 +9,13 @@ function pathFor(propertyId: string) {
   return `/admin/properties/${propertyId}`;
 }
 
-function go(propertyId: string, key: "status" | "error", value: string): never {
-  redirect(`${pathFor(propertyId)}?${key}=${encodeURIComponent(value)}#uebersicht`);
+function go(
+  propertyId: string,
+  key: "status" | "error",
+  value: string,
+  view = "uebersicht",
+): never {
+  redirect(`${pathFor(propertyId)}?view=${view}&${key}=${encodeURIComponent(value)}`);
 }
 
 function isUuid(value: string) {
@@ -64,7 +69,7 @@ export async function updateBuildingStatusAction(formData: FormData) {
     !["active", "archived"].includes(status) ||
     !["active", "archived"].includes(expectedStatus)
   ) {
-    go(propertyId, "error", "Ungültige Gebäudestatusänderung.");
+    go(propertyId, "error", "Ungültige Gebäudestatusänderung.", "gebaeude");
   }
 
   const { data: mutation, error } = await supabase.rpc("set_building_status", {
@@ -80,12 +85,13 @@ export async function updateBuildingStatusAction(formData: FormData) {
       status === "archived"
         ? "Das Gebäude konnte nicht archiviert werden. Es muss mindestens ein aktives Gebäude verbleiben; entfernen Sie außerdem zuerst aktive Leistungs-, Equipment-, Plan- und Einsatzbezüge."
         : "Das Gebäude konnte nicht reaktiviert werden. Bitte laden Sie die Seite neu und prüfen Sie den Immobilienstatus.",
+      "gebaeude",
     );
   }
 
   revalidatePath(pathFor(propertyId));
   if (mutation === "unchanged") {
-    go(propertyId, "status", "Das Gebäude hat bereits den gewählten Status.");
+    go(propertyId, "status", "Das Gebäude hat bereits den gewählten Status.", "gebaeude");
   }
-  go(propertyId, "status", "Gebäudestatus wurde aktualisiert.");
+  go(propertyId, "status", "Gebäudestatus wurde aktualisiert.", "gebaeude");
 }

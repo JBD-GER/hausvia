@@ -1,5 +1,5 @@
 import { reviewShiftAction } from "@/app/actions/admin";
-import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
+import { CompactSection, EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { asText, firstRelation, formatDateTime } from "@/lib/portal/format";
 import { requireAdminContext } from "@/lib/portal/access";
 
@@ -33,18 +33,22 @@ export default async function AdminShiftsPage() {
                   </div>
                   <StatusPill>{shift.status}</StatusPill>
                 </div>
-                <form action={reviewShiftAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                  <input type="hidden" name="shiftId" value={shift.id} />
-                  <Field label="Entscheidung">
-                    <select name="status" className={inputClass} defaultValue={shift.status}>
-                      <option value="approved">Freigeben</option>
-                      <option value="rejected">Ablehnen</option>
-                      <option value="submitted">Zur Prüfung</option>
-                    </select>
-                  </Field>
-                  <Field label="Prüfnotiz"><input name="reviewNote" className={inputClass} /></Field>
-                  <button className={`${buttonClass} self-end`}>Speichern</button>
-                </form>
+                <div className="mt-4">
+                  <CompactSection title="Schicht prüfen" description="Entscheidung und interne Prüfnotiz">
+                    <form action={reviewShiftAction} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                      <input type="hidden" name="shiftId" value={shift.id} />
+                      <Field label="Entscheidung">
+                        <select name="status" className={inputClass} defaultValue={shift.status}>
+                          <option value="approved">Freigeben</option>
+                          <option value="rejected">Ablehnen</option>
+                          <option value="submitted">Zur Prüfung</option>
+                        </select>
+                      </Field>
+                      <Field label="Prüfnotiz"><input name="reviewNote" className={inputClass} /></Field>
+                      <button className={`${buttonClass} self-end`}>Speichern</button>
+                    </form>
+                  </CompactSection>
+                </div>
               </article>
             ))}
           </div>

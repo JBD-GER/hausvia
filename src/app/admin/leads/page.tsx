@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createOfferFromLeadAction } from "@/app/actions/admin";
-import { EmptyState, PageHeader, Panel, StatusPill, buttonClass } from "@/components/portal/PortalUI";
+import { PortalDialog } from "@/components/portal/PortalDialog";
+import { EmptyState, PageHeader, Panel, StatusPill, buttonClass, secondaryButtonClass } from "@/components/portal/PortalUI";
 import { asText, formatDateTime, formatEuro, leadStatusLabel, offerStatusLabel } from "@/lib/portal/format";
 import { requireAdminContext } from "@/lib/portal/access";
 
@@ -91,7 +92,7 @@ export default async function AdminLeadsPage() {
                     <p className="mt-1 text-sm font-semibold text-slate-700">
                       {asText(lead.email)} · {asText(lead.phone)}
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">{asText(lead.message)}</p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-700">{asText(lead.message)}</p>
                     <p className="mt-2 text-xs font-bold text-slate-500">{formatDateTime(lead.created_at)}</p>
                   </div>
                   <StatusPill>{leadStatusLabel(lead.status)}</StatusPill>
@@ -102,44 +103,53 @@ export default async function AdminLeadsPage() {
                   ))}
                 </div>
 
-                <details className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-                  <summary className="cursor-pointer text-sm font-extrabold text-brand">Details zur Anfrage anzeigen</summary>
-                  <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-                    <div className="rounded-md bg-slate-50 p-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Objekt</p>
-                      <p className="mt-1 font-semibold text-slate-900">{asText(lead.object_type)}</p>
-                      <p className="mt-1 text-slate-650">{asText(lead.object_address)}</p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <PortalDialog
+                    triggerLabel="Anfragedetails"
+                    triggerClassName={secondaryButtonClass}
+                    title={asText(lead.company_name || lead.contact_name || lead.email)}
+                    description="Alle Angaben aus der Anfrage auf einen Blick."
+                  >
+                    <div className="grid gap-3 text-sm md:grid-cols-2">
+                      <div className="rounded-xl bg-slate-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Objekt</p>
+                        <p className="mt-1 font-semibold text-slate-900">{asText(lead.object_type)}</p>
+                        <p className="mt-1 text-slate-650">{asText(lead.object_address)}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Kostenspanne</p>
+                        <p className="mt-1 font-semibold text-slate-900">{estimateText(lead.estimate)}</p>
+                        <p className="mt-1 text-slate-650">{asText(lead.frequency)}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Start / Rückruf</p>
+                        <p className="mt-1 font-semibold text-slate-900">{asText(lead.desired_start_date)}</p>
+                        <p className="mt-1 text-slate-650">{asText(lead.preferred_callback_time)}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Angebotsstatus</p>
+                        <p className="mt-1 font-semibold text-slate-900">
+                          {offer ? offerStatusLabel(offer.status) : "Noch kein Angebot geöffnet"}
+                        </p>
+                        {offer ? <p className="mt-1 text-slate-650">{formatEuro(offer.gross_total ?? 0)} brutto</p> : null}
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-4 md:col-span-2">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Nachricht</p>
+                        <p className="mt-2 whitespace-pre-wrap leading-6 text-slate-700">{asText(lead.message)}</p>
+                      </div>
                     </div>
-                    <div className="rounded-md bg-slate-50 p-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Kostenspanne</p>
-                      <p className="mt-1 font-semibold text-slate-900">{estimateText(lead.estimate)}</p>
-                      <p className="mt-1 text-slate-650">{asText(lead.frequency)}</p>
-                    </div>
-                    <div className="rounded-md bg-slate-50 p-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Start / Rückruf</p>
-                      <p className="mt-1 font-semibold text-slate-900">{asText(lead.desired_start_date)}</p>
-                      <p className="mt-1 text-slate-650">{asText(lead.preferred_callback_time)}</p>
-                    </div>
-                    <div className="rounded-md bg-slate-50 p-3">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Angebotsstatus</p>
-                      <p className="mt-1 font-semibold text-slate-900">
-                        {offer ? offerStatusLabel(offer.status) : "Noch kein Angebot geöffnet"}
-                      </p>
-                      {offer ? <p className="mt-1 text-slate-650">{formatEuro(offer.gross_total ?? 0)} brutto</p> : null}
-                    </div>
-                  </div>
-                </details>
-
-                {offer ? (
-                  <Link href={`/admin/offers/${offer.id}`} className={`${buttonClass} mt-4`}>
-                    Angebot öffnen
-                  </Link>
-                ) : (
-                  <form action={createOfferFromLeadAction} className="mt-4">
-                    <input type="hidden" name="leadId" value={lead.id} />
-                    <button className={buttonClass}>Angebot erstellen</button>
-                  </form>
-                )}
+                  </PortalDialog>
+                  {offer ? (
+                    <Link href={`/admin/offers/${offer.id}`} className={buttonClass}>
+                      Angebot öffnen
+                    </Link>
+                  ) : (
+                    <form action={createOfferFromLeadAction}>
+                      <input type="hidden" name="leadId" value={lead.id} />
+                      <button className={buttonClass}>Angebot erstellen</button>
+                    </form>
+                  )}
+                </div>
               </article>
             );
             })}

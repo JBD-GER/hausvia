@@ -10,7 +10,7 @@ function propertyPath(propertyId: string) {
 }
 
 function go(propertyId: string, key: "status" | "error", message: string): never {
-  redirect(`${propertyPath(propertyId)}?${key}=${encodeURIComponent(message)}#leistungen`);
+  redirect(`${propertyPath(propertyId)}?view=leistungen&${key}=${encodeURIComponent(message)}`);
 }
 
 function isUuid(value: string) {

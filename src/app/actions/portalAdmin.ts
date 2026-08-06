@@ -52,7 +52,12 @@ import {
 } from "@/lib/portal/security";
 
 function go(path: string, key: "status" | "error", value: string): never {
-  redirect(`${path}?${key}=${encodeURIComponent(value)}`);
+  const separator = path.includes("?") ? "&" : "?";
+  redirect(`${path}${separator}${key}=${encodeURIComponent(value)}`);
+}
+
+function propertyViewPath(propertyId: string, view: string) {
+  return `/admin/properties/${propertyId}?view=${encodeURIComponent(view)}`;
 }
 
 async function requireMutableProperty(
@@ -206,7 +211,8 @@ export async function updateCustomerAction(formData: FormData) {
   const { profile, admin } = await requireAdminContext();
   const customerId = formValue(formData, "customerId");
   const expectedUpdatedAt = formValue(formData, "updatedAt");
-  const fallback = `/admin/customers/${customerId}`;
+  const detailPath = `/admin/customers/${customerId}`;
+  const fallback = `${detailPath}?view=details`;
   if (!/^[0-9a-f-]{36}$/i.test(customerId) || !expectedUpdatedAt) {
     go("/admin/customers", "error", "Ungültiger Kundenbezug.");
   }
@@ -325,7 +331,7 @@ export async function updateCustomerAction(formData: FormData) {
     go(fallback, "error", "Die Änderung konnte nicht revisionssicher protokolliert werden.");
   }
   revalidatePath("/admin/customers");
-  revalidatePath(fallback);
+  revalidatePath(detailPath);
   go(fallback, "status", "Die Kundendaten wurden aktualisiert.");
 }
 
@@ -454,7 +460,8 @@ export async function updateEmployeeAction(formData: FormData) {
   const { profile, admin } = await requireAdminContext();
   const employeeId = formValue(formData, "employeeId");
   const expectedUpdatedAt = formValue(formData, "updatedAt");
-  const fallback = `/admin/employees/${employeeId}`;
+  const detailPath = `/admin/employees/${employeeId}`;
+  const fallback = `${detailPath}?view=details`;
   if (!/^[0-9a-f-]{36}$/i.test(employeeId) || !expectedUpdatedAt) {
     go("/admin/employees", "error", "Ungültiger Mitarbeiterbezug.");
   }
@@ -584,7 +591,7 @@ export async function updateEmployeeAction(formData: FormData) {
     go(fallback, "error", "Die Änderung konnte nicht revisionssicher protokolliert werden.");
   }
   revalidatePath("/admin/employees");
-  revalidatePath(fallback);
+  revalidatePath(detailPath);
   go(fallback, "status", "Die Mitarbeiterdaten wurden aktualisiert.");
 }
 
@@ -773,7 +780,7 @@ export async function createPropertyAction(formData: FormData) {
     revalidatePath("/admin/offers");
     revalidatePath("/portal/offers");
   }
-  redirect(`/admin/properties/${propertyId}?status=created`);
+  redirect(`${propertyViewPath(propertyId, "uebersicht")}&status=created`);
 }
 
 export async function addBuildingAction(formData: FormData) {
@@ -789,7 +796,7 @@ export async function addBuildingAction(formData: FormData) {
     city: formValue(formData, "city"),
     country: formValue(formData, "country") || "Deutschland",
   });
-  const fallback = `/admin/properties/${formValue(formData, "propertyId")}`;
+  const fallback = propertyViewPath(formValue(formData, "propertyId"), "gebaeude");
   if (acceptedOfferVersionId && !/^[0-9a-f-]{36}$/i.test(acceptedOfferVersionId)) {
     go(fallback, "error", "Das ausgewählte Angebot ist ungültig.");
   }
@@ -871,7 +878,7 @@ export async function rotateBuildingQrTokenAction(formData: FormData) {
   const { profile, admin } = await requireAdminContext();
   const buildingId = formValue(formData, "buildingId");
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "gebaeude");
   if (!/^[0-9a-f-]{36}$/i.test(buildingId) || !/^[0-9a-f-]{36}$/i.test(propertyId)) {
     go("/admin/properties", "error", "Ungültiger Gebäudebezug.");
   }
@@ -925,7 +932,7 @@ export async function assignPropertyEmployeeAction(formData: FormData) {
   const { supabase } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
   const employeeId = formValue(formData, "employeeId");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "team");
   if (!/^[0-9a-f-]{36}$/i.test(propertyId) || !/^[0-9a-f-]{36}$/i.test(employeeId)) {
     go(fallback, "error", "Mitarbeiter auswählen.");
   }
@@ -962,7 +969,7 @@ export async function createPropertyServiceAction(formData: FormData) {
   } | null = null;
   if (catalogId) {
     if (!/^[0-9a-f-]{36}$/i.test(catalogId)) {
-      go(`/admin/properties/${propertyId}`, "error", "Ungültige Leistungsvorlage.");
+      go(propertyViewPath(propertyId, "leistungen"), "error", "Ungültige Leistungsvorlage.");
     }
     const { data, error } = await admin
       .from("service_catalog")
@@ -974,7 +981,7 @@ export async function createPropertyServiceAction(formData: FormData) {
       .maybeSingle();
     if (error || !data) {
       go(
-        `/admin/properties/${propertyId}`,
+        propertyViewPath(propertyId, "leistungen"),
         "error",
         "Die ausgewählte Leistungsvorlage ist nicht verfügbar.",
       );
@@ -1027,7 +1034,7 @@ export async function createPropertyServiceAction(formData: FormData) {
     buildingIds: formValues(formData, "buildingId"),
   });
   if (!parsed.success)
-    go(`/admin/properties/${propertyId}`, "error", firstZodError(parsed.error));
+    go(propertyViewPath(propertyId, "leistungen"), "error", firstZodError(parsed.error));
   const value = parsed.data;
   await requireMutableProperty(admin, value.propertyId);
   const { error } = await supabase.rpc(
@@ -1059,7 +1066,7 @@ export async function createPropertyServiceAction(formData: FormData) {
   );
   if (error) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "leistungen"),
       "error",
       error.code === "23505"
         ? "Für diese Immobilie besteht bereits eine Leistung mit demselben Schlüssel."
@@ -1068,14 +1075,14 @@ export async function createPropertyServiceAction(formData: FormData) {
   }
   revalidatePath(`/admin/properties/${propertyId}`);
   revalidatePath("/admin/winter-service");
-  go(`/admin/properties/${propertyId}`, "status", "Leistung wurde zugewiesen.");
+  go(propertyViewPath(propertyId, "leistungen"), "status", "Leistung wurde zugewiesen.");
 }
 
 export async function togglePropertyServiceAction(formData: FormData) {
   const { profile, admin } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
   const serviceId = formValue(formData, "serviceId");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "leistungen");
   if (!/^[0-9a-f-]{36}$/i.test(propertyId) || !/^[0-9a-f-]{36}$/i.test(serviceId)) {
     go("/admin/properties", "error", "Ungültige Leistungszuordnung.");
   }
@@ -1123,7 +1130,7 @@ export async function updatePropertyServiceSortOrderAction(formData: FormData) {
   const serviceId = formValue(formData, "serviceId");
   const expectedUpdatedAt = formValue(formData, "updatedAt");
   const sortOrder = Number(formValue(formData, "sortOrder"));
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "leistungen");
   if (
     !/^[0-9a-f-]{36}$/i.test(propertyId) ||
     !/^[0-9a-f-]{36}$/i.test(serviceId) ||
@@ -1185,7 +1192,7 @@ export async function updatePropertyServiceSortOrderAction(formData: FormData) {
 export async function createVisitPlanAction(formData: FormData) {
   const { supabase } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "einsaetze");
   const parsed = visitPlanSchema.safeParse({
     propertyId,
     label: formValue(formData, "label"),
@@ -1251,7 +1258,7 @@ export async function updateVisitPlanAction(formData: FormData) {
   const propertyId = formValue(formData, "propertyId");
   const visitPlanId = formValue(formData, "visitPlanId");
   const expectedUpdatedAt = formValue(formData, "updatedAt");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "einsaetze");
   if (!/^[0-9a-f-]{36}$/i.test(visitPlanId) || !expectedUpdatedAt) {
     go(fallback, "error", "Ungültiger Besuchsplanbezug.");
   }
@@ -1336,7 +1343,7 @@ export async function updateVisitPlanStatusAction(formData: FormData) {
     go("/admin/properties", "error", firstZodError(parsed.error));
   }
   const value = parsed.data;
-  const fallback = `/admin/properties/${value.propertyId}`;
+  const fallback = propertyViewPath(value.propertyId, "einsaetze");
   if (!["active", "paused", "archived"].includes(expectedStatus)) {
     go(fallback, "error", "Ungültiger vorheriger Besuchsplanstatus.");
   }
@@ -1380,7 +1387,7 @@ export async function rescheduleVisitAction(formData: FormData) {
     go("/admin/properties", "error", firstZodError(parsed.error));
   }
   const value = parsed.data;
-  const fallback = `/admin/properties/${value.propertyId}`;
+  const fallback = propertyViewPath(value.propertyId, "einsaetze");
   const scheduledStart = parseBerlinDateTimeLocal(
     `${value.scheduledDate}T${value.plannedStartTime}`,
   );
@@ -1520,7 +1527,7 @@ export async function cancelVisitAction(formData: FormData) {
     go("/admin/properties", "error", firstZodError(parsed.error));
   }
   const value = parsed.data;
-  const fallback = `/admin/properties/${value.propertyId}`;
+  const fallback = propertyViewPath(value.propertyId, "einsaetze");
   const { data: visit, error: visitError } = await admin
     .from("visits")
     .select("id,status,scheduled_start")
@@ -1624,7 +1631,7 @@ export async function createManualVisitAction(formData: FormData) {
     go("/admin/properties", "error", firstZodError(parsed.error));
   }
   const value = parsed.data;
-  const fallback = `/admin/properties/${value.propertyId}`;
+  const fallback = propertyViewPath(value.propertyId, "einsaetze");
   const buildingIds = Array.from(new Set(value.buildingIds));
   const serviceIds = Array.from(new Set(value.serviceIds));
   const scheduledStart = parseBerlinDateTimeLocal(
@@ -2127,7 +2134,7 @@ export async function assignPropertyEquipmentAction(formData: FormData) {
     (seasonal && (!seasonStartMonth || !seasonEndMonth)) ||
     provisionNote.length > 2_000
   )
-    go(`/admin/properties/${propertyId}`, "error", "Bitte gültige Equipmentangaben eingeben.");
+    go(propertyViewPath(propertyId, "team"), "error", "Bitte gültige Equipmentangaben eingeben.");
   const { error } = await supabase.rpc("set_property_equipment_assignment", {
     p_property_id: propertyId,
     p_equipment_id: equipmentId,
@@ -2145,7 +2152,7 @@ export async function assignPropertyEquipmentAction(formData: FormData) {
   });
   if (error) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "team"),
       "error",
       "Equipmentzuordnung konnte nicht gespeichert werden.",
     );
@@ -2154,7 +2161,7 @@ export async function assignPropertyEquipmentAction(formData: FormData) {
   revalidatePath("/admin/winter-service");
   revalidatePath("/admin/equipment");
   revalidatePath("/app/today");
-  go(`/admin/properties/${propertyId}`, "status", "Equipment wurde zugeordnet.");
+  go(propertyViewPath(propertyId, "team"), "status", "Equipment wurde zugeordnet.");
 }
 
 export async function createExtraChargeAction(formData: FormData) {
@@ -2175,7 +2182,7 @@ export async function createExtraChargeAction(formData: FormData) {
   });
   if (!parsed.success) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "abrechnung"),
       "error",
       firstZodError(parsed.error),
     );
@@ -2200,7 +2207,7 @@ export async function createExtraChargeAction(formData: FormData) {
     ]);
   if (!property || (value.visitId && !visitResult.data)) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "abrechnung"),
       "error",
       "Immobilie oder Einsatzbezug ist ungültig.",
     );
@@ -2251,7 +2258,7 @@ export async function createExtraChargeAction(formData: FormData) {
     .single();
   if (error || !charge)
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "abrechnung"),
       "error",
       "Zusatzkosten konnten nicht gespeichert werden.",
     );
@@ -2291,7 +2298,7 @@ export async function createExtraChargeAction(formData: FormData) {
   if (auditError) {
     await admin.from("extra_charges").delete().eq("id", charge.id);
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "abrechnung"),
       "error",
       "Die Zusatzkosten konnten nicht revisionssicher protokolliert werden.",
     );
@@ -2304,7 +2311,7 @@ export async function cancelExtraChargeAction(formData: FormData) {
   const propertyId = formValue(formData, "propertyId");
   const chargeId = formValue(formData, "chargeId");
   const reason = normalizePlainText(formValue(formData, "reason"), 500);
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "abrechnung");
   if (
     !/^[0-9a-f-]{36}$/i.test(propertyId) ||
     !/^[0-9a-f-]{36}$/i.test(chargeId) ||
@@ -2361,7 +2368,7 @@ export async function cancelExtraChargeAction(formData: FormData) {
 export async function createAdminDamageAction(formData: FormData) {
   const { profile, admin } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "schaeden");
   const parsed = damageSchema.safeParse({
     buildingId: formValue(formData, "buildingId"),
     title: formValue(formData, "title"),
@@ -2540,7 +2547,7 @@ export async function updateDamageStatusAction(formData: FormData) {
     ].includes(status)
   ) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "schaeden"),
       "error",
       "Ungültiger Schadensstatus.",
     );
@@ -2557,7 +2564,7 @@ export async function updateDamageStatusAction(formData: FormData) {
     .eq("property_id", propertyId);
   if (error) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "schaeden"),
       "error",
       "Der Schadensstatus konnte nicht gespeichert werden.",
     );
@@ -2571,7 +2578,7 @@ export async function updateOperationalReportStatusAction(formData: FormData) {
   const reportId = formValue(formData, "reportId");
   const status = formValue(formData, "status");
   if (!reportId || !["new", "reviewing", "organized", "resolved"].includes(status)) {
-    go(`/admin/properties/${propertyId}`, "error", "Ungültiger Meldungsstatus.");
+    go(propertyViewPath(propertyId, "schaeden"), "error", "Ungültiger Meldungsstatus.");
   }
   const { error } = await admin
     .from("operational_reports")
@@ -2583,7 +2590,7 @@ export async function updateOperationalReportStatusAction(formData: FormData) {
     })
     .eq("id", reportId)
     .eq("property_id", propertyId);
-  if (error) go(`/admin/properties/${propertyId}`, "error", "Meldungsstatus konnte nicht gespeichert werden.");
+  if (error) go(propertyViewPath(propertyId, "schaeden"), "error", "Meldungsstatus konnte nicht gespeichert werden.");
   await admin.from("audit_logs").insert({
     actor_id: profile.id,
     action: "operational_report.status_changed",
@@ -2601,7 +2608,7 @@ export async function updateComplaintStatusAction(formData: FormData) {
   const status = formValue(formData, "status");
   const internalNote = normalizePlainText(formValue(formData, "internalNote"), 8_000);
   if (!complaintId || !["new", "in_review", "answered", "resolved"].includes(status)) {
-    go(`/admin/properties/${propertyId}`, "error", "Ungültiger Beschwerdestatus.");
+    go(propertyViewPath(propertyId, "schaeden"), "error", "Ungültiger Beschwerdestatus.");
   }
   const now = new Date().toISOString();
   const [{ error: complaintError }, { error: noteError }] = await Promise.all([
@@ -2624,7 +2631,7 @@ export async function updateComplaintStatusAction(formData: FormData) {
     ),
   ]);
   if (complaintError || noteError) {
-    go(`/admin/properties/${propertyId}`, "error", "Beschwerde konnte nicht aktualisiert werden.");
+    go(propertyViewPath(propertyId, "schaeden"), "error", "Beschwerde konnte nicht aktualisiert werden.");
   }
   await admin.from("audit_logs").insert({
     actor_id: profile.id,
@@ -2645,7 +2652,7 @@ export async function correctVisitTimeAction(formData: FormData) {
   const newCompletedAt = parseBerlinDateTimeLocal(formValue(formData, "completedAt"));
   if (!reason || reason.length < 5 || !newStartedAt || !newCompletedAt) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "einsaetze"),
       "error",
       "Zeitkorrekturen benötigen Start, Ende und eine Begründung.",
     );
@@ -2656,7 +2663,7 @@ export async function correctVisitTimeAction(formData: FormData) {
   );
   if (durationMinutes <= 0) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "einsaetze"),
       "error",
       "Das Einsatzende muss nach dem Start liegen.",
     );
@@ -2674,14 +2681,14 @@ export async function correctVisitTimeAction(formData: FormData) {
   );
   if (error || savedDuration !== durationMinutes) {
     go(
-      `/admin/properties/${propertyId}`,
+      propertyViewPath(propertyId, "einsaetze"),
       "error",
       "Die Zeitkorrektur konnte nicht gespeichert werden.",
     );
   }
   revalidatePath(`/admin/properties/${propertyId}`);
   go(
-    `/admin/properties/${propertyId}`,
+    propertyViewPath(propertyId, "einsaetze"),
     "status",
     "Die Einsatzzeit wurde korrigiert und revisionssicher protokolliert.",
   );
@@ -2689,6 +2696,11 @@ export async function correctVisitTimeAction(formData: FormData) {
 
 export async function updateCompanySettingsAction(formData: FormData) {
   const { profile, admin } = await requireAdminContext();
+  const requestedView = formValue(formData, "returnView");
+  const returnView = ["company", "billing"].includes(requestedView)
+    ? requestedView
+    : "company";
+  const fallback = `/admin/settings?view=${returnView}`;
   const parsed = companySettingsSchema.safeParse({
     legalName: formValue(formData, "legalName"),
     brandName: formValue(formData, "brandName"),
@@ -2713,8 +2725,26 @@ export async function updateCompanySettingsAction(formData: FormData) {
     invoiceEmailFrom: formValue(formData, "invoiceEmailFrom"),
     invoiceEmailReplyTo: formValue(formData, "invoiceEmailReplyTo"),
   });
-  if (!parsed.success)
-    go("/admin/settings", "error", firstZodError(parsed.error));
+  if (!parsed.success) {
+    const billingFields = new Set([
+      "bankName",
+      "iban",
+      "bic",
+      "paymentDueDays",
+      "invoicePrefix",
+      "defaultTaxRate",
+      "defaultHourlyRate",
+      "invoiceEmailFrom",
+      "invoiceEmailReplyTo",
+    ]);
+    const invalidField = String(parsed.error.issues[0]?.path[0] ?? "");
+    const errorView = billingFields.has(invalidField) ? "billing" : "company";
+    go(
+      `/admin/settings?view=${errorView}`,
+      "error",
+      firstZodError(parsed.error),
+    );
+  }
   const value = parsed.data;
   const { error } = await admin.from("company_settings").upsert(
     {
@@ -2746,7 +2776,7 @@ export async function updateCompanySettingsAction(formData: FormData) {
   );
   if (error)
     go(
-      "/admin/settings",
+      fallback,
       "error",
       "Unternehmenseinstellungen konnten nicht gespeichert werden.",
     );
@@ -2758,7 +2788,7 @@ export async function updateCompanySettingsAction(formData: FormData) {
   });
   revalidatePath("/admin/settings");
   go(
-    "/admin/settings",
+    fallback,
     "status",
     "Unternehmens- und Rechnungseinstellungen wurden gespeichert.",
   );
@@ -2777,7 +2807,7 @@ export async function updatePropertyAdminSettingsAction(formData: FormData) {
     internalNotes: formValue(formData, "internalNotes"),
     internalBriefing: formValue(formData, "internalBriefing"),
   });
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "uebersicht");
   if (!parsed.success) go(fallback, "error", firstZodError(parsed.error));
   const value = parsed.data;
   const monthlyFeeNetCents = parseEuroToCents(value.monthlyFee);
@@ -2851,7 +2881,7 @@ export async function updatePropertyAdminSettingsAction(formData: FormData) {
 export async function updatePropertyBillingProfileAction(formData: FormData) {
   const { profile, admin } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "abrechnung");
   const parsed = propertyBillingProfileSchema.safeParse({
     propertyId,
     recipientName: formValue(formData, "recipientName"),
@@ -2912,7 +2942,7 @@ export async function sendAdminPropertyMessageAction(
 ): Promise<PropertyMessageActionState> {
   const { profile, admin } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/admin/properties/${propertyId}`;
+  const fallback = propertyViewPath(propertyId, "chat");
   const parsed = messageSchema.safeParse({
     propertyId,
     body: formValue(formData, "body"),

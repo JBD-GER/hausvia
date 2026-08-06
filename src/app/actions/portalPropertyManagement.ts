@@ -94,7 +94,7 @@ function go(
   message: string,
 ): never {
   redirect(
-    `${propertyPath(propertyId)}?${key}=${encodeURIComponent(message)}#${anchor}`,
+    `${propertyPath(propertyId)}?view=${encodeURIComponent(anchor)}&${key}=${encodeURIComponent(message)}`,
   );
 }
 

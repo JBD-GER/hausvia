@@ -20,7 +20,8 @@ import {
 } from "@/lib/portal/validation";
 
 function go(path: string, key: "status" | "error", value: string): never {
-  redirect(`${path}?${key}=${encodeURIComponent(value)}`);
+  const separator = path.includes("?") ? "&" : "?";
+  redirect(`${path}${separator}${key}=${encodeURIComponent(value)}`);
 }
 
 export async function startVisitAction(formData: FormData) {
@@ -196,8 +197,9 @@ export async function createOperationalReportAction(formData: FormData) {
     title: formValue(formData, "title"),
     description: formValue(formData, "description"),
   });
-  const fallback = formValue(formData, "visitId")
-    ? `/app/visits/${formValue(formData, "visitId")}`
+  const visitId = formValue(formData, "visitId");
+  const fallback = visitId
+    ? `/app/visits/${visitId}?view=reports`
     : "/app/properties";
   if (!parsed.success) go(fallback, "error", firstZodError(parsed.error));
   const value = parsed.data;
@@ -338,7 +340,7 @@ export async function createOperationalReportAction(formData: FormData) {
       );
     }
   }
-  revalidatePath(fallback);
+  revalidatePath(visitId ? `/app/visits/${visitId}` : "/app/properties");
   go(fallback, "status", "Betriebliche Meldung wurde übermittelt.");
 }
 
@@ -351,7 +353,7 @@ export async function createEmployeeDamageAction(formData: FormData) {
     priority: formValue(formData, "priority") || "normal",
   });
   const visitId = formValue(formData, "visitId");
-  const fallback = visitId ? `/app/visits/${visitId}` : "/app/properties";
+  const fallback = visitId ? `/app/visits/${visitId}?view=reports` : "/app/properties";
   if (!parsed.success) go(fallback, "error", firstZodError(parsed.error));
   const image = formData.get("image");
   if (image instanceof File && image.size > 0) {
@@ -427,7 +429,7 @@ export async function createEmployeeDamageAction(formData: FormData) {
       await admin.storage.from("damage-attachments").remove([uploadedPath]);
     }
   }
-  revalidatePath(fallback);
+  revalidatePath(visitId ? `/app/visits/${visitId}` : "/app/properties");
   go(
     fallback,
     "status",

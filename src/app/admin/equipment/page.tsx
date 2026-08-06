@@ -11,6 +11,7 @@ import {
   uploadEquipmentPhotoAction,
 } from "@/app/actions/portalEquipmentAdmin";
 import {
+  CompactSection,
   EmptyState,
   Field,
   PageHeader,
@@ -18,7 +19,9 @@ import {
   StatusPill,
   buttonClass,
   inputClass,
+  secondaryButtonClass,
 } from "@/components/portal/PortalUI";
+import { PortalDialog } from "@/components/portal/PortalDialog";
 import { PaginationNav } from "@/components/portal/PaginationNav";
 import { requireAdminContext } from "@/lib/portal/access";
 import { formatCents, formatGermanDate } from "@/lib/portal/core";
@@ -96,6 +99,9 @@ export default async function AdminEquipmentPage({
   const condition = queryValue(params, "condition");
   const catalogStatus = queryValue(params, "catalogStatus");
   const sort = queryValue(params, "sort") || "newest";
+  const filtersActive = Boolean(
+    search || category || condition || catalogStatus || sort !== "newest",
+  );
   const { admin: supabase } = await requireAdminContext();
 
   const [
@@ -201,7 +207,110 @@ export default async function AdminEquipmentPage({
       <PageHeader
         eyebrow="Equipment"
         title="Equipment verwalten"
-        text="Geräte, Fotos, Zustände sowie aktive Mitarbeiter- und Einsatzzuweisungen zentral verwalten."
+        text="Bestände und Zuweisungen auf einen Blick. Neue Einträge und Detailpflege öffnen sich bei Bedarf."
+        actions={(
+          <PortalDialog
+            triggerLabel="Equipment anlegen"
+            title="Neues Equipment anlegen"
+            description="Erfassen Sie Bestand, Lagerort und optionale Miet- oder Fotodaten."
+            size="xl"
+          >
+            <form action={createEquipmentAction} className="grid gap-4 sm:grid-cols-2">
+              <Field label="Name">
+                <input name="name" required maxLength={180} className={inputClass} />
+              </Field>
+              <Field label="Kategorie">
+                <select name="category" required defaultValue="device" className={inputClass}>
+                  {Object.entries(categoryLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Interne Artikelnummer">
+                <input name="sku" maxLength={100} className={inputClass} />
+              </Field>
+              <Field label="Einheit">
+                <input
+                  name="unit"
+                  defaultValue="Stück"
+                  required
+                  maxLength={50}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Aktueller Bestand">
+                <input
+                  name="currentStock"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  defaultValue="0"
+                  required
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Mindestbestand">
+                <input
+                  name="minimumStock"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  defaultValue="0"
+                  required
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Zustand">
+                <select name="condition" defaultValue="available" className={inputClass}>
+                  {Object.entries(conditionLabels)
+                    .filter(([value]) => value !== "archived")
+                    .map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+              <Field label="Eigentum oder Miete">
+                <select name="ownershipType" defaultValue="owned" className={inputClass}>
+                  <option value="owned">Eigentum</option>
+                  <option value="rented">Miete</option>
+                </select>
+              </Field>
+              <Field label="Vermieter oder Lieferant">
+                <input name="supplier" maxLength={180} className={inputClass} />
+              </Field>
+              <Field label="Mietkosten netto">
+                <input
+                  name="rentalCost"
+                  inputMode="decimal"
+                  pattern="\d{1,9}([.,]\d{1,2})?"
+                  defaultValue="0,00"
+                  required
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Lagerort">
+                <input name="storageLocation" maxLength={180} className={inputClass} />
+              </Field>
+              <Field label="Foto (optional, max. 4 MB)">
+                <input
+                  name="photo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  className={inputClass}
+                />
+              </Field>
+              <label className="block sm:col-span-2">
+                <span className="text-sm font-bold text-slate-800">Beschreibung</span>
+                <textarea name="description" rows={3} maxLength={4_000} className={inputClass} />
+              </label>
+              <button className={`${buttonClass} sm:col-span-2`}>Equipment speichern</button>
+            </form>
+          </PortalDialog>
+        )}
       />
       {queryValue(params, "status") ? (
         <p
@@ -220,106 +329,13 @@ export default async function AdminEquipmentPage({
         </p>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[0.72fr_1.28fr]">
-        <div className="order-2 xl:order-1">
-          <Panel title="Equipment anlegen">
-          <form
-            action={createEquipmentAction}
-            className="grid gap-4 sm:grid-cols-2"
+      <div className="grid gap-4 sm:gap-5">
+          <CompactSection
+            title="Suchen und filtern"
+            description="Suche, Kategorie, Zustand, Katalogstatus und Sortierung"
+            badge={filtersActive ? <StatusPill tone="info">Filter aktiv</StatusPill> : null}
           >
-            <Field label="Name">
-              <input name="name" required maxLength={180} className={inputClass} />
-            </Field>
-            <Field label="Kategorie">
-              <select name="category" required defaultValue="device" className={inputClass}>
-                {Object.entries(categoryLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Interne Artikelnummer">
-              <input name="sku" maxLength={100} className={inputClass} />
-            </Field>
-            <Field label="Einheit">
-              <input name="unit" defaultValue="Stück" required maxLength={50} className={inputClass} />
-            </Field>
-            <Field label="Aktueller Bestand">
-              <input
-                name="currentStock"
-                type="number"
-                min="0"
-                step="0.001"
-                defaultValue="0"
-                required
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Mindestbestand">
-              <input
-                name="minimumStock"
-                type="number"
-                min="0"
-                step="0.001"
-                defaultValue="0"
-                required
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Zustand">
-              <select name="condition" defaultValue="available" className={inputClass}>
-                {Object.entries(conditionLabels)
-                  .filter(([value]) => value !== "archived")
-                  .map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label="Eigentum oder Miete">
-              <select name="ownershipType" defaultValue="owned" className={inputClass}>
-                <option value="owned">Eigentum</option>
-                <option value="rented">Miete</option>
-              </select>
-            </Field>
-            <Field label="Vermieter oder Lieferant">
-              <input name="supplier" maxLength={180} className={inputClass} />
-            </Field>
-            <Field label="Mietkosten netto">
-              <input
-                name="rentalCost"
-                inputMode="decimal"
-                pattern="\d{1,9}([.,]\d{1,2})?"
-                defaultValue="0,00"
-                required
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Lagerort">
-              <input name="storageLocation" maxLength={180} className={inputClass} />
-            </Field>
-            <Field label="Foto (optional, max. 4 MB)">
-              <input
-                name="photo"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                className={inputClass}
-              />
-            </Field>
-            <label className="block sm:col-span-2">
-              <span className="text-sm font-bold text-slate-800">Beschreibung</span>
-              <textarea name="description" rows={3} maxLength={4_000} className={inputClass} />
-            </label>
-            <button className={`${buttonClass} sm:col-span-2`}>Equipment speichern</button>
-          </form>
-          </Panel>
-        </div>
-
-        <div className="order-1 grid content-start gap-5 xl:order-2">
-          <Panel title="Suchen und filtern">
-            <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <form method="get" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <Field label="Suche">
                 <input
                   name="q"
@@ -366,17 +382,17 @@ export default async function AdminEquipmentPage({
                   <option value="stock-low">Niedrigster Bestand</option>
                 </select>
               </Field>
-              <div className="flex items-end gap-2">
+              <div className="flex flex-wrap items-end gap-2 sm:col-span-2 xl:col-span-5 xl:justify-self-end">
                 <button className={buttonClass}>Anwenden</button>
                 <Link
                   href="/admin/equipment"
-                  className="inline-flex min-h-11 items-center text-sm font-bold text-brand underline"
+                  className="inline-flex min-h-11 items-center px-2 text-sm font-bold text-brand underline"
                 >
                   Zurücksetzen
                 </Link>
               </div>
             </form>
-          </Panel>
+          </CompactSection>
 
           <Panel title={`Equipment-Katalog (${filteredEquipment.length})`}>
             {filteredEquipment.length ? (
@@ -413,13 +429,13 @@ export default async function AdminEquipmentPage({
                     return (
                       <article
                         key={item.id}
-                        className={`rounded-xl border p-4 ${
+                        className={`rounded-2xl border p-3.5 shadow-[0_8px_24px_rgba(8,43,97,0.04)] sm:p-4 ${
                           item.status === "archived"
                             ? "border-slate-300 bg-slate-100"
-                            : "border-slate-200 bg-slate-50"
+                            : "border-slate-200 bg-slate-50/80"
                         }`}
                       >
-                        <div className="grid gap-4 sm:grid-cols-[8rem_1fr]">
+                        <div className="grid grid-cols-[5.5rem_1fr] gap-3 sm:grid-cols-[7rem_1fr] sm:gap-4">
                           <div className="aspect-square overflow-hidden rounded-xl border border-slate-200 bg-white">
                             {imageUrl ? (
                               <a href={imageUrl} target="_blank" rel="noreferrer">
@@ -440,8 +456,10 @@ export default async function AdminEquipmentPage({
 
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div>
-                                <h2 className="font-extrabold text-slate-950">{item.name}</h2>
+                              <div className="min-w-0">
+                                <h2 className="break-words font-extrabold text-slate-950">
+                                  {item.name}
+                                </h2>
                                 <p className="mt-1 text-sm text-slate-650">
                                   {categoryLabels[item.category] ?? item.category} ·{" "}
                                   {item.sku || "ohne Artikelnummer"}
@@ -456,13 +474,13 @@ export default async function AdminEquipmentPage({
                                 </StatusPill>
                               </div>
                             </div>
-                            <p className="mt-3 text-sm leading-6 text-slate-700">
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-700">
                               {item.description || "Keine Beschreibung."}
                             </p>
                           </div>
                         </div>
 
-                        <dl className="mt-4 grid gap-2 rounded-lg bg-white p-3 text-sm sm:grid-cols-2">
+                        <dl className="mt-3 grid gap-2 rounded-xl border border-slate-100 bg-white p-3 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                           <div>
                             <dt className="font-bold text-slate-500">Bestand</dt>
                             <dd
@@ -515,14 +533,25 @@ export default async function AdminEquipmentPage({
                           </div>
                         </dl>
 
-                        <div className="mt-4 grid gap-3">
-                          <details className="rounded-xl border border-slate-200 bg-white p-3">
-                            <summary className="cursor-pointer font-extrabold text-slate-900">
-                              Stammdaten bearbeiten
-                            </summary>
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                          <PortalDialog
+                            triggerLabel="Equipment verwalten"
+                            triggerClassName={secondaryButtonClass}
+                            title={item.name}
+                            description={`${categoryLabels[item.category] ?? item.category} · ${
+                              item.sku || "ohne Artikelnummer"
+                            }`}
+                            size="wide"
+                          >
+                            <div className="grid gap-3 sm:gap-4">
+                              <CompactSection
+                                title="Stammdaten bearbeiten"
+                                description="Bestand, Lagerort, Beschreibung sowie Eigentums- oder Mietdaten"
+                                defaultOpen
+                              >
                             <form
                               action={updateEquipmentDetailsAction}
-                              className="mt-4 grid gap-3 sm:grid-cols-2"
+                              className="grid gap-3 sm:grid-cols-2"
                             >
                               <input type="hidden" name="equipmentId" value={item.id} />
                               <input
@@ -653,13 +682,13 @@ export default async function AdminEquipmentPage({
                                 Stammdaten speichern
                               </button>
                             </form>
-                          </details>
+                              </CompactSection>
 
-                          <details className="rounded-xl border border-slate-200 bg-white p-3">
-                            <summary className="cursor-pointer font-extrabold text-slate-900">
-                              Foto und Status bearbeiten
-                            </summary>
-                            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                              <CompactSection
+                                title="Foto und Status"
+                                description="Foto austauschen, Zustand aktualisieren oder Eintrag archivieren"
+                              >
+                            <div className="grid gap-4 lg:grid-cols-2">
                               <form
                                 action={uploadEquipmentPhotoAction}
                                 className="rounded-lg bg-slate-50 p-3"
@@ -739,13 +768,18 @@ export default async function AdminEquipmentPage({
                                 </form>
                               ) : null}
                             </div>
-                          </details>
+                              </CompactSection>
 
-                          <details className="rounded-xl border border-slate-200 bg-white p-3">
-                            <summary className="cursor-pointer font-extrabold text-slate-900">
-                              Mitarbeiterzuweisungen ({activeEmployeeAssignments.length})
-                            </summary>
-                            <div className="mt-4 grid gap-3">
+                              <CompactSection
+                                title="Mitarbeiterzuweisungen"
+                                description="Ausgabe und Rückgabe von Equipment dokumentieren"
+                                badge={(
+                                  <StatusPill tone="muted">
+                                    {activeEmployeeAssignments.length} aktiv
+                                  </StatusPill>
+                                )}
+                              >
+                            <div className="grid gap-3">
                               {activeEmployeeAssignments.map((assignment) => {
                                 const employee = employeeById.get(assignment.employee_id);
                                 return (
@@ -816,13 +850,18 @@ export default async function AdminEquipmentPage({
                                 </p>
                               )}
                             </div>
-                          </details>
+                              </CompactSection>
 
-                          <details className="rounded-xl border border-slate-200 bg-white p-3">
-                            <summary className="cursor-pointer font-extrabold text-slate-900">
-                              Konkrete Einsatzzuweisungen ({activeVisitAssignments.length})
-                            </summary>
-                            <div className="mt-4 grid gap-3">
+                              <CompactSection
+                                title="Konkrete Einsatzzuweisungen"
+                                description="Equipment geplanten oder laufenden Einsätzen zuordnen"
+                                badge={(
+                                  <StatusPill tone="muted">
+                                    {activeVisitAssignments.length} aktiv
+                                  </StatusPill>
+                                )}
+                              >
+                            <div className="grid gap-3">
                               {activeVisitAssignments.map((assignment) => {
                                 const visit = visitById.get(assignment.visit_id);
                                 if (!visit) return null;
@@ -952,7 +991,9 @@ export default async function AdminEquipmentPage({
                                 )
                               ) : null}
                             </div>
-                          </details>
+                              </CompactSection>
+                            </div>
+                          </PortalDialog>
                         </div>
                       </article>
                     );
@@ -979,7 +1020,6 @@ export default async function AdminEquipmentPage({
               />
             )}
           </Panel>
-        </div>
       </div>
     </>
   );

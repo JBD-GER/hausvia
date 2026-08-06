@@ -3,8 +3,6 @@ import {
   ArrowRight,
   Building2,
   CalendarCheck2,
-  CheckCircle2,
-  Clock3,
   ListChecks,
   MapPin,
   Navigation,
@@ -127,7 +125,9 @@ export default async function EmployeeDashboardPage() {
       <PageHeader
         eyebrow="Mein Arbeitstag"
         title={`${displayName(employee, profile.full_name)}, das steht heute an.`}
-        text={`${formattedToday} · Einsätze, Aufgaben und Arbeitszeit direkt griffbereit.`}
+        text={`${formattedToday} · der nächste sinnvolle Schritt steht oben.`}
+        icon={<CalendarCheck2 aria-hidden="true" size={20} />}
+        compact
       />
 
       {activeVisit ? (
@@ -183,7 +183,7 @@ export default async function EmployeeDashboardPage() {
       <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Link
           href="/app/today"
-          className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <CalendarCheck2 className="text-brand" size={22} aria-hidden="true" />
           <span className="mt-3 block font-black text-slate-950 group-hover:text-brand">
@@ -195,7 +195,7 @@ export default async function EmployeeDashboardPage() {
         </Link>
         <Link
           href="/app/properties"
-          className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <Building2 className="text-brand" size={22} aria-hidden="true" />
           <span className="mt-3 block font-black text-slate-950 group-hover:text-brand">
@@ -207,7 +207,7 @@ export default async function EmployeeDashboardPage() {
         </Link>
         <Link
           href="/app/time"
-          className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <TimerReset className="text-brand" size={22} aria-hidden="true" />
           <span className="mt-3 block font-black text-slate-950 group-hover:text-brand">
@@ -219,7 +219,7 @@ export default async function EmployeeDashboardPage() {
         </Link>
         <Link
           href="/app/orders"
-          className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-lg"
+          className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-brand hover:shadow-lg sm:p-4"
         >
           <ListChecks className="text-brand" size={22} aria-hidden="true" />
           <span className="mt-3 block font-black text-slate-950 group-hover:text-brand">
@@ -231,7 +231,7 @@ export default async function EmployeeDashboardPage() {
         </Link>
       </section>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+      <div className="mt-5">
         <Panel title="Nächste Einsätze">
           {upcomingVisits.length ? (
             <div className="grid gap-3">
@@ -328,40 +328,6 @@ export default async function EmployeeDashboardPage() {
           )}
         </Panel>
 
-        <aside className="grid content-start gap-5">
-          <section className="rounded-2xl bg-brand p-5 text-white shadow-lg">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15">
-              <Clock3 size={23} aria-hidden="true" />
-            </span>
-            <p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-white/65">
-              Arbeitszeit
-            </p>
-            <p className="mt-2 text-2xl font-black">Alles aktuell?</p>
-            <p className="mt-2 text-sm leading-6 text-white/75">
-              Prüfen Sie abgeschlossene Einsätze und dokumentierte Zeiten, bevor der Monat endet.
-            </p>
-            <Link
-              href="/app/time"
-              className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-brand transition hover:bg-brand-soft"
-            >
-              Zeiten ansehen <ArrowRight size={17} aria-hidden="true" />
-            </Link>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-              <CheckCircle2 size={21} aria-hidden="true" />
-            </span>
-            <p className="mt-4 text-lg font-black text-slate-950">
-              {completedMonthResult.error
-                ? "Ihre Einsätze"
-                : `${completedMonthResult.count ?? 0} Einsätze erledigt`}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Abgeschlossene Einsätze in diesem Monat werden automatisch in Ihrer Zeitübersicht gesammelt.
-            </p>
-          </section>
-        </aside>
       </div>
     </>
   );

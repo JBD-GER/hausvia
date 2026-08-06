@@ -638,12 +638,13 @@ export async function createInvoiceAction(formData: FormData) {
 export async function saveInvoiceAction(formData: FormData) {
   await requireProfile(["admin"]);
   const invoiceId = text(formData, "invoiceId");
-  const customerId = required(text(formData, "customerId"), invoiceId ? `/admin/invoices/${invoiceId}?error=customer` : "/admin/invoices?error=customer");
+  const invoiceContentPath = invoiceId ? `/admin/invoices/${invoiceId}?view=content` : "";
+  const customerId = required(text(formData, "customerId"), invoiceId ? `${invoiceContentPath}&error=customer` : "/admin/invoices?error=customer");
   const projectId = text(formData, "projectId") || null;
   const items = lineItemsFromForm(formData);
 
   if (!items.length) {
-    redirect(invoiceId ? `/admin/invoices/${invoiceId}?error=items` : "/admin/invoices?error=items");
+    redirect(invoiceId ? `${invoiceContentPath}&error=items` : "/admin/invoices?error=items");
   }
 
   const totals = calculateTotals(items);
@@ -658,10 +659,10 @@ export async function saveInvoiceAction(formData: FormData) {
       .eq("id", invoiceId)
       .maybeSingle();
     if (existingInvoiceError || !existingInvoice) {
-      redirect(`/admin/invoices/${invoiceId}?error=load`);
+      redirect(`${invoiceContentPath}&error=load`);
     }
     if (isInvoiceContentImmutable(existingInvoice)) {
-      redirect(`/admin/invoices/${invoiceId}?error=immutable`);
+      redirect(`${invoiceContentPath}&error=immutable`);
     }
   }
 
@@ -709,7 +710,7 @@ export async function saveInvoiceAction(formData: FormData) {
 
   revalidatePath("/admin/invoices");
   revalidatePath(`/admin/invoices/${savedInvoiceId}`);
-  redirect(`/admin/invoices/${savedInvoiceId}?status=saved`);
+  redirect(`/admin/invoices/${savedInvoiceId}?view=content&status=saved`);
 }
 
 export async function sendInvoiceAction(formData: FormData) {

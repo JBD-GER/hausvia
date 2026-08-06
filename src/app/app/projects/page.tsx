@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { PageHeader, Panel, EmptyState, StatusPill, buttonClass } from "@/components/portal/PortalUI";
+import { BriefcaseBusiness } from "lucide-react";
+import { CompactSection, PageHeader, EmptyState, StatusPill, buttonClass } from "@/components/portal/PortalUI";
 import { asText, firstRelation } from "@/lib/portal/format";
 import { requireProfile } from "@/lib/supabase/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -15,23 +16,31 @@ export default async function EmployeeProjectsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Projekte" title="Zugewiesene Objekte" text="Tätigkeiten, Intervalle und Mitarbeiteranweisungen ohne Preise oder Kundendokumente." />
-      <Panel title="Projektliste">
+      <PageHeader
+        eyebrow="Projekte"
+        title="Zugewiesene Projekte"
+        text="Briefing und Aufgaben öffnen Sie nur für das Projekt, an dem Sie gerade arbeiten."
+        icon={<BriefcaseBusiness aria-hidden="true" size={20} />}
+        compact
+      />
+      <div className="grid gap-3">
         {assignments?.length ? (
-          <div className="grid gap-4">
-            {assignments.map((assignment) => {
-              const project = firstRelation(assignment.projects);
-              return (
-                <article key={project?.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          assignments.map((assignment) => {
+            const project = firstRelation(assignment.projects);
+            return (
+              <CompactSection
+                key={project?.id}
+                title={asText(project?.name)}
+                description={asText(project?.object_address)}
+                badge={<StatusPill>{asText(project?.status)}</StatusPill>}
+              >
+                <article>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-extrabold text-slate-950">{asText(project?.name)}</p>
-                      <p className="mt-1 text-sm text-slate-650">{asText(project?.object_address)}</p>
-                      <p className="mt-3 rounded-md bg-white p-3 text-sm font-semibold leading-6 text-slate-700">
+                      <p className="rounded-xl bg-brand-soft p-3 text-sm font-semibold leading-6 text-slate-700">
                         {asText(firstRelation(project?.project_employee_briefings)?.employee_instructions || "Keine besonderen Mitarbeiteranweisungen hinterlegt.")}
                       </p>
                     </div>
-                    <StatusPill>{asText(project?.status)}</StatusPill>
                   </div>
                   <div className="mt-4 grid gap-2">
                     {(project?.project_tasks ?? []).map((task: { id: string; title: string; interval_label: string; seasonal: boolean; project_task_employee_notes: { employee_notes: string | null } | { employee_notes: string | null }[] | null }) => (
@@ -44,13 +53,13 @@ export default async function EmployeeProjectsPage() {
                   </div>
                   <Link href="/app/today" className={`${buttonClass} mt-4`}>Geplante Einsätze öffnen</Link>
                 </article>
-              );
-            })}
-          </div>
+              </CompactSection>
+            );
+          })
         ) : (
           <EmptyState title="Keine Projekte" text="Sobald Sie zugewiesen sind, erscheinen die Objekte hier." />
         )}
-      </Panel>
+      </div>
     </>
   );
 }

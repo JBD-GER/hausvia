@@ -48,6 +48,7 @@ import {
 import { PropertyChat } from "@/components/portal/PropertyChat";
 import { PropertyRealtimeRefresh } from "@/components/portal/PropertyRealtimeRefresh";
 import { ServiceCatalogSelect } from "@/components/portal/ServiceCatalogSelect";
+import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
   EmptyState,
   Field,
@@ -609,6 +610,20 @@ export default async function AdminPropertyDetailPage({
     String(customer?.billing_country || "Deutschland");
   const billingEmail = billingProfile?.email || String(customer?.email || "");
   const taxRateBps = Number(adminSettings?.tax_rate_bps || 1900);
+  const availableViews = new Set([
+    "uebersicht",
+    "gebaeude",
+    "leistungen",
+    "einsaetze",
+    "schaeden",
+    "team",
+    "chat",
+    "abrechnung",
+  ]);
+  const requestedView = queryValue(query, "view");
+  const activeView = availableViews.has(requestedView)
+    ? requestedView
+    : "uebersicht";
 
   return (
     <>
@@ -635,31 +650,27 @@ export default async function AdminPropertyDetailPage({
         </p>
       ) : null}
 
-      <nav
-        className="mb-5 flex gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm"
-        aria-label="Bereiche der Immobilie"
-      >
-        {[
+      <PortalTabs
+        activeId={activeView}
+        label="Bereiche der Immobilie"
+        items={[
           ["uebersicht", "Übersicht"],
           ["gebaeude", "Gebäude"],
           ["leistungen", "Leistungen"],
           ["einsaetze", "Einsätze"],
-          ["schaeden", "Schäden & Meldungen"],
+          ["schaeden", "Meldungen"],
           ["team", "Team & Equipment"],
           ["chat", "Chat"],
           ["abrechnung", "Abrechnung"],
-        ].map(([anchor, label]) => (
-          <a
-            key={anchor}
-            href={`#${anchor}`}
-            className="min-h-10 shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-slate-650 hover:bg-brand-soft hover:text-brand"
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
+        ].map(([view, label]) => ({
+          id: view,
+          label,
+          href: `/admin/properties/${id}?view=${view}`,
+        }))}
+      />
 
       <div className="grid gap-5">
+        {activeView === "uebersicht" ? (
         <section id="uebersicht" className="scroll-mt-24">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
@@ -1241,7 +1252,9 @@ export default async function AdminPropertyDetailPage({
             </Panel>
           </div>
         </section>
+        ) : null}
 
+        {activeView === "gebaeude" ? (
         <section id="gebaeude" className="scroll-mt-24">
           <Panel title="Gebäude und öffentliche QR-Codes">
             {(buildings ?? []).length ? (
@@ -1514,7 +1527,9 @@ export default async function AdminPropertyDetailPage({
 
           </Panel>
         </section>
+        ) : null}
 
+        {activeView === "leistungen" ? (
         <section id="leistungen" className="scroll-mt-24">
           <Panel title="Leistungen">
             {propertyReadOnly ? (
@@ -2163,7 +2178,9 @@ export default async function AdminPropertyDetailPage({
             </fieldset>
           </Panel>
         </section>
+        ) : null}
 
+        {activeView === "einsaetze" ? (
         <section id="einsaetze" className="scroll-mt-24">
           <Panel title="Besuchspläne und Einsätze">
             {propertyReadOnly ? (
@@ -3152,7 +3169,9 @@ export default async function AdminPropertyDetailPage({
             ) : null}
           </Panel>
         </section>
+        ) : null}
 
+        {activeView === "schaeden" ? (
         <section id="schaeden" className="scroll-mt-24">
           <Panel title="Schäden und betriebliche Meldungen">
             <div className="grid gap-5 lg:grid-cols-2">
@@ -3500,7 +3519,9 @@ export default async function AdminPropertyDetailPage({
             </div>
           </Panel>
         </section>
+        ) : null}
 
+        {activeView === "team" ? (
         <section id="team" className="scroll-mt-24">
           <Panel title="Team und Equipment">
             {propertyReadOnly ? (
@@ -3870,7 +3891,9 @@ export default async function AdminPropertyDetailPage({
             </fieldset>
           </Panel>
         </section>
+        ) : null}
 
+        {activeView === "chat" ? (
         <section id="chat" className="scroll-mt-24">
           <Panel title="Immobilien-Chat">
             <PropertyChat
@@ -3883,7 +3906,9 @@ export default async function AdminPropertyDetailPage({
             />
           </Panel>
         </section>
+        ) : null}
 
+        {activeView === "abrechnung" ? (
         <section id="abrechnung" className="scroll-mt-24">
           <Panel title="Abrechnung">
             <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -4173,6 +4198,7 @@ export default async function AdminPropertyDetailPage({
             </div>
           </Panel>
         </section>
+        ) : null}
       </div>
     </>
   );

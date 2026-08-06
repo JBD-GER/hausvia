@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { EmptyState, PageHeader, Panel, StatusPill, buttonClass } from "@/components/portal/PortalUI";
+import { Clock3 } from "lucide-react";
+import { CompactSection, EmptyState, PageHeader, StatusPill, buttonClass } from "@/components/portal/PortalUI";
 import { asText, firstRelation, formatDateTime } from "@/lib/portal/format";
 import { requireProfile } from "@/lib/supabase/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -17,23 +18,32 @@ export default async function EmployeeShiftsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Schichten" title="Zeiterfassung" text="Schicht starten, Ende eintragen, Tätigkeiten abhaken und zur Prüfung einreichen." />
-      <Panel title="Eigene Schichten">
+      <PageHeader
+        eyebrow="Schichten"
+        title="Erfasste Zeiten"
+        text="Vergangene Schichten kompakt nach Projekt."
+        icon={<Clock3 aria-hidden="true" size={20} />}
+        compact
+        actions={<Link href="/app/today" className={buttonClass}>Aktuelle Einsätze</Link>}
+      />
+      <div className="grid gap-3">
         {shifts?.length ? (
-          <div className="grid gap-4">
-            {shifts.map((shift) => {
-              const projectTasks = (tasks ?? []).filter((task) => task.project_id === shift.project_id);
-              return (
-                <article key={shift.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          shifts.map((shift) => {
+            const projectTasks = (tasks ?? []).filter((task) => task.project_id === shift.project_id);
+            return (
+              <CompactSection
+                key={shift.id}
+                title={asText(firstRelation(shift.projects)?.name)}
+                description={formatDateTime(shift.started_at)}
+                badge={<StatusPill>{shift.status}</StatusPill>}
+              >
+                <article>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-extrabold text-slate-950">{asText(firstRelation(shift.projects)?.name)}</p>
-                      <p className="mt-1 text-sm text-slate-650">{formatDateTime(shift.started_at)}</p>
                       <p className="mt-1 text-sm text-slate-650">
                         Brutto {shift.gross_minutes} Min · Pause {shift.break_minutes} Min · Netto {shift.net_minutes} Min
                       </p>
                     </div>
-                    <StatusPill>{shift.status}</StatusPill>
                   </div>
                   {projectTasks.length ? (
                     <p className="mt-3 text-xs font-bold text-slate-500">
@@ -44,15 +54,12 @@ export default async function EmployeeShiftsPage() {
                     {asText(firstRelation(shift.shift_employee_notes)?.employee_note || "Keine Notiz hinterlegt.")}
                   </p>
                 </article>
-              );
-            })}
-          </div>
+              </CompactSection>
+            );
+          })
         ) : (
           <EmptyState title="Keine Schichten" text="Starten Sie eine Schicht direkt in der Projektansicht." />
         )}
-      </Panel>
-      <div className="mt-5">
-        <Link href="/app/today" className={buttonClass}>Aktuelle Einsätze öffnen</Link>
       </div>
     </>
   );
