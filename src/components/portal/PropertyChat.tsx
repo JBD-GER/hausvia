@@ -83,10 +83,10 @@ export type PropertyChatMessage = {
   message_reads?: MessageRead[] | null;
 };
 
-const roleBadgeClasses: Record<AppRole, string> = {
-  admin: "border-brand/15 bg-brand text-white",
-  employee: "border-[#08AEB4]/25 bg-[#DDF7F6] text-[#056C71]",
-  customer: "border-[#F5C542]/45 bg-[#FFF5C7] text-[#715500]",
+const roleLabelClasses: Record<AppRole, string> = {
+  admin: "text-brand",
+  employee: "text-[#05777C]",
+  customer: "text-[#806000]",
 };
 
 const roleAvatarClasses: Record<AppRole, string> = {
@@ -117,13 +117,13 @@ function Attachment({
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="mt-3 block w-fit max-w-full"
+        className="mt-2.5 block w-fit max-w-full"
       >
         <img
           src={url}
           alt={attachment.filename}
           loading="lazy"
-          className="max-h-72 max-w-full rounded-xl border border-slate-200 bg-white object-contain"
+          className="block h-auto max-h-56 w-auto max-w-full rounded-xl object-contain sm:max-h-64 sm:max-w-[20rem]"
         />
       </a>
     );
@@ -134,7 +134,7 @@ function Attachment({
       <video
         controls
         preload="metadata"
-        className="mt-3 max-h-72 w-full rounded-xl border border-slate-200 bg-black"
+        className="mt-2.5 max-h-64 w-full max-w-[22rem] rounded-xl border border-slate-200 bg-black"
       >
         <source src={url} type={attachment.mime_type} />
         Ihr Browser kann dieses Video nicht wiedergeben.
@@ -167,7 +167,13 @@ function ReactionPicker({
   align: "left" | "right";
 }) {
   return (
-    <details className="group/reactions relative shrink-0">
+    <details
+      className={`group/reactions absolute bottom-0 z-20 shrink-0 ${
+        align === "right"
+          ? "right-[calc(100%+0.5rem)]"
+          : "left-[calc(100%+0.5rem)]"
+      }`}
+    >
       <summary
         aria-label="Auf Nachricht reagieren"
         className="grid size-9 cursor-pointer list-none place-items-center rounded-full border border-slate-200 bg-white text-slate-500 opacity-100 shadow-sm transition hover:border-brand/30 hover:bg-brand-soft hover:text-brand sm:opacity-0 sm:group-hover:opacity-100 [&::-webkit-details-marker]:hidden"
@@ -176,7 +182,7 @@ function ReactionPicker({
       </summary>
       <div
         className={`absolute bottom-11 z-20 flex gap-1 rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_14px_35px_rgba(8,43,97,0.18)] ${
-          align === "right" ? "right-0" : "left-0"
+          align === "right" ? "left-0" : "right-0"
         }`}
       >
         {ALLOWED_REACTIONS.map((emoji) => {
@@ -387,9 +393,9 @@ export function PropertyChat({
         aria-live="polite"
         aria-relevant="additions"
         aria-label={`Nachrichten im Gruppenchat ${propertyName}`}
-        className="h-[min(62dvh,42rem)] min-h-[26rem] overflow-y-auto scroll-smooth bg-[#edf3f5] [background-image:radial-gradient(rgba(8,43,97,0.055)_1px,transparent_1px)] [background-size:18px_18px]"
+        className="h-[min(58dvh,38rem)] min-h-[24rem] overflow-y-auto scroll-smooth bg-[#edf3f5] [background-image:radial-gradient(rgba(8,43,97,0.055)_1px,transparent_1px)] [background-size:18px_18px]"
       >
-        <div className="mx-auto flex min-h-full max-w-5xl flex-col justify-end gap-2.5 px-2.5 py-4 sm:px-5 sm:py-6">
+        <div className="flex min-h-full w-full flex-col gap-2.5 px-2.5 py-4 sm:px-5 sm:py-5">
           {messages.length ? (
             messages.map((message, index) => {
               const previousMessage = messages[index - 1];
@@ -405,6 +411,11 @@ export function PropertyChat({
                 role: senderRole,
                 isCurrentUser,
               });
+              const senderRoleLabel = chatRoleLabel(senderRole);
+              const showRoleSuffix =
+                isCurrentUser || senderName !== senderRoleLabel;
+              const attachments = message.message_attachments ?? [];
+              const hasAttachments = attachments.length > 0;
               const reactionCounts = new Map<string, number>();
               for (const reaction of message.message_reactions ?? []) {
                 reactionCounts.set(
@@ -414,7 +425,7 @@ export function PropertyChat({
               }
 
               return (
-                <div key={message.id}>
+                <div key={message.id} className="w-full">
                   {showDay ? (
                     <div className="my-3 flex justify-center first:mt-0">
                       <time
@@ -457,48 +468,54 @@ export function PropertyChat({
                         </span>
                       ) : null}
 
-                      {!readOnly && isCurrentUser ? (
-                        <ReactionPicker
-                          propertyId={propertyId}
-                          message={message}
-                          currentUserId={currentUserId}
-                          align="right"
-                        />
-                      ) : null}
-
                       <article
-                        className={`relative max-w-[84%] rounded-2xl border px-3 py-2.5 shadow-[0_2px_8px_rgba(8,43,97,0.08)] sm:max-w-[72%] sm:px-3.5 ${
+                        className={`relative min-w-0 w-fit rounded-2xl border px-3 py-2.5 shadow-[0_2px_8px_rgba(8,43,97,0.08)] sm:max-w-[26rem] sm:px-3.5 ${
+                          isCurrentUser
+                            ? "max-w-[88%]"
+                            : "max-w-[calc(100%-2.75rem)]"
+                        } ${
                           isCurrentUser
                             ? "rounded-br-md border-[#08AEB4]/25 bg-[#DDF7F1]"
                             : "rounded-bl-md border-white bg-white"
                         }`}
                       >
-                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                          <span className="text-[0.7rem] font-black text-slate-800">
+                        <div className="mb-1.5 flex min-w-0 items-center gap-1 text-[0.68rem] font-extrabold leading-none">
+                          <span className="truncate text-slate-800">
                             {senderName}
                           </span>
-                          <span
-                            className={`inline-flex min-h-5 items-center rounded-full border px-2 text-[0.58rem] font-black uppercase tracking-[0.08em] ${
-                              senderRole
-                                ? roleBadgeClasses[senderRole]
-                                : "border-slate-200 bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {chatRoleLabel(senderRole)}
-                          </span>
+                          {showRoleSuffix ? (
+                            <>
+                              <span aria-hidden="true" className="text-slate-300">·</span>
+                              <span
+                                className={
+                                  senderRole
+                                    ? roleLabelClasses[senderRole]
+                                    : "text-slate-500"
+                                }
+                              >
+                                {senderRoleLabel}
+                              </span>
+                            </>
+                          ) : null}
                         </div>
 
-                        <p className="whitespace-pre-wrap text-sm leading-5 text-slate-900 [overflow-wrap:anywhere] sm:leading-6">
-                          {message.body}
-                        </p>
-
-                        {message.message_attachments?.map((attachment) => (
+                        {attachments.map((attachment) => (
                           <Attachment
                             key={attachment.id}
                             attachment={attachment}
                             url={signedAttachmentUrls[attachment.id]}
                           />
                         ))}
+
+                        {message.body.trim() ? (
+                          <p
+                            className={`whitespace-pre-wrap text-sm leading-5 text-slate-900 [overflow-wrap:anywhere] sm:leading-6 ${
+                              hasAttachments ? "mt-2.5" : ""
+                            }`}
+                          >
+                            {message.body}
+                          </p>
+                        ) : null}
 
                         {reactionCounts.size ? (
                           <div className="mt-2 flex flex-wrap gap-1" aria-label="Reaktionen">
@@ -538,16 +555,16 @@ export function PropertyChat({
                             />
                           ) : null}
                         </div>
-                      </article>
 
-                      {!readOnly && !isCurrentUser ? (
-                        <ReactionPicker
-                          propertyId={propertyId}
-                          message={message}
-                          currentUserId={currentUserId}
-                          align="left"
-                        />
-                      ) : null}
+                        {!readOnly ? (
+                          <ReactionPicker
+                            propertyId={propertyId}
+                            message={message}
+                            currentUserId={currentUserId}
+                            align={isCurrentUser ? "right" : "left"}
+                          />
+                        ) : null}
+                      </article>
                     </div>
                   )}
                 </div>
