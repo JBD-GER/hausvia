@@ -24,7 +24,7 @@ import {
 import { faqSchema, graph, itemListSchema, metadataForPage, serviceSchema, webPageSchema } from "@/lib/seo";
 
 export const metadata: Metadata = metadataForPage({
-  title: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",
+  title: "Hausmeisterservice Hannover | Hausvia",
   description:
     "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung. Jetzt Bedarf online zusammenstellen und kostenlos anfragen.",
   path: "/",
@@ -37,7 +37,7 @@ export default function Home() {
     <main>
       <Hero
         eyebrow="Hausvia Hausmeisterservice"
-        title="Hausmeisterservice in Hannover – zuverlässige Objektbetreuung mit Hausvia"
+        title="Hausmeisterservice in Hannover – zuverlässig, digital und vor Ort"
         text="Hausvia unterstützt Hausverwaltungen, Eigentümer und Gewerbekunden bei der laufenden Pflege, Kontrolle und Betreuung von Immobilien in Hannover und Umgebung."
         image={ASSETS.hero}
         imageAlt="Hausvia Team für Hausmeisterservice in Hannover bei der Treppenhausreinigung"
@@ -188,7 +188,7 @@ export default function Home() {
       <SEOJsonLd
         data={graph([
           webPageSchema({
-            name: "Hausmeisterservice in Hannover - Hausvia",
+            name: "Hausmeisterservice Hannover | Hausvia",
             description:
               "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung.",
             path: "/",

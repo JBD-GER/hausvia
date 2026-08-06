@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   creator: SITE.name,
   publisher: SITE.name,
   title: {
-    default: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",
+    default: "Hausmeisterservice Hannover | Hausvia",
     template: "%s",
   },
   description:
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     apple: [{ url: ASSETS.appleIcon, type: "image/png", sizes: "180x180" }],
   },
   openGraph: {
-    title: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",
+    title: "Hausmeisterservice Hannover | Hausvia",
     description:
       "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung.",
     url: SITE.url,
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hausmeisterservice Hannover | Objektbetreuung mit Hausvia",
+    title: "Hausmeisterservice Hannover | Hausvia",
     description:
       "Hausvia bietet Hausmeisterservice, Objektbetreuung und Gebäudeservice in Hannover und Umgebung.",
     images: [absoluteUrl(ASSETS.hero)],
