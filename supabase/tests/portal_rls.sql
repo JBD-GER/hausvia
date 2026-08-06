@@ -294,6 +294,17 @@ insert into public.visit_task_instructions (
   'RLS GEHEIME INTERNE ANWEISUNG'
 );
 
+insert into public.visit_task_attachments (
+  id, visit_task_id, bucket, path, filename, mime_type, uploaded_by
+) values (
+  'f3100000-0000-0000-0000-000000000001',
+  'f3000000-0000-0000-0000-000000000001',
+  'visit-task-attachments',
+  '30000000-0000-0000-0000-000000000001/f0000000-0000-0000-0000-000000000001/f3000000-0000-0000-0000-000000000001/live.jpg',
+  'live.jpg', 'image/jpeg',
+  '30000000-0000-0000-0000-000000000001'
+);
+
 insert into public.property_messages (
   id, property_id, sender_id, sender_display_name, message_type, body
 ) values
@@ -372,6 +383,18 @@ select public.__portal_test_assert(
 select public.__portal_test_assert(
   (select count(*) = 0 from public.visit_admin_metrics),
   'customer must not read internal visit metrics or operational snapshots'
+);
+select public.__portal_test_assert(
+  (select count(*) = 1 from public.visit_tasks),
+  'customer must read its customer-visible planned calendar task'
+);
+select public.__portal_test_assert(
+  (select count(*) = 0 from public.visit_task_instructions),
+  'customer must not read internal task instructions'
+);
+select public.__portal_test_assert(
+  (select count(*) = 0 from public.visit_task_attachments),
+  'customer must not read task evidence before visit completion'
 );
 select public.__portal_test_assert(
   (select count(*) = 1 from public.property_billing_profiles),
@@ -577,7 +600,8 @@ select public.__portal_test_assert(
   'repeated start_visit must not duplicate tasks'
 );
 
--- The same task remains hidden from the customer while the visit is live.
+-- The customer-safe task remains visible while the visit is live, but its
+-- status can still only be changed by an employee or admin.
 select set_config(
   'request.jwt.claims',
   '{"sub":"20000000-0000-0000-0000-000000000001","role":"authenticated"}',
@@ -585,8 +609,12 @@ select set_config(
 );
 select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000001', true);
 select public.__portal_test_assert(
-  (select count(*) = 0 from public.visit_tasks where visit_id = 'f0000000-0000-0000-0000-000000000001'),
-  'customer must not read live visit tasks'
+  (select count(*) = 1 from public.visit_tasks where visit_id = 'f0000000-0000-0000-0000-000000000001'),
+  'customer must read its customer-visible live visit task'
+);
+select public.__portal_test_assert(
+  (select count(*) = 0 from public.visit_task_attachments),
+  'customer must not read live employee task evidence'
 );
 update public.visit_tasks
 set status = 'done'
@@ -691,6 +719,10 @@ select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000001
 select public.__portal_test_assert(
   (select count(*) = 1 from public.visit_tasks where visit_id = 'f0000000-0000-0000-0000-000000000001'),
   'customer must read customer-visible tasks of completed visit'
+);
+select public.__portal_test_assert(
+  (select count(*) = 1 from public.visit_task_attachments),
+  'customer may read customer-visible task evidence only after visit completion'
 );
 select public.__portal_test_assert_fails(
   $$select public.complete_visit('f0000000-0000-0000-0000-000000000001')$$,

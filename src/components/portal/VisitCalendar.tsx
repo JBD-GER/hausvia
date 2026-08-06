@@ -36,6 +36,7 @@ export type VisitCalendarEvent = {
   planLabel: string;
   employeeName: string;
   taskCount: number;
+  propertyName?: string | null;
 };
 
 export type VisitCalendarProps = {
@@ -45,6 +46,7 @@ export type VisitCalendarProps = {
   today: string;
   selectedVisitId?: string | null;
   baseHref: string;
+  sectionView?: string | null;
   className?: string;
 };
 
@@ -110,6 +112,7 @@ function normalizeEvents(events: readonly VisitCalendarEvent[]) {
       status: event.status.trim(),
       planLabel: event.planLabel.trim() || "Einsatz",
       employeeName: event.employeeName.trim() || "Noch nicht zugewiesen",
+      propertyName: event.propertyName?.trim() || null,
       taskCount: Number.isFinite(event.taskCount)
         ? Math.max(0, Math.trunc(event.taskCount))
         : 0,
@@ -139,12 +142,14 @@ function CalendarEventLink({
   event,
   view,
   baseHref,
+  sectionView,
   selected,
   variant,
 }: {
   event: NormalizedCalendarEvent;
   view: VisitCalendarView;
   baseHref: string;
+  sectionView: string | null;
   selected: boolean;
   variant: "month" | "week" | "mobile";
 }) {
@@ -154,8 +159,10 @@ function CalendarEventLink({
     view,
     calendarDate: event.date,
     visitId: event.id,
+    sectionView,
   });
-  const accessibleLabel = `${formatVisitCalendarFullDate(event.date)}, ${event.timeLabel}, ${event.planLabel}, ${event.employeeName}, ${tasksLabel(event.taskCount)}, ${event.statusLabel}`;
+  const eventTitle = event.propertyName ?? event.planLabel;
+  const accessibleLabel = `${formatVisitCalendarFullDate(event.date)}, ${event.timeLabel}, ${event.propertyName ? `${event.propertyName}, ` : ""}${event.planLabel}, ${event.employeeName}, ${tasksLabel(event.taskCount)}, ${event.statusLabel}`;
 
   if (variant === "month") {
     return (
@@ -172,10 +179,10 @@ function CalendarEventLink({
         <span className="flex min-w-0 items-center gap-1.5 text-[0.72rem] font-black leading-4">
           <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${presentation.dot}`} />
           <span className="shrink-0 tabular-nums">{event.timeLabel}</span>
-          <span className="truncate">{event.planLabel}</span>
+          <span className="truncate">{eventTitle}</span>
         </span>
         <span className="mt-0.5 block truncate pl-3 text-[0.65rem] font-bold leading-4 opacity-75">
-          {event.employeeName} · {tasksLabel(event.taskCount)}
+          {event.propertyName ? event.planLabel : event.employeeName} · {tasksLabel(event.taskCount)}
         </span>
       </Link>
     );
@@ -199,7 +206,7 @@ function CalendarEventLink({
             {event.timeLabel}
           </span>
           <span className="mt-1 block truncate text-sm font-black text-slate-950">
-            {event.planLabel}
+            {eventTitle}
           </span>
         </span>
         <span
@@ -212,7 +219,9 @@ function CalendarEventLink({
       <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold opacity-75">
         <span className="inline-flex min-w-0 items-center gap-1">
           <UserRound aria-hidden="true" size={13} className="shrink-0" />
-          <span className="truncate">{event.employeeName}</span>
+          <span className="truncate">
+            {event.propertyName ? event.planLabel : event.employeeName}
+          </span>
         </span>
         <span className="inline-flex items-center gap-1">
           <ListChecks aria-hidden="true" size={13} />
@@ -231,6 +240,7 @@ function DesktopCalendar({
   today,
   selectedVisitId,
   baseHref,
+  sectionView,
 }: {
   dates: string[];
   eventsByDate: Map<string, NormalizedCalendarEvent[]>;
@@ -239,6 +249,7 @@ function DesktopCalendar({
   today: string;
   selectedVisitId: string | null;
   baseHref: string;
+  sectionView: string | null;
 }) {
   const weeks = Array.from({ length: dates.length / 7 }, (_, index) =>
     dates.slice(index * 7, index * 7 + 7),
@@ -295,6 +306,7 @@ function DesktopCalendar({
                               view,
                               calendarDate: date,
                               visitId: directVisitId,
+                              sectionView,
                             })}
                             prefetch={false}
                             scroll={false}
@@ -326,6 +338,7 @@ function DesktopCalendar({
                               event={event}
                               view={view}
                               baseHref={baseHref}
+                              sectionView={sectionView}
                               selected={event.id === selectedVisitId}
                               variant={view === "month" ? "month" : "week"}
                             />
@@ -336,6 +349,7 @@ function DesktopCalendar({
                                 baseHref,
                                 view: "week",
                                 calendarDate: date,
+                                sectionView,
                               })}
                               prefetch={false}
                               scroll={false}
@@ -366,6 +380,7 @@ function MobileDatePicker({
   today,
   eventsByDate,
   baseHref,
+  sectionView,
 }: {
   dates: string[];
   view: VisitCalendarView;
@@ -373,6 +388,7 @@ function MobileDatePicker({
   today: string;
   eventsByDate: Map<string, NormalizedCalendarEvent[]>;
   baseHref: string;
+  sectionView: string | null;
 }) {
   if (view === "week") {
     return (
@@ -391,6 +407,7 @@ function MobileDatePicker({
                 view,
                 calendarDate: date,
                 visitId: directVisitId,
+                sectionView,
               })}
               prefetch={false}
               scroll={false}
@@ -451,6 +468,7 @@ function MobileDatePicker({
                 view,
                 calendarDate: date,
                 visitId: directVisitId,
+                sectionView,
               })}
               prefetch={false}
               scroll={false}
@@ -491,6 +509,7 @@ function MobileCalendar({
   today,
   selectedVisitId,
   baseHref,
+  sectionView,
 }: {
   dates: string[];
   eventsByDate: Map<string, NormalizedCalendarEvent[]>;
@@ -499,6 +518,7 @@ function MobileCalendar({
   today: string;
   selectedVisitId: string | null;
   baseHref: string;
+  sectionView: string | null;
 }) {
   const selectedDateEvents = eventsByDate.get(calendarDate) ?? [];
   const pickerDates =
@@ -518,6 +538,7 @@ function MobileCalendar({
         today={today}
         eventsByDate={eventsByDate}
         baseHref={baseHref}
+        sectionView={sectionView}
       />
 
       <div className="mt-5 border-t border-slate-100 pt-4">
@@ -543,6 +564,7 @@ function MobileCalendar({
                 event={event}
                 view={view}
                 baseHref={baseHref}
+                sectionView={sectionView}
                 selected={event.id === selectedVisitId}
                 variant="mobile"
               />
@@ -553,7 +575,7 @@ function MobileCalendar({
             <CalendarDays aria-hidden="true" className="mx-auto text-slate-300" size={25} />
             <p className="mt-2 text-sm font-black text-slate-700">Kein Einsatz an diesem Tag</p>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Wählen Sie einen anderen Kalendertag oder legen Sie einen neuen Termin an.
+              Wählen Sie einen anderen Kalendertag, um weitere Einsätze zu sehen.
             </p>
           </div>
         )}
@@ -569,6 +591,7 @@ export function VisitCalendar({
   today: requestedToday,
   selectedVisitId = null,
   baseHref,
+  sectionView = "einsaetze",
   className = "",
 }: VisitCalendarProps) {
   const today = normalizeCalendarDate(requestedToday, requestedToday);
@@ -619,6 +642,7 @@ export function VisitCalendar({
                   baseHref,
                   view,
                   calendarDate: previousDate,
+                  sectionView,
                 })}
                 prefetch={false}
                 scroll={false}
@@ -633,6 +657,7 @@ export function VisitCalendar({
                   baseHref,
                   view,
                   calendarDate: today,
+                  sectionView,
                 })}
                 prefetch={false}
                 scroll={false}
@@ -645,6 +670,7 @@ export function VisitCalendar({
                   baseHref,
                   view,
                   calendarDate: nextDate,
+                  sectionView,
                 })}
                 prefetch={false}
                 scroll={false}
@@ -670,6 +696,7 @@ export function VisitCalendar({
                       view: calendarView,
                       calendarDate,
                       visitId: selectedVisitId,
+                      sectionView,
                     })}
                     prefetch={false}
                     scroll={false}
@@ -698,6 +725,7 @@ export function VisitCalendar({
           today={today}
           selectedVisitId={selectedVisitId}
           baseHref={baseHref}
+          sectionView={sectionView}
         />
         <MobileCalendar
           dates={dates}
@@ -707,6 +735,7 @@ export function VisitCalendar({
           today={today}
           selectedVisitId={selectedVisitId}
           baseHref={baseHref}
+          sectionView={sectionView}
         />
       </div>
 

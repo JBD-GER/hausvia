@@ -201,6 +201,28 @@ test("baut interne Kalenderlinks, bewahrt Kontext und entfernt alte Meldungen", 
     calendarDate: "2026-09-01",
   });
   assert.equal(new URL(deselectedHref, "https://hausvia.test").searchParams.has("visit"), false);
+
+  const customerHref = buildVisitCalendarHref({
+    baseHref: "/portal/properties/haus-1?view=overview",
+    view: "month",
+    calendarDate: "2026-09-01",
+    sectionView: "visits",
+  });
+  assert.equal(
+    new URL(customerHref, "https://hausvia.test").searchParams.get("view"),
+    "visits",
+  );
+
+  const employeeHref = buildVisitCalendarHref({
+    baseHref: "/app/today?view=alt",
+    view: "week",
+    calendarDate: "2026-09-01",
+    sectionView: null,
+  });
+  assert.equal(
+    new URL(employeeHref, "https://hausvia.test").searchParams.has("view"),
+    false,
+  );
   assert.throws(
     () =>
       buildVisitCalendarHref({

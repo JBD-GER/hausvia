@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { VisitStartSubmitButton } from "@/components/portal/VisitStartSubmitButton";
 
 export type VisitOverviewBuilding = {
   id: string;
@@ -152,12 +153,20 @@ export function SelectedVisitOverviewDialog({
   visit,
   closeHref,
   detailsHref,
+  detailsLabel = "Verwaltung und Bericht öffnen",
   completeTaskAction,
+  startVisitAction,
+  startDisabled = false,
+  startDisabledLabel,
 }: {
   visit: SelectedVisitOverview;
   closeHref: string;
-  detailsHref: string;
-  completeTaskAction: (formData: FormData) => Promise<void>;
+  detailsHref?: string | null;
+  detailsLabel?: string;
+  completeTaskAction?: ((formData: FormData) => Promise<void>) | null;
+  startVisitAction?: ((formData: FormData) => Promise<void>) | null;
+  startDisabled?: boolean;
+  startDisabledLabel?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const skipCloseNavigationRef = useRef(false);
@@ -416,7 +425,9 @@ export function SelectedVisitOverviewDialog({
                         Erledigt am {task.completedAtLabel}
                       </p>
                     ) : null}
-                    {visit.status === "started" && task.status !== "done" ? (
+                    {visit.status === "started" &&
+                    task.status !== "done" &&
+                    completeTaskAction ? (
                       <form
                         action={completeTaskAction}
                         className="mt-4 flex justify-end border-t border-slate-200/80 pt-3"
@@ -447,17 +458,28 @@ export function SelectedVisitOverviewDialog({
             Schließen
           </button>
         </form>
-        <Link
-          href={detailsHref}
-          scroll
-          onClick={() => {
-            skipCloseNavigationRef.current = true;
-            dialogRef.current?.close();
-          }}
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#082B61] px-4 text-sm font-extrabold text-white shadow-[0_8px_22px_rgba(8,43,97,0.2)] transition hover:bg-[#061F47] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#08AEB4]/25 sm:w-auto"
-        >
-          Verwaltung und Bericht öffnen
-        </Link>
+        {visit.status === "scheduled" && startVisitAction ? (
+          <form action={startVisitAction}>
+            <input type="hidden" name="visitId" value={visit.id} />
+            <VisitStartSubmitButton
+              disabled={startDisabled}
+              disabledLabel={startDisabledLabel}
+            />
+          </form>
+        ) : null}
+        {detailsHref ? (
+          <Link
+            href={detailsHref}
+            scroll
+            onClick={() => {
+              skipCloseNavigationRef.current = true;
+              dialogRef.current?.close();
+            }}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#082B61] px-4 text-sm font-extrabold text-white shadow-[0_8px_22px_rgba(8,43,97,0.2)] transition hover:bg-[#061F47] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#08AEB4]/25 sm:w-auto"
+          >
+            {detailsLabel}
+          </Link>
+        ) : null}
       </footer>
     </dialog>
   );

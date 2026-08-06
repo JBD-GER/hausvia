@@ -7,6 +7,12 @@ import {
   PackageCheck,
   PlayCircle,
 } from "lucide-react";
+import { startVisitAction } from "@/app/actions/portalEmployee";
+import {
+  SelectedVisitOverviewDialog,
+  type SelectedVisitOverview,
+} from "@/components/portal/SelectedVisitOverviewDialog";
+import { VisitCalendar } from "@/components/portal/VisitCalendar";
 import {
   EmptyState,
   PageHeader,
@@ -21,47 +27,302 @@ import {
   ensureDatabaseResult,
   requireEmployeeContext,
 } from "@/lib/portal/access";
+import {
+  buildVisitCalendarHref,
+  getVisitCalendarRange,
+  normalizeCalendarDate,
+  normalizeVisitCalendarView,
+} from "@/lib/portal/visitCalendar";
+import { parseVisitReportSnapshot } from "@/lib/visitReportSnapshot";
+import { parseVisitChecklistSnapshot } from "@/lib/visitTaskSnapshot";
+
+type SearchParams = Promise<
+  Record<string, string | string[] | undefined>
+>;
+
+type BuildingRow = {
+  id: string;
+  label: string | null;
+  formatted_address: string;
+};
+
+type EquipmentRow = {
+  id: string;
+  name: string;
+  unit: string;
+};
+
+type LiveVisitTask = {
+  id: string;
+  building_id: string | null;
+  damage_report_id: string | null;
+  source_type: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  checklist_snapshot: unknown;
+  status: string;
+  blocked_reason: string | null;
+  completed_at: string | null;
+  carried_from_task_id: string | null;
+  follow_up_required: boolean;
+  buildings: BuildingRow | BuildingRow[] | null;
+  damage_reports:
+    | { priority: string }
+    | { priority: string }[]
+    | null;
+};
+
+type CalendarVisit = {
+  id: string;
+  visit_plan_id: string | null;
+  property_id: string;
+  primary_employee_id: string | null;
+  scheduled_date: string;
+  planned_start_time: string | null;
+  window_start: string | null;
+  window_end: string | null;
+  status: string;
+  started_at: string | null;
+  started_by: string | null;
+  completed_at: string | null;
+  duration_minutes: number | null;
+  manually_adjusted: boolean;
+  report_snapshot: unknown;
+  properties:
+    | { id: string; name: string }
+    | { id: string; name: string }[]
+    | null;
+  visit_plans:
+    | { id: string; label: string }
+    | { id: string; label: string }[]
+    | null;
+  visit_buildings:
+    | Array<{
+        building_id: string;
+        buildings: BuildingRow | BuildingRow[] | null;
+      }>
+    | null;
+  visit_tasks: LiveVisitTask[] | null;
+  visit_equipment:
+    | Array<{
+        equipment_id: string;
+        required_quantity: number;
+        rental: boolean;
+        provision_note: string | null;
+        equipment: EquipmentRow | EquipmentRow[] | null;
+      }>
+    | null;
+};
+
+const VISIT_CALENDAR_SELECT =
+  "id,visit_plan_id,property_id,primary_employee_id,scheduled_date,planned_start_time,window_start,window_end,status,started_at,started_by,completed_at,duration_minutes,manually_adjusted,report_snapshot,properties(id,name),visit_plans(id,label),visit_buildings(building_id,buildings(id,label,formatted_address)),visit_tasks(id,building_id,damage_report_id,source_type,title,description,category,checklist_snapshot,status,blocked_reason,completed_at,carried_from_task_id,follow_up_required,buildings(id,label,formatted_address),damage_reports!visit_tasks_damage_report_id_fkey(priority)),visit_equipment(equipment_id,required_quantity,rental,provision_note,equipment(id,name,unit))";
+
+const damagePriorityLabels: Record<string, string> = {
+  low: "Niedrige Priorität",
+  normal: "Normale Priorität",
+  high: "Hohe Priorität",
+  urgent: "Dringend",
+};
 
 function relation<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
-const views = [
-  { key: "day", label: "Heute" },
-  { key: "week", label: "Woche" },
-  { key: "month", label: "Monat" },
-  { key: "agenda", label: "Agenda" },
-] as const;
+function queryValue(
+  query: Record<string, string | string[] | undefined>,
+  key: string,
+) {
+  const value = query[key];
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
+function visitPlanLabel(visit: CalendarVisit) {
+  return (
+    relation(visit.visit_plans)?.label ||
+    (visit.manually_adjusted ? "Manueller Einsatz" : "Einsatz")
+  );
+}
+
+function visitTimeLabel(visit: CalendarVisit) {
+  if (visit.planned_start_time) {
+    return `${visit.planned_start_time.slice(0, 5)} Uhr`;
+  }
+  if (visit.window_start && visit.window_end) {
+    return `${visit.window_start.slice(0, 5)}–${visit.window_end.slice(0, 5)} Uhr`;
+  }
+  if (visit.window_start) return `ab ${visit.window_start.slice(0, 5)} Uhr`;
+  return "Flexible Startzeit";
+}
+
+function visitScheduleLabel(visit: CalendarVisit) {
+  return `${formatGermanDate(`${visit.scheduled_date}T12:00:00Z`, {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  })} · ${visitTimeLabel(visit)}`;
+}
+
+function liveVisitBuildings(visit: CalendarVisit) {
+  const buildings = new Map<string, BuildingRow>();
+  for (const link of visit.visit_buildings ?? []) {
+    const building = relation(link.buildings);
+    if (building) buildings.set(building.id, building);
+  }
+  for (const task of visit.visit_tasks ?? []) {
+    const building = relation(task.buildings);
+    if (building) buildings.set(building.id, building);
+  }
+  return Array.from(buildings.values());
+}
+
+function selectedVisitOverview(
+  visit: CalendarVisit,
+  employeeName: string,
+): SelectedVisitOverview {
+  const property = relation(visit.properties);
+  const report =
+    visit.status === "completed"
+      ? parseVisitReportSnapshot(visit.report_snapshot)
+      : null;
+  const liveTasks = visit.visit_tasks ?? [];
+  const liveTaskById = new Map(liveTasks.map((task) => [task.id, task]));
+  const liveBuildings = liveVisitBuildings(visit);
+  const buildings = report?.buildings.length
+    ? report.buildings.map((building) => ({
+        id: building.id,
+        label: building.label || "Gebäude",
+        address: building.address,
+      }))
+    : liveBuildings.map((building) => ({
+        id: building.id,
+        label: building.label || "Gebäude",
+        address: building.formatted_address,
+      }));
+  const buildingLabelById = new Map(
+    buildings.map((building) => [building.id, building.label]),
+  );
+
+  const tasks = report
+      ? report.tasks.map((task) => {
+        const liveTask = liveTaskById.get(task.id);
+        const damagePriority = relation(liveTask?.damage_reports)?.priority;
+        return {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          category: task.category,
+          status: task.status,
+          buildingLabel: task.buildingId
+            ? (buildingLabelById.get(task.buildingId) ?? null)
+            : null,
+          blockedReason: task.blockedReason,
+          completedAtLabel: task.completedAt
+            ? formatGermanDate(task.completedAt, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          checklist: task.checklist,
+          isDamage:
+            Boolean(liveTask?.damage_report_id) ||
+            liveTask?.source_type === "damage",
+          damagePriorityLabel: damagePriority
+            ? (damagePriorityLabels[damagePriority] ?? damagePriority)
+            : null,
+          isCarried: Boolean(liveTask?.carried_from_task_id),
+          followUpRequired: liveTask?.follow_up_required === true,
+        };
+      })
+    : liveTasks.map((task) => {
+        const damagePriority = relation(task.damage_reports)?.priority;
+        return {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          category: task.category,
+          status: task.status,
+          buildingLabel: task.building_id
+            ? (buildingLabelById.get(task.building_id) ??
+              relation(task.buildings)?.label ??
+              null)
+            : null,
+          blockedReason: task.blocked_reason,
+          completedAtLabel: task.completed_at
+            ? formatGermanDate(task.completed_at, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          checklist: parseVisitChecklistSnapshot(task.checklist_snapshot),
+          isDamage:
+            Boolean(task.damage_report_id) || task.source_type === "damage",
+          damagePriorityLabel: damagePriority
+            ? (damagePriorityLabels[damagePriority] ?? damagePriority)
+            : null,
+          isCarried: Boolean(task.carried_from_task_id),
+          followUpRequired: task.follow_up_required === true,
+        };
+      });
+
+  return {
+    id: visit.id,
+    propertyName: report?.propertyName || property?.name || "Immobilie",
+    scheduleLabel: visitScheduleLabel(visit),
+    planLabel: visitPlanLabel(visit),
+    status: visit.status,
+    employeeName: report?.employeeName || employeeName,
+    completedLabel:
+      report?.completedAt || visit.completed_at
+        ? formatGermanDate(report?.completedAt || visit.completed_at!, {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : null,
+    durationLabel:
+      report?.durationMinutes != null
+        ? `${report.durationMinutes} Min.`
+        : visit.duration_minutes != null
+          ? `${visit.duration_minutes} Min.`
+          : null,
+    buildings,
+    tasks,
+  };
+}
 
 export default async function EmployeeTodayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: SearchParams;
 }) {
-  const { profile, supabase } = await requireEmployeeContext();
-  const requestedView = (await searchParams).view;
-  const view = views.some((item) => item.key === requestedView)
-    ? requestedView!
-    : "agenda";
+  const query = await searchParams;
+  const { profile, employee, supabase } = await requireEmployeeContext();
   const today = berlinIsoDate();
-  const horizon = new Date(`${today}T12:00:00Z`);
-  horizon.setUTCDate(
-    horizon.getUTCDate() +
-      (view === "day" ? 0 : view === "week" ? 7 : view === "month" ? 31 : 90),
+  const calendarView = normalizeVisitCalendarView(
+    queryValue(query, "calendarView"),
   );
+  const calendarDate = normalizeCalendarDate(
+    queryValue(query, "calendarDate"),
+    today,
+  );
+  const calendarRange = getVisitCalendarRange(calendarView, calendarDate);
+  const requestedVisitId = queryValue(query, "visit");
+  const requestedVisitIsValid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      requestedVisitId,
+    );
 
   const [visitsResult, activeVisitResult] = await Promise.all([
     supabase
       .from("visits")
-      .select(
-        "id,scheduled_date,planned_start_time,window_start,window_end,status,started_at,property_id,properties(id,name),visit_buildings(buildings(id,label,formatted_address)),visit_equipment(equipment_id,required_quantity,rental,provision_note,equipment(id,name,unit,category,condition))",
-      )
-      .gte("scheduled_date", today)
-      .lte("scheduled_date", horizon.toISOString().slice(0, 10))
+      .select(VISIT_CALENDAR_SELECT)
       .neq("status", "canceled")
+      .gte("scheduled_date", calendarRange.start)
+      .lte("scheduled_date", calendarRange.end)
       .order("scheduled_date")
       .order("planned_start_time")
-      .limit(180),
+      .limit(500),
     supabase
       .from("visits")
       .select("id,started_at,properties(name)")
@@ -77,25 +338,89 @@ export default async function EmployeeTodayPage({
     activeVisitResult.error,
     "Der laufende Einsatz konnte nicht geladen werden.",
   );
-  const visits = visitsResult.data ?? [];
+
+  const visits = (visitsResult.data ?? []) as unknown as CalendarVisit[];
   const activeVisit = activeVisitResult.data;
-  const visibleVisits =
-    view === "day"
-      ? visits.filter((visit) => visit.scheduled_date === today)
-      : visits;
-  const todayCount = visits.filter(
-    (visit) => visit.scheduled_date === today,
-  ).length;
+  let selectedVisit = requestedVisitIsValid
+    ? (visits.find((visit) => visit.id === requestedVisitId) ?? null)
+    : null;
+
+  if (requestedVisitIsValid && !selectedVisit) {
+    const selectedVisitResult = await supabase
+      .from("visits")
+      .select(VISIT_CALENDAR_SELECT)
+      .eq("id", requestedVisitId)
+      .neq("status", "canceled")
+      .maybeSingle();
+    ensureDatabaseResult(
+      selectedVisitResult.error,
+      "Der ausgewählte Einsatz konnte nicht geladen werden.",
+    );
+    selectedVisit = selectedVisitResult.data
+      ? (selectedVisitResult.data as unknown as CalendarVisit)
+      : null;
+  }
+
+  const employeeName = employee.full_name || profile.full_name || "Mitarbeiter";
+  const calendarEvents = visits.map((visit) => {
+    const report =
+      visit.status === "completed"
+        ? parseVisitReportSnapshot(visit.report_snapshot)
+        : null;
+    return {
+      id: visit.id,
+      date: visit.scheduled_date,
+      time:
+        visit.planned_start_time?.slice(0, 5) ??
+        visit.window_start?.slice(0, 5) ??
+        null,
+      status: visit.status,
+      planLabel: visitPlanLabel(visit),
+      employeeName: report?.employeeName || employeeName,
+      taskCount: report?.tasks.length ?? visit.visit_tasks?.length ?? 0,
+      propertyName:
+        report?.propertyName || relation(visit.properties)?.name || "Immobilie",
+    };
+  });
+  const popupCloseHref = buildVisitCalendarHref({
+    baseHref: "/app/today",
+    view: calendarView,
+    calendarDate,
+    sectionView: null,
+  });
+  const overview = selectedVisit
+    ? selectedVisitOverview(selectedVisit, employeeName)
+    : null;
+  const selectedStartDisabled = Boolean(
+    selectedVisit?.status === "scheduled" &&
+      (selectedVisit.scheduled_date > today ||
+        (activeVisit && activeVisit.id !== selectedVisit.id)),
+  );
+  const selectedStartDisabledLabel =
+    selectedVisit?.status === "scheduled" && selectedVisit.scheduled_date > today
+      ? "Am Einsatztag startbar"
+      : activeVisit && activeVisit.id !== selectedVisit?.id
+        ? "Laufenden Einsatz zuerst abschließen"
+        : undefined;
+  const selectedDetailsLabel =
+    selectedVisit?.status === "completed"
+      ? "Leistungsbericht ansehen"
+      : selectedVisit?.status === "started"
+        ? selectedVisit.started_by === profile.id
+          ? "Einsatz fortsetzen"
+          : "Laufenden Einsatz ansehen"
+        : "Einsatzdetails öffnen";
 
   return (
     <>
       <PageHeader
         eyebrow="Mitarbeiterportal"
-        title="Kalender & Heute"
-        text="Nächster Einsatz, Adresse und Start – Details nur bei Bedarf."
+        title="Mein Einsatzkalender"
+        text="Alle zugewiesenen Termine im Monats- oder Wochenblick. Ein Klick öffnet Aufgaben, Gebäude und den sicheren Einsatzstart."
         icon={<CalendarDays aria-hidden="true" size={20} />}
         compact
       />
+
       {activeVisit ? (
         <Link
           href={`/app/visits/${activeVisit.id}`}
@@ -106,168 +431,154 @@ export default async function EmployeeTodayPage({
               Laufender Einsatz
             </span>
             <span className="mt-1 block font-black text-emerald-950">
-              {relation(activeVisit.properties)?.name}
+              {relation(activeVisit.properties)?.name ?? "Aktueller Einsatz"}
             </span>
           </span>
-          <span className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white">
-            Fortsetzen
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white">
+            <PlayCircle aria-hidden="true" size={17} /> Fortsetzen
           </span>
         </Link>
       ) : null}
-      <div className="mb-5 grid grid-cols-4 gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:max-w-xl sm:gap-2">
-        {views.map((item) => (
-          <Link
-            key={item.key}
-            href={`/app/today?view=${item.key}`}
-            className={`rounded-xl px-2 py-2.5 text-center text-xs font-black sm:px-3 sm:text-sm ${view === item.key ? "bg-brand text-white" : "text-slate-600 hover:bg-slate-50"}`}
-          >
-            {item.key === "day" ? `${item.label} (${todayCount})` : item.label}
-          </Link>
-        ))}
-      </div>
-      {visibleVisits.length ? (
-        <div className="grid gap-4">
-          {visibleVisits.map((visit) => {
-            const property = relation(visit.properties);
-            const buildings = (visit.visit_buildings ?? [])
-              .map((entry: { buildings: unknown }) =>
-                relation(entry.buildings) as {
-                  id: string;
-                  label: string | null;
-                  formatted_address: string;
-                } | null,
-              )
-              .filter(
-                (building): building is {
-                  id: string;
-                  label: string | null;
-                  formatted_address: string;
-                } => Boolean(building),
-              );
-            const equipment = (visit.visit_equipment ?? [])
-              .map((assignment) => ({
-                assignment,
-                item: relation(assignment.equipment) as {
-                  id: string;
-                  name: string;
-                  unit: string;
-                } | null,
-              }))
-              .filter((entry) => Boolean(entry.item));
-            const mainAddress =
-              buildings[0]?.formatted_address ?? "Adresse im Einsatzdetail";
-            const buildingGroup = buildings
-              .map((building) => building.label || building.formatted_address)
-              .join(", ");
-            const isToday = visit.scheduled_date === today;
-            return (
-              <article
-                key={visit.id}
-                className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${isToday ? "border-amber-300 ring-2 ring-amber-100" : "border-slate-200"}`}
-              >
-                <div className="flex items-stretch">
-                  <div
-                    className={`w-2 shrink-0 ${visit.status === "started" ? "bg-emerald-500" : isToday ? "bg-amber-400" : "bg-brand"}`}
-                  />
-                  <div className="min-w-0 flex-1 p-4 sm:p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
+
+      <VisitCalendar
+        events={calendarEvents}
+        view={calendarView}
+        calendarDate={calendarDate}
+        today={today}
+        selectedVisitId={selectedVisit?.id ?? null}
+        baseHref="/app/today"
+        sectionView={null}
+      />
+
+      {overview && selectedVisit ? (
+        <SelectedVisitOverviewDialog
+          visit={overview}
+          closeHref={popupCloseHref}
+          detailsHref={`/app/visits/${selectedVisit.id}`}
+          detailsLabel={selectedDetailsLabel}
+          startVisitAction={startVisitAction}
+          startDisabled={selectedStartDisabled}
+          startDisabledLabel={selectedStartDisabledLabel}
+        />
+      ) : null}
+
+      <details className="group mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 font-black text-slate-900 marker:hidden [&::-webkit-details-marker]:hidden sm:px-5">
+          <span>Termine im sichtbaren Zeitraum als Liste</span>
+          <span className="inline-flex min-h-8 items-center rounded-full bg-brand-soft px-3 text-xs text-brand">
+            {visits.length}
+          </span>
+        </summary>
+        <div className="border-t border-slate-200 p-3 sm:p-4">
+          {visits.length ? (
+            <div className="grid gap-3">
+              {visits.map((visit) => {
+                const property = relation(visit.properties);
+                const buildings = liveVisitBuildings(visit);
+                const mainAddress =
+                  buildings[0]?.formatted_address ??
+                  "Adresse im Einsatzdetail";
+                const equipment = (visit.visit_equipment ?? []).flatMap(
+                  (assignment) => {
+                    const item = relation(assignment.equipment);
+                    return item ? [{ assignment, item }] : [];
+                  },
+                );
+                return (
+                  <article
+                    key={visit.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
                         <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500">
-                          <CalendarDays size={15} />
+                          <CalendarDays aria-hidden="true" size={15} />
                           {formatGermanDate(
                             `${visit.scheduled_date}T12:00:00Z`,
                             {
-                              weekday: "long",
+                              weekday: "short",
                               day: "2-digit",
-                              month: "long",
+                              month: "2-digit",
+                              year: "numeric",
                             },
                           )}
                         </p>
-                        <h2 className="mt-2 text-xl font-black text-slate-950">
+                        <h2 className="mt-1 truncate text-lg font-black text-slate-950">
                           {property?.name ?? "Immobilie"}
                         </h2>
-                        <p className="mt-1 text-sm font-semibold text-slate-600">
-                          {buildingGroup || "Alle Gebäude der Immobilie"}
+                        <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-600">
+                          <Clock3 aria-hidden="true" size={15} />
+                          {visitTimeLabel(visit)} · {visitPlanLabel(visit)}
                         </p>
+                        <p className="mt-1 flex items-start gap-2 text-sm text-slate-600">
+                          <MapPin
+                            aria-hidden="true"
+                            className="mt-0.5 shrink-0"
+                            size={15}
+                          />
+                          {mainAddress}
+                        </p>
+                        {equipment.length ? (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {equipment.map(({ assignment, item }) => (
+                              <span
+                                key={assignment.equipment_id}
+                                title={assignment.provision_note ?? undefined}
+                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${
+                                  assignment.rental
+                                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                                    : "border-slate-200 bg-white text-slate-700"
+                                }`}
+                              >
+                                <PackageCheck aria-hidden="true" size={14} />
+                                {item.name} · {assignment.required_quantity}{" "}
+                                {item.unit || "Stück"}
+                                {assignment.rental ? " · Mietequipment" : ""}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                       <StatusPill>
                         {VISIT_STATUS_LABELS[visit.status] ?? visit.status}
                       </StatusPill>
                     </div>
-                    <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                      <p className="flex items-start gap-2">
-                        <Clock3 className="mt-0.5 shrink-0 text-brand" size={17} />
-                        {visit.planned_start_time?.slice(0, 5) ||
-                          `${visit.window_start?.slice(0, 5) ?? "flexibel"}–${visit.window_end?.slice(0, 5) ?? ""}`}
-                      </p>
-                      <p className="flex items-start gap-2">
-                        <MapPin className="mt-0.5 shrink-0 text-brand" size={17} />
-                        {mainAddress}
-                      </p>
-                    </div>
-                    {buildings.length > 1 || equipment.length ? (
-                      <details className="group mt-3 rounded-xl border border-slate-200 bg-slate-50">
-                        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-xs font-black text-slate-700 marker:hidden [&::-webkit-details-marker]:hidden">
-                          <span>{buildings.length} Gebäude · {equipment.length} Equipment</span>
-                          <span aria-hidden="true" className="text-brand transition group-open:rotate-45">+</span>
-                        </summary>
-                        <div className="grid gap-3 border-t border-slate-200 p-3">
-                          {buildings.length > 1 ? (
-                            <ul className="grid gap-1 text-xs text-slate-600">
-                              {buildings.map((building) => (
-                                <li key={building.id}>
-                                  <strong>{building.label || "Gebäude"}:</strong>{" "}
-                                  {building.formatted_address}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                          {equipment.length ? (
-                            <div className="flex flex-wrap gap-2">
-                              {equipment.map(({ assignment, item }) => (
-                                <span
-                                  key={assignment.equipment_id}
-                                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${assignment.rental ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-700"}`}
-                                  title={assignment.provision_note ?? undefined}
-                                >
-                                  <PackageCheck aria-hidden="true" size={14} />
-                                  {item?.name} · {assignment.required_quantity} {item?.unit || "Stück"}
-                                  {assignment.rental ? " · Mietequipment" : ""}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      </details>
-                    ) : null}
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                       <Link
-                        href={`/app/visits/${visit.id}`}
+                        href={buildVisitCalendarHref({
+                          baseHref: "/app/today",
+                          view: calendarView,
+                          calendarDate: visit.scheduled_date,
+                          visitId: visit.id,
+                          sectionView: null,
+                        })}
+                        scroll={false}
                         className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-black text-white sm:flex-none"
                       >
-                        <PlayCircle size={18} /> Einsatz öffnen
+                        <PlayCircle aria-hidden="true" size={17} /> Übersicht
+                        öffnen
                       </Link>
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mainAddress)}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-black text-slate-700"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-700"
                       >
-                        <Navigation size={17} /> Karten
+                        <Navigation aria-hidden="true" size={17} /> Route
                       </a>
                     </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              title="Keine Einsätze in diesem Zeitraum"
+              text="Wechseln Sie im Kalender in eine andere Woche oder einen anderen Monat."
+            />
+          )}
         </div>
-      ) : (
-        <EmptyState
-          title="Keine anstehenden Einsätze"
-          text="Sobald Sie einem Besuchsplan zugewiesen sind, erscheinen die nächsten Termine automatisch hier."
-        />
-      )}
+      </details>
     </>
   );
 }

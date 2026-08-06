@@ -296,11 +296,13 @@ export function buildVisitCalendarHref({
   view,
   calendarDate,
   visitId,
+  sectionView = "einsaetze",
 }: {
   baseHref: string;
   view: VisitCalendarView;
   calendarDate: string;
   visitId?: string | null;
+  sectionView?: string | null;
 }) {
   if (!baseHref.trim()) throw new TypeError("Der Kalender benötigt einen Zielpfad.");
   requiredDateParts(calendarDate);
@@ -316,7 +318,9 @@ export function buildVisitCalendarHref({
   // Flash messages belong to the previous mutation and should not persist while navigating.
   query.delete("status");
   query.delete("error");
-  query.set("view", "einsaetze");
+  const normalizedSectionView = sectionView?.trim();
+  if (normalizedSectionView) query.set("view", normalizedSectionView);
+  else query.delete("view");
   query.set("calendarView", normalizeVisitCalendarView(view));
   query.set("calendarDate", calendarDate);
 

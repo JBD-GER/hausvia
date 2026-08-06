@@ -27,6 +27,11 @@ import {
 import { PropertyChat } from "@/components/portal/PropertyChat";
 import { PropertyRealtimeRefresh } from "@/components/portal/PropertyRealtimeRefresh";
 import {
+  SelectedVisitOverviewDialog,
+  type SelectedVisitOverview,
+} from "@/components/portal/SelectedVisitOverviewDialog";
+import { VisitCalendar } from "@/components/portal/VisitCalendar";
+import {
   berlinIsoDate,
   formatCents,
   formatGermanDate,
@@ -36,16 +41,51 @@ import { attachChatSenderRoles } from "@/lib/portal/chatSenderRoles";
 import { createPrivateAttachmentUrls } from "@/lib/portal/files";
 import { requireCustomerContext } from "@/lib/portal/access";
 import {
+  buildVisitCalendarHref,
+  normalizeCalendarDate,
+  normalizeVisitCalendarView,
+} from "@/lib/portal/visitCalendar";
+import { parseVisitChecklistSnapshot } from "@/lib/visitTaskSnapshot";
+import {
   parseVisitReportSnapshot,
   visitReportPhotos,
 } from "@/lib/visitReportSnapshot";
+
+const damagePriorityLabels: Record<string, string> = {
+  low: "Priorität niedrig",
+  normal: "Priorität normal",
+  high: "Priorität hoch",
+  urgent: "Priorität dringend",
+};
+
+function visitScheduleLabel(visit: {
+  scheduled_date?: string | null;
+  planned_start_time?: string | null;
+}) {
+  if (!visit.scheduled_date) return "Termin ohne Datum";
+  const date = formatGermanDate(`${visit.scheduled_date}T12:00:00Z`);
+  return visit.planned_start_time
+    ? `${date} · ${visit.planned_start_time.slice(0, 5)} Uhr`
+    : date;
+}
+
+function relation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
 
 export default async function CustomerPropertyPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; status?: string; view?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    status?: string;
+    view?: string;
+    calendarDate?: string;
+    calendarView?: string;
+    visit?: string;
+  }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -62,11 +102,14 @@ export default async function CustomerPropertyPage({
   )
     ? (query.view as PropertyView)
     : "overview";
+  const today = berlinIsoDate();
+  const calendarView = normalizeVisitCalendarView(query.calendarView);
+  const calendarDate = normalizeCalendarDate(query.calendarDate, today);
   const { profile, supabase } = await requireCustomerContext();
   const { data: property } = await supabase
     .from("properties")
     .select(
-      "id,name,status,buildings(id,label,formatted_address),property_services(id,name,customer_description,status,seasonal,season_start_month,season_end_month),visits(id,scheduled_date,planned_start_time,status,started_at,completed_at,duration_minutes,report_snapshot,visit_tasks(id,title,status,blocked_reason,customer_visible,visit_task_attachments(id,bucket,path,filename,mime_type)),visit_buildings(buildings(label,formatted_address))),damage_reports(id,building_id,title,description,priority,status,created_at,resolved_at,resolution_note,damage_attachments(id,bucket,path,filename,mime_type)),complaints(id,visit_id,title,description,status,created_at,complaint_attachments(id,bucket,path,filename,mime_type)),invoices(id,invoice_number,status,created_at,service_period_start,service_period_end,net_total_cents,tax_total_cents,gross_total_cents,net_total,tax_total,gross_total,document_path,sent_at)",
+      "id,name,status,buildings(id,label,formatted_address),property_services(id,name,customer_description,status,seasonal,season_start_month,season_end_month),visits(id,scheduled_date,planned_start_time,window_start,window_end,status,started_at,completed_at,duration_minutes,report_snapshot,visit_tasks(id,building_id,title,description,category,checklist_snapshot,status,blocked_reason,customer_visible,completed_at,source_type,damage_report_id,carried_from_task_id,follow_up_required,visit_task_attachments(id,bucket,path,filename,mime_type)),visit_buildings(buildings(id,label,formatted_address))),damage_reports(id,building_id,title,description,priority,status,created_at,resolved_at,resolution_note,damage_attachments(id,bucket,path,filename,mime_type)),complaints(id,visit_id,title,description,status,created_at,complaint_attachments(id,bucket,path,filename,mime_type)),invoices(id,invoice_number,status,created_at,service_period_start,service_period_end,net_total_cents,tax_total_cents,gross_total_cents,net_total,tax_total,gross_total,document_path,sent_at)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -79,11 +122,10 @@ export default async function CustomerPropertyPage({
     .eq("property_id", id)
     .order("created_at", { ascending: false })
     .limit(100);
-  const now = berlinIsoDate();
   const upcoming =
     property.visits
       ?.filter(
-        (visit) => visit.scheduled_date >= now && visit.status === "scheduled",
+        (visit) => visit.scheduled_date >= today && visit.status === "scheduled",
       )
       .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date)) ?? [];
   const completed =
@@ -96,6 +138,181 @@ export default async function CustomerPropertyPage({
   const completedVisitById = new Map(
     completed.map((visit) => [visit.id, visit]),
   );
+  const calendarVisits =
+    property.visits
+      ?.filter((visit) => visit.status !== "canceled")
+      .sort((left, right) => {
+        const dateComparison = left.scheduled_date.localeCompare(
+          right.scheduled_date,
+        );
+        if (dateComparison !== 0) return dateComparison;
+        return (left.planned_start_time ?? "").localeCompare(
+          right.planned_start_time ?? "",
+        );
+      }) ?? [];
+  const requestedVisitId = query.visit?.trim() ?? "";
+  const requestedVisitIsValid =
+    activeView === "visits" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      requestedVisitId,
+    );
+  const explicitlySelectedVisit = requestedVisitIsValid
+    ? calendarVisits.find((visit) => visit.id === requestedVisitId) ?? null
+    : null;
+  const explicitlySelectedReport = explicitlySelectedVisit
+    ? (reportByVisitId.get(explicitlySelectedVisit.id) ?? null)
+    : null;
+  const buildingById = new Map(
+    (property.buildings ?? []).map((building) => [building.id, building]),
+  );
+  const damageById = new Map(
+    (property.damage_reports ?? []).map((damage) => [damage.id, damage]),
+  );
+  const calendarEvents = calendarVisits.map((visit) => {
+    const report = reportByVisitId.get(visit.id) ?? null;
+    const liveTasks = (visit.visit_tasks ?? []).filter(
+      (task) => task.customer_visible,
+    );
+    return {
+      id: visit.id,
+      date: visit.scheduled_date,
+      time:
+        visit.planned_start_time?.slice(0, 5) ??
+        visit.window_start?.slice(0, 5) ??
+        null,
+      status: visit.status,
+      planLabel: "Hausvia-Einsatz",
+      employeeName: "Hausvia-Team",
+      taskCount: report ? report.tasks.length : liveTasks.length,
+    };
+  });
+
+  const selectedOverviewBuildings = explicitlySelectedReport?.buildings.length
+    ? explicitlySelectedReport.buildings.map((building) => ({
+        id: building.id,
+        label: building.label || "Gebäude",
+        address: building.address,
+      }))
+    : (explicitlySelectedVisit?.visit_buildings ?? []).flatMap((link) => {
+        const building = relation(link.buildings);
+        return building
+          ? [
+              {
+                id: building.id,
+                label: building.label || "Gebäude",
+                address: building.formatted_address,
+              },
+            ]
+          : [];
+      });
+  const selectedBuildingById = new Map(
+    selectedOverviewBuildings.map((building) => [building.id, building]),
+  );
+  const selectedOverviewTasks = explicitlySelectedReport
+    ? explicitlySelectedReport.tasks.map((task) => {
+        const relatedDamage = explicitlySelectedReport.damages.find(
+          (damage) =>
+            damage.title === task.title &&
+            damage.buildingId === task.buildingId,
+        );
+        const liveDamage = relatedDamage
+          ? damageById.get(relatedDamage.id)
+          : null;
+        return {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          category: task.category,
+          status: task.status,
+          buildingLabel: task.buildingId
+            ? selectedBuildingById.get(task.buildingId)?.label ?? null
+            : null,
+          blockedReason: task.blockedReason,
+          completedAtLabel: task.completedAt
+            ? formatGermanDate(task.completedAt, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          checklist: task.checklist,
+          isDamage: Boolean(relatedDamage),
+          damagePriorityLabel: liveDamage?.priority
+            ? damagePriorityLabels[liveDamage.priority] ?? null
+            : null,
+          isCarried: false,
+          followUpRequired: task.status === "blocked",
+        };
+      })
+    : (explicitlySelectedVisit?.visit_tasks ?? [])
+        .filter((task) => task.customer_visible)
+        .map((task) => {
+          const damage = task.damage_report_id
+            ? damageById.get(task.damage_report_id)
+            : null;
+          return {
+            id: task.id,
+            title: task.title,
+            description: task.description || null,
+            category: task.category || null,
+            status: task.status,
+            buildingLabel: task.building_id
+              ? selectedBuildingById.get(task.building_id)?.label ||
+                buildingById.get(task.building_id)?.label ||
+                null
+              : null,
+            blockedReason: task.blocked_reason || null,
+            completedAtLabel: task.completed_at
+              ? formatGermanDate(task.completed_at, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : null,
+            checklist: parseVisitChecklistSnapshot(task.checklist_snapshot),
+            isDamage:
+              Boolean(task.damage_report_id) || task.source_type === "damage",
+            damagePriorityLabel: damage?.priority
+              ? damagePriorityLabels[damage.priority] ?? null
+              : null,
+            isCarried: Boolean(task.carried_from_task_id),
+            followUpRequired: task.follow_up_required === true,
+          };
+        });
+  const selectedCompletedAt =
+    explicitlySelectedReport?.completedAt ||
+    explicitlySelectedVisit?.completed_at ||
+    null;
+  const selectedVisitOverview: SelectedVisitOverview | null =
+    explicitlySelectedVisit
+      ? {
+          id: explicitlySelectedVisit.id,
+          propertyName:
+            explicitlySelectedReport?.propertyName || property.name,
+          scheduleLabel: visitScheduleLabel(explicitlySelectedVisit),
+          planLabel: "Hausvia-Einsatz",
+          status: explicitlySelectedVisit.status,
+          employeeName: "Hausvia-Team",
+          completedLabel: selectedCompletedAt
+            ? formatGermanDate(selectedCompletedAt, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          durationLabel:
+            explicitlySelectedReport?.durationMinutes != null
+              ? `${explicitlySelectedReport.durationMinutes} Min.`
+              : explicitlySelectedVisit.duration_minutes != null
+                ? `${explicitlySelectedVisit.duration_minutes} Min.`
+                : null,
+          buildings: selectedOverviewBuildings,
+          tasks: selectedOverviewTasks,
+        }
+      : null;
+  const popupCloseHref = buildVisitCalendarHref({
+    baseHref: `/portal/properties/${property.id}`,
+    view: calendarView,
+    calendarDate,
+    sectionView: "visits",
+  });
   const openDamages =
     property.damage_reports?.filter(
       (damage) => !["resolved", "rejected"].includes(damage.status),
@@ -311,7 +528,23 @@ export default async function CustomerPropertyPage({
           id="einsaetze"
           className={activeView === "visits" ? "block" : "hidden"}
         >
-          <Panel title="Abgeschlossene Leistungsberichte">
+          <VisitCalendar
+            events={calendarEvents}
+            view={calendarView}
+            calendarDate={calendarDate}
+            today={today}
+            selectedVisitId={explicitlySelectedVisit?.id ?? null}
+            baseHref={`/portal/properties/${property.id}`}
+            sectionView="visits"
+          />
+          {selectedVisitOverview ? (
+            <SelectedVisitOverviewDialog
+              visit={selectedVisitOverview}
+              closeHref={popupCloseHref}
+            />
+          ) : null}
+          <div className="mt-5">
+            <Panel title="Abgeschlossene Leistungsberichte">
             {completed.length ? (
               <div className="grid gap-4">
                 {completed.slice(0, 12).map((visit) => {
@@ -431,7 +664,8 @@ export default async function CustomerPropertyPage({
                 text="Nach einem abgeschlossenen Einsatz finden Sie hier Beginn, Abschluss und erledigte Aufgaben."
               />
             )}
-          </Panel>
+            </Panel>
+          </div>
         </section>
         <section
           id="schaeden"
