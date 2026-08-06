@@ -1,5 +1,16 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
-import { CheckCheck, FileText, Paperclip } from "lucide-react";
+import {
+  CheckCheck,
+  CircleAlert,
+  CircleCheck,
+  FileText,
+  LoaderCircle,
+  Paperclip,
+  Send,
+} from "lucide-react";
+import { useActionState, useEffect, useRef } from "react";
 import {
   markPropertyMessagesReadAction,
   reactToPropertyMessageAction,
@@ -10,6 +21,10 @@ import {
   buttonClass,
   inputClass,
 } from "@/components/portal/PortalUI";
+import {
+  INITIAL_PROPERTY_MESSAGE_ACTION_STATE,
+  type SendPropertyMessageAction,
+} from "@/lib/portal/chatActionState";
 import { formatGermanDate } from "@/lib/portal/core";
 
 const ALLOWED_REACTIONS = ["👍", "✅", "❤️", "🙂", "❄️", "🛠️"] as const;
@@ -43,8 +58,6 @@ export type PropertyChatMessage = {
   message_reactions?: MessageReaction[] | null;
   message_reads?: MessageRead[] | null;
 };
-
-type SendMessageAction = (formData: FormData) => Promise<void>;
 
 function Attachment({
   attachment,
@@ -118,9 +131,21 @@ export function PropertyChat({
   currentUserId: string;
   messages: PropertyChatMessage[];
   signedAttachmentUrls: Record<string, string>;
-  sendMessageAction: SendMessageAction;
+  sendMessageAction: SendPropertyMessageAction;
   readOnly?: boolean;
 }) {
+  const messageFormRef = useRef<HTMLFormElement>(null);
+  const [sendState, sendFormAction, sendPending] = useActionState(
+    sendMessageAction,
+    INITIAL_PROPERTY_MESSAGE_ACTION_STATE,
+  );
+
+  useEffect(() => {
+    if (sendState.status === "success" && sendState.submissionId > 0) {
+      messageFormRef.current?.reset();
+    }
+  }, [sendState.status, sendState.submissionId]);
+
   const unreadCount = messages.filter(
     (message) =>
       message.sender_id !== currentUserId &&
@@ -258,32 +283,74 @@ export function PropertyChat({
         </p>
       ) : (
         <form
-          action={sendMessageAction}
+          ref={messageFormRef}
+          action={sendFormAction}
+          aria-busy={sendPending}
           className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
         >
-        <input type="hidden" name="propertyId" value={propertyId} />
-        <Field label="Nachricht">
-          <textarea
-            name="body"
-            required
-            maxLength={4000}
-            rows={3}
-            className={inputClass}
-            placeholder="Nachricht schreiben – Emojis sind möglich 🙂"
-          />
-        </Field>
-        <Field label="Bild, Video oder PDF (optional)">
-          <input
-            name="attachment"
-            type="file"
-            accept={CHAT_ATTACHMENT_ACCEPT}
-            className={inputClass}
-          />
-        </Field>
-        <p className="text-xs leading-5 text-slate-500">
-          Erlaubt: JPG, PNG, WebP, HEIC, MP4, MOV, WebM und PDF · maximal 4 MB.
-        </p>
-        <button className={buttonClass}>Nachricht senden</button>
+          <input type="hidden" name="propertyId" value={propertyId} />
+
+          {sendState.status !== "idle" && !sendPending ? (
+            <div
+              id="chat-submit-feedback"
+              role={sendState.status === "error" ? "alert" : "status"}
+              aria-live={sendState.status === "error" ? "assertive" : "polite"}
+              aria-atomic="true"
+              className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-sm font-bold ${
+                sendState.status === "error"
+                  ? "border-rose-200 bg-rose-50 text-rose-800"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-900"
+              }`}
+            >
+              {sendState.status === "error" ? (
+                <CircleAlert aria-hidden="true" className="mt-0.5 shrink-0" size={18} />
+              ) : (
+                <CircleCheck aria-hidden="true" className="mt-0.5 shrink-0" size={18} />
+              )}
+              <span>{sendState.message}</span>
+            </div>
+          ) : null}
+
+          <fieldset
+            disabled={sendPending}
+            className="m-0 grid min-w-0 gap-3 border-0 p-0"
+          >
+            <Field label="Nachricht" required>
+              <textarea
+                name="body"
+                required
+                maxLength={4000}
+                rows={3}
+                className={inputClass}
+                placeholder="Nachricht schreiben – Emojis sind möglich 🙂"
+              />
+            </Field>
+            <Field label="Bild, Video oder PDF (optional)">
+              <input
+                name="attachment"
+                type="file"
+                accept={CHAT_ATTACHMENT_ACCEPT}
+                className={inputClass}
+              />
+            </Field>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p id="chat-upload-hint" className="text-xs leading-5 text-slate-500">
+                JPG, PNG, WebP, HEIC, MP4, MOV, WebM oder PDF · maximal 4 MB.
+              </p>
+              <button
+                type="submit"
+                disabled={sendPending}
+                className={`${buttonClass} shrink-0 sm:min-w-44`}
+              >
+                {sendPending ? (
+                  <LoaderCircle aria-hidden="true" className="animate-spin" size={18} />
+                ) : (
+                  <Send aria-hidden="true" size={18} />
+                )}
+                {sendPending ? "Wird gesendet …" : "Nachricht senden"}
+              </button>
+            </div>
+          </fieldset>
         </form>
       )}
     </>

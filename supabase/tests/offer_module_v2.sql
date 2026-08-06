@@ -1,6 +1,6 @@
 -- Hausvia offer module V2 database regression tests
 -- Run against a database where all migrations through
--- 20260805142115_offer_module_v2.sql are already installed, for example:
+-- 20260805153948_offer_module_v2.sql are already installed, for example:
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/offer_module_v2.sql
 --
 -- The suite is one transaction and leaves no fixtures, helper functions or

@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireCustomerContext } from "@/lib/portal/access";
+import {
+  type PropertyMessageActionState,
+  propertyMessageActionError,
+  propertyMessageActionSuccess,
+} from "@/lib/portal/chatActionState";
 import { uploadPortalFile } from "@/lib/portal/files";
 import {
   MAX_IMAGE_BYTES,
@@ -18,7 +23,8 @@ import {
 } from "@/lib/portal/validation";
 
 function go(path: string, key: "status" | "error", value: string): never {
-  redirect(`${path}?${key}=${encodeURIComponent(value)}`);
+  const separator = path.includes("?") ? "&" : "?";
+  redirect(`${path}${separator}${key}=${encodeURIComponent(value)}`);
 }
 
 const MAX_COMPLAINT_IMAGES = 8;
@@ -31,19 +37,29 @@ function complaintImages(formData: FormData) {
     );
 }
 
-export async function sendCustomerPropertyMessageAction(formData: FormData) {
+export async function sendCustomerPropertyMessageAction(
+  previousState: PropertyMessageActionState,
+  formData: FormData,
+): Promise<PropertyMessageActionState> {
   const { profile, supabase } = await requireCustomerContext();
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/portal/properties/${propertyId}`;
+  const basePath = `/portal/properties/${propertyId}`;
   const parsed = messageSchema.safeParse({
     propertyId,
     body: formValue(formData, "body"),
   });
-  if (!parsed.success) go(fallback, "error", firstZodError(parsed.error));
+  if (!parsed.success) {
+    return propertyMessageActionError(
+      previousState,
+      firstZodError(parsed.error),
+    );
+  }
   const file = formData.get("attachment");
   if (file instanceof File && file.size > 0) {
     const validation = await validateUploadContents(file, "chat");
-    if (!validation.ok) go(fallback, "error", validation.message);
+    if (!validation.ok) {
+      return propertyMessageActionError(previousState, validation.message);
+    }
   }
   const { data: message, error } = await supabase
     .from("property_messages")
@@ -55,8 +71,12 @@ export async function sendCustomerPropertyMessageAction(formData: FormData) {
     })
     .select("id")
     .single();
-  if (error || !message)
-    go(fallback, "error", "Nachricht konnte nicht gesendet werden.");
+  if (error || !message) {
+    return propertyMessageActionError(
+      previousState,
+      "Nachricht konnte nicht gesendet werden.",
+    );
+  }
 
   if (file instanceof File && file.size > 0) {
     let uploadedPath: string | null = null;
@@ -72,14 +92,14 @@ export async function sendCustomerPropertyMessageAction(formData: FormData) {
       const { error: attachmentError } = await supabase
         .from("message_attachments")
         .insert({
-        message_id: message.id,
-        bucket: uploaded.bucket,
-        path: uploaded.path,
-        filename: uploaded.filename,
-        mime_type: uploaded.mimeType,
-        size_bytes: uploaded.size,
-        uploaded_by: profile.id,
-      });
+          message_id: message.id,
+          bucket: uploaded.bucket,
+          path: uploaded.path,
+          filename: uploaded.filename,
+          mime_type: uploaded.mimeType,
+          size_bytes: uploaded.size,
+          uploaded_by: profile.id,
+        });
       if (attachmentError) throw attachmentError;
     } catch (uploadError) {
       const admin = createSupabaseAdminClient();
@@ -93,22 +113,24 @@ export async function sendCustomerPropertyMessageAction(formData: FormData) {
         .delete()
         .eq("id", message.id)
         .eq("sender_id", profile.id);
-      go(
-        fallback,
-        "error",
+      revalidatePath(basePath);
+      return propertyMessageActionError(
+        previousState,
         uploadError instanceof Error
           ? `Nachricht wurde nicht gesendet: ${uploadError.message}`
           : "Nachricht und Datei konnten nicht gespeichert werden.",
       );
     }
   }
-  revalidatePath(fallback);
+  revalidatePath(basePath);
+  return propertyMessageActionSuccess(previousState);
 }
 
 export async function createCustomerComplaintAction(formData: FormData) {
   const { profile, supabase } = await requireCustomerContext();
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/portal/properties/${propertyId}`;
+  const basePath = `/portal/properties/${propertyId}`;
+  const fallback = `${basePath}?view=chat`;
   const parsed = complaintSchema.safeParse({
     propertyId,
     visitId: formValue(formData, "visitId"),
@@ -243,7 +265,7 @@ export async function createCustomerComplaintAction(formData: FormData) {
     );
   }
 
-  revalidatePath(fallback);
+  revalidatePath(basePath);
   revalidatePath(`/admin/properties/${parsed.data.propertyId}`);
   go(
     fallback,
@@ -260,7 +282,8 @@ export async function createCustomerDamageAction(formData: FormData) {
   const { profile, supabase } = await requireCustomerContext();
   const buildingId = formValue(formData, "buildingId");
   const propertyId = formValue(formData, "propertyId");
-  const fallback = `/portal/properties/${propertyId}`;
+  const basePath = `/portal/properties/${propertyId}`;
+  const fallback = `${basePath}?view=requests`;
   const parsed = damageSchema.safeParse({
     buildingId,
     title: formValue(formData, "title"),
@@ -323,7 +346,7 @@ export async function createCustomerDamageAction(formData: FormData) {
       attachmentFailed = true;
     }
   }
-  revalidatePath(fallback);
+  revalidatePath(basePath);
   go(
     fallback,
     "status",

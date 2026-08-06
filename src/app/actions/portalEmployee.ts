@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireEmployeeContext } from "@/lib/portal/access";
+import {
+  type PropertyMessageActionState,
+  propertyMessageActionError,
+  propertyMessageActionSuccess,
+} from "@/lib/portal/chatActionState";
 import { uploadPortalFile } from "@/lib/portal/files";
 import { validateUploadContents } from "@/lib/portal/security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -432,18 +437,28 @@ export async function createEmployeeDamageAction(formData: FormData) {
   );
 }
 
-export async function sendEmployeePropertyMessageAction(formData: FormData) {
+export async function sendEmployeePropertyMessageAction(
+  previousState: PropertyMessageActionState,
+  formData: FormData,
+): Promise<PropertyMessageActionState> {
   const { profile, supabase } = await requireEmployeeContext();
   const parsed = messageSchema.safeParse({
     propertyId: formValue(formData, "propertyId"),
     body: formValue(formData, "body"),
   });
   const fallback = `/app/properties/${formValue(formData, "propertyId")}`;
-  if (!parsed.success) go(fallback, "error", firstZodError(parsed.error));
+  if (!parsed.success) {
+    return propertyMessageActionError(
+      previousState,
+      firstZodError(parsed.error),
+    );
+  }
   const file = formData.get("attachment");
   if (file instanceof File && file.size > 0) {
     const validation = await validateUploadContents(file, "chat");
-    if (!validation.ok) go(fallback, "error", validation.message);
+    if (!validation.ok) {
+      return propertyMessageActionError(previousState, validation.message);
+    }
   }
   const { data: message, error } = await supabase
     .from("property_messages")
@@ -455,8 +470,12 @@ export async function sendEmployeePropertyMessageAction(formData: FormData) {
     })
     .select("id")
     .single();
-  if (error || !message)
-    go(fallback, "error", "Nachricht konnte nicht gesendet werden.");
+  if (error || !message) {
+    return propertyMessageActionError(
+      previousState,
+      "Nachricht konnte nicht gesendet werden.",
+    );
+  }
   if (file instanceof File && file.size > 0) {
     let uploadedPath: string | null = null;
     try {
@@ -471,14 +490,14 @@ export async function sendEmployeePropertyMessageAction(formData: FormData) {
       const { error: attachmentError } = await supabase
         .from("message_attachments")
         .insert({
-        message_id: message.id,
-        bucket: uploaded.bucket,
-        path: uploaded.path,
-        filename: uploaded.filename,
-        mime_type: uploaded.mimeType,
-        size_bytes: uploaded.size,
-        uploaded_by: profile.id,
-      });
+          message_id: message.id,
+          bucket: uploaded.bucket,
+          path: uploaded.path,
+          filename: uploaded.filename,
+          mime_type: uploaded.mimeType,
+          size_bytes: uploaded.size,
+          uploaded_by: profile.id,
+        });
       if (attachmentError) throw attachmentError;
     } catch (uploadError) {
       const admin = createSupabaseAdminClient();
@@ -492,9 +511,9 @@ export async function sendEmployeePropertyMessageAction(formData: FormData) {
         .delete()
         .eq("id", message.id)
         .eq("sender_id", profile.id);
-      go(
-        fallback,
-        "error",
+      revalidatePath(fallback);
+      return propertyMessageActionError(
+        previousState,
         uploadError instanceof Error
           ? `Nachricht wurde nicht gesendet: ${uploadError.message}`
           : "Nachricht und Datei konnten nicht gespeichert werden.",
@@ -502,6 +521,7 @@ export async function sendEmployeePropertyMessageAction(formData: FormData) {
     }
   }
   revalidatePath(fallback);
+  return propertyMessageActionSuccess(previousState);
 }
 
 export async function markEmployeeNotificationReadAction(formData: FormData) {

@@ -1360,10 +1360,10 @@ export default async function AdminPropertyDetailPage({
                         ) : null}
                         {!propertyReadOnly ? (
                         <div className="mt-4 flex flex-wrap gap-2">
-                          {building.status === "active" ? (
+                          {building.status === "active" && property.status === "active" ? (
                             <>
                               <a
-                                href={`/api/buildings/${building.id}/qr`}
+                                href={`/api/buildings/${building.id}/qr?download=1`}
                                 className={buttonClass}
                               >
                                 PNG herunterladen
@@ -1387,6 +1387,11 @@ export default async function AdminPropertyDetailPage({
                               </form>
                             </>
                           ) : null}
+                          {building.status === "active" && property.status !== "active" ? (
+                            <p className="flex min-h-11 items-center rounded-xl border border-amber-200 bg-amber-50 px-3 text-xs font-bold leading-5 text-amber-900">
+                              QR-Code erst verfügbar, wenn die Immobilie aktiv ist.
+                            </p>
+                          ) : null}
                           <form action={updateBuildingStatusAction}>
                             <input type="hidden" name="propertyId" value={id} />
                             <input type="hidden" name="buildingId" value={building.id} />
@@ -1407,7 +1412,7 @@ export default async function AdminPropertyDetailPage({
                         </div>
                         ) : null}
                       </div>
-                      {building.status === "active" && !propertyReadOnly ? (
+                      {building.status === "active" && property.status === "active" ? (
                         <Image
                           src={`/api/buildings/${building.id}/qr`}
                           alt={`QR-Code für ${building.label || building.formatted_address}`}

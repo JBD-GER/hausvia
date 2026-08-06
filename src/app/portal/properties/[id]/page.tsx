@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Building2, FileDown } from "lucide-react";
+import {
+  Building2,
+  CalendarCheck2,
+  FileDown,
+  House,
+  MessageCircle,
+  ReceiptText,
+  TriangleAlert,
+} from "lucide-react";
 import {
   createCustomerComplaintAction,
   createCustomerDamageAction,
@@ -36,10 +44,23 @@ export default async function CustomerPropertyPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; status?: string }>;
+  searchParams: Promise<{ error?: string; status?: string; view?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
+  const availableViews = [
+    "overview",
+    "visits",
+    "requests",
+    "chat",
+    "documents",
+  ] as const;
+  type PropertyView = (typeof availableViews)[number];
+  const activeView: PropertyView = availableViews.includes(
+    query.view as PropertyView,
+  )
+    ? (query.view as PropertyView)
+    : "overview";
   const { profile, supabase } = await requireCustomerContext();
   const { data: property } = await supabase
     .from("properties")
@@ -78,6 +99,10 @@ export default async function CustomerPropertyPage({
     property.damage_reports?.filter(
       (damage) => !["resolved", "rejected"].includes(damage.status),
     ) ?? [];
+  const invoiceCents = (newValue: number | null, legacy: number | null) =>
+    Number.isInteger(newValue)
+      ? Number(newValue)
+      : Math.round(Number(legacy ?? 0) * 100);
   const chatMessages = (messages ?? []).slice().reverse();
   const signedAttachmentUrls = await createPrivateAttachmentUrls(
     supabase,
@@ -108,7 +133,31 @@ export default async function CustomerPropertyPage({
       <PageHeader
         eyebrow="Immobilie"
         title={property.name}
-        text={`${property.buildings?.length ?? 0} Gebäude · ${property.status === "active" ? "aktive Betreuung" : property.status}`}
+        text={`${property.buildings?.length ?? 0} Gebäude · ${
+          property.status === "active"
+            ? "Aktive Betreuung"
+            : property.status === "planning"
+              ? "In Vorbereitung"
+              : property.status === "paused"
+                ? "Betreuung pausiert"
+                : "Betreuung beendet"
+        }`}
+        actions={
+          <>
+            <Link
+              href={`/portal/properties/${property.id}?view=chat`}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-black text-white shadow-lg shadow-brand/15 sm:flex-none"
+            >
+              <MessageCircle size={18} /> Nachricht
+            </Link>
+            <Link
+              href={`/portal/properties/${property.id}?view=requests`}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-brand shadow-sm sm:flex-none"
+            >
+              <TriangleAlert size={18} /> Schaden melden
+            </Link>
+          </>
+        }
       />
       {query.error ? (
         <p
@@ -123,7 +172,7 @@ export default async function CustomerPropertyPage({
           {query.status}
         </p>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard
           label="Nächste Einsätze"
           value={upcoming.length}
@@ -142,29 +191,33 @@ export default async function CustomerPropertyPage({
       </div>
       <nav
         aria-label="Immobilienbereiche"
-        className="mt-6 flex gap-2 overflow-x-auto pb-2"
+        className="mt-6 flex snap-x gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_12px_35px_rgba(8,43,97,0.06)]"
       >
         {[
-          ["uebersicht", "Übersicht"],
-          ["leistungen", "Leistungen"],
-          ["einsaetze", "Einsätze"],
-          ["schaeden", "Schäden"],
-          ["chat", "Chat"],
-          ["abrechnung", "Abrechnung"],
-        ].map(([anchor, label]) => (
-          <a
-            key={anchor}
-            href={`#${anchor}`}
-            className="whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:border-brand hover:text-brand"
+          { id: "overview", label: "Übersicht", icon: House },
+          { id: "visits", label: "Einsätze", icon: CalendarCheck2 },
+          { id: "requests", label: "Anliegen", icon: TriangleAlert },
+          { id: "chat", label: "Chat", icon: MessageCircle },
+          { id: "documents", label: "Dokumente", icon: ReceiptText },
+        ].map(({ id: view, label, icon: Icon }) => (
+          <Link
+            key={view}
+            href={`/portal/properties/${property.id}?view=${view}`}
+            aria-current={activeView === view ? "page" : undefined}
+            className={`flex min-h-12 min-w-max snap-start items-center justify-center gap-2 whitespace-nowrap rounded-xl px-3.5 text-sm font-black transition sm:flex-1 ${
+              activeView === view
+                ? "bg-brand text-white shadow-md shadow-brand/15"
+                : "text-slate-600 hover:bg-brand-soft hover:text-brand"
+            }`}
           >
-            {label}
-          </a>
+            <Icon size={17} /> {label}
+          </Link>
         ))}
       </nav>
       <div className="mt-4 grid gap-5">
         <section
           id="uebersicht"
-          className="grid scroll-mt-24 gap-5 lg:grid-cols-2"
+          className={`${activeView === "overview" ? "grid" : "hidden"} gap-5 lg:grid-cols-2`}
         >
           <Panel title="Gebäude & Adressen">
             <div className="grid gap-3">
@@ -218,7 +271,10 @@ export default async function CustomerPropertyPage({
             )}
           </Panel>
         </section>
-        <section id="leistungen" className="scroll-mt-24">
+        <section
+          id="leistungen"
+          className={activeView === "overview" ? "block" : "hidden"}
+        >
           <Panel title="Gebuchte Leistungen">
             <div className="grid gap-3 md:grid-cols-2">
               {property.property_services
@@ -248,7 +304,10 @@ export default async function CustomerPropertyPage({
             </div>
           </Panel>
         </section>
-        <section id="einsaetze" className="scroll-mt-24">
+        <section
+          id="einsaetze"
+          className={activeView === "visits" ? "block" : "hidden"}
+        >
           <Panel title="Abgeschlossene Leistungsberichte">
             {completed.length ? (
               <div className="grid gap-4">
@@ -373,7 +432,7 @@ export default async function CustomerPropertyPage({
         </section>
         <section
           id="schaeden"
-          className="grid scroll-mt-24 gap-5 lg:grid-cols-[1.2fr_.8fr]"
+          className={`${activeView === "requests" ? "grid" : "hidden"} gap-5 lg:grid-cols-[1.2fr_.8fr]`}
         >
           <Panel title="Schäden">
             <div className="grid gap-3">
@@ -478,7 +537,7 @@ export default async function CustomerPropertyPage({
         </section>
         <section
           id="chat"
-          className="grid scroll-mt-24 gap-5 lg:grid-cols-[1.2fr_.8fr]"
+          className={`${activeView === "chat" ? "grid" : "hidden"} gap-5 lg:grid-cols-[1.2fr_.8fr]`}
         >
           <Panel title="Immobilien-Chat">
             <PropertyChat
@@ -586,11 +645,66 @@ export default async function CustomerPropertyPage({
             ) : null}
           </Panel>
         </section>
-        <section id="abrechnung" className="scroll-mt-24">
+        <section
+          id="abrechnung"
+          className={activeView === "documents" ? "block" : "hidden"}
+        >
           <Panel title="Rechnungen">
             {property.invoices?.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
+              <>
+                <div className="grid gap-3 md:hidden">
+                  {property.invoices.map((invoice) => (
+                    <article
+                      key={invoice.id}
+                      className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                            Rechnung
+                          </p>
+                          <p className="mt-1 font-black text-slate-950">
+                            {invoice.invoice_number || "Entwurf"}
+                          </p>
+                        </div>
+                        <StatusPill>{invoice.status}</StatusPill>
+                      </div>
+                      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <dt className="text-xs font-bold text-slate-500">Datum</dt>
+                          <dd className="mt-1 font-extrabold text-slate-900">
+                            {formatGermanDate(invoice.created_at)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-bold text-slate-500">Brutto</dt>
+                          <dd className="mt-1 font-black text-slate-950">
+                            {formatCents(
+                              invoiceCents(
+                                invoice.gross_total_cents,
+                                invoice.gross_total,
+                              ),
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                      {invoice.document_path ? (
+                        <Link
+                          href={`/api/documents/invoices/${invoice.id}`}
+                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-black text-white"
+                        >
+                          <FileDown size={17} /> PDF herunterladen
+                        </Link>
+                      ) : (
+                        <p className="mt-4 rounded-xl bg-white p-3 text-center text-xs font-bold text-slate-500">
+                          Das PDF wird nach Versand bereitgestellt.
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full min-w-[760px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                       <th className="p-3">Datum</th>
@@ -605,13 +719,6 @@ export default async function CustomerPropertyPage({
                   </thead>
                   <tbody>
                     {property.invoices.map((invoice) => {
-                      const cents = (
-                        newValue: number | null,
-                        legacy: number | null,
-                      ) =>
-                        Number.isInteger(newValue)
-                          ? Number(newValue)
-                          : Math.round(Number(legacy ?? 0) * 100);
                       return (
                         <tr
                           key={invoice.id}
@@ -633,17 +740,17 @@ export default async function CustomerPropertyPage({
                           </td>
                           <td className="p-3">
                             {formatCents(
-                              cents(invoice.net_total_cents, invoice.net_total),
+                              invoiceCents(invoice.net_total_cents, invoice.net_total),
                             )}
                           </td>
                           <td className="p-3">
                             {formatCents(
-                              cents(invoice.tax_total_cents, invoice.tax_total),
+                              invoiceCents(invoice.tax_total_cents, invoice.tax_total),
                             )}
                           </td>
                           <td className="p-3 font-black">
                             {formatCents(
-                              cents(
+                              invoiceCents(
                                 invoice.gross_total_cents,
                                 invoice.gross_total,
                               ),
@@ -665,8 +772,9 @@ export default async function CustomerPropertyPage({
                       );
                     })}
                   </tbody>
-                </table>
-              </div>
+                  </table>
+                </div>
+              </>
             ) : (
               <EmptyState
                 title="Keine Rechnungen"

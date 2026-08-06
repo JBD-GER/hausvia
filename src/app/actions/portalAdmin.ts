@@ -16,6 +16,7 @@ import {
   formValue,
   formValues,
   manualVisitSchema,
+  messageSchema,
   propertyAdminSettingsSchema,
   propertyBillingProfileSchema,
   propertySchema,
@@ -34,6 +35,11 @@ import {
 } from "@/lib/portal/core";
 import { canCancelExtraCharge } from "@/lib/monthlyBilling";
 import { requireAdminContext } from "@/lib/portal/access";
+import {
+  type PropertyMessageActionState,
+  propertyMessageActionError,
+  propertyMessageActionSuccess,
+} from "@/lib/portal/chatActionState";
 import { uploadPortalFile } from "@/lib/portal/files";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -2900,42 +2906,65 @@ export async function markNotificationReadAction(formData: FormData) {
   revalidatePath("/admin/notifications");
 }
 
-export async function sendAdminPropertyMessageAction(formData: FormData) {
+export async function sendAdminPropertyMessageAction(
+  previousState: PropertyMessageActionState,
+  formData: FormData,
+): Promise<PropertyMessageActionState> {
   const { profile, admin } = await requireAdminContext();
   const propertyId = formValue(formData, "propertyId");
-  const body = normalizePlainText(formValue(formData, "body"), 4_000);
-  if (!propertyId || !body)
-    go(
-      `/admin/properties/${propertyId}`,
-      "error",
-      "Eine Nachricht ist erforderlich.",
+  const fallback = `/admin/properties/${propertyId}`;
+  const parsed = messageSchema.safeParse({
+    propertyId,
+    body: formValue(formData, "body"),
+  });
+  if (!parsed.success) {
+    return propertyMessageActionError(
+      previousState,
+      firstZodError(parsed.error),
     );
-  await requireMutableProperty(admin, propertyId);
+  }
+  const { data: property, error: propertyError } = await admin
+    .from("properties")
+    .select("id,status")
+    .eq("id", parsed.data.propertyId)
+    .maybeSingle();
+  if (propertyError || !property) {
+    return propertyMessageActionError(
+      previousState,
+      "Die Immobilie wurde nicht gefunden.",
+    );
+  }
+  if (property.status === "archived") {
+    return propertyMessageActionError(
+      previousState,
+      "Der Chat dieser archivierten Immobilie ist schreibgeschützt.",
+    );
+  }
   const file = formData.get("attachment");
   if (file instanceof File && file.size > 0) {
     const validation = await validateUploadContents(file, "chat");
     if (!validation.ok) {
-      go(`/admin/properties/${propertyId}`, "error", validation.message);
+      return propertyMessageActionError(previousState, validation.message);
     }
   }
   const { data: message, error } = await admin
     .from("property_messages")
     .insert({
-      property_id: propertyId,
+      property_id: parsed.data.propertyId,
       sender_id: profile.id,
-      body,
+      body: parsed.data.body,
       message_type: "user",
     })
     .select("id")
     .single();
-  if (error || !message)
-    go(
-      `/admin/properties/${propertyId}`,
-      "error",
+  if (error || !message) {
+    return propertyMessageActionError(
+      previousState,
       "Nachricht konnte nicht gesendet werden.",
     );
+  }
   if (file instanceof File && file.size > 0) {
-    const path = `${propertyId}/${message.id}/${safeStorageFilename(file.name, file.type)}`;
+    const path = `${parsed.data.propertyId}/${message.id}/${safeStorageFilename(file.name, file.type)}`;
     const { error: uploadError } = await admin.storage
       .from("property-message-attachments")
       .upload(path, Buffer.from(await file.arrayBuffer()), {
@@ -2948,23 +2977,23 @@ export async function sendAdminPropertyMessageAction(formData: FormData) {
         .delete()
         .eq("id", message.id)
         .eq("sender_id", profile.id);
-      go(
-        `/admin/properties/${propertyId}`,
-        "error",
+      revalidatePath(fallback);
+      return propertyMessageActionError(
+        previousState,
         "Nachricht und Datei konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
       );
     }
     const { error: attachmentError } = await admin
       .from("message_attachments")
       .insert({
-      message_id: message.id,
-      bucket: "property-message-attachments",
-      path,
-      filename: file.name,
-      mime_type: file.type,
-      size_bytes: file.size,
-      uploaded_by: profile.id,
-    });
+        message_id: message.id,
+        bucket: "property-message-attachments",
+        path,
+        filename: file.name,
+        mime_type: file.type,
+        size_bytes: file.size,
+        uploaded_by: profile.id,
+      });
     if (attachmentError) {
       await admin.storage.from("property-message-attachments").remove([path]);
       await admin
@@ -2972,12 +3001,13 @@ export async function sendAdminPropertyMessageAction(formData: FormData) {
         .delete()
         .eq("id", message.id)
         .eq("sender_id", profile.id);
-      go(
-        `/admin/properties/${propertyId}`,
-        "error",
+      revalidatePath(fallback);
+      return propertyMessageActionError(
+        previousState,
         "Nachricht und Datei konnten nicht vollständig gespeichert werden. Bitte versuchen Sie es erneut.",
       );
     }
   }
-  revalidatePath(`/admin/properties/${propertyId}`);
+  revalidatePath(fallback);
+  return propertyMessageActionSuccess(previousState);
 }

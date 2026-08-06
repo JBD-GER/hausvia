@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { createPropertyAction, generateVisitsAction } from "@/app/actions/portalAdmin";
+import { generateVisitsAction } from "@/app/actions/portalAdmin";
+import { CreatePropertyWizard } from "@/components/portal/CreatePropertyWizard";
 import { EmptyState, Field, PageHeader, Panel, StatusPill, buttonClass, inputClass } from "@/components/portal/PortalUI";
 import { PaginationNav } from "@/components/portal/PaginationNav";
-import { AcceptedOfferPropertyFields } from "@/components/portal/AcceptedOfferPropertyFields";
-import { CUSTOMER_CATEGORY_LABELS, PROPERTY_TYPE_LABELS, formatCents, formatGermanDate } from "@/lib/portal/core";
+import { CUSTOMER_CATEGORY_LABELS, PROPERTY_TYPE_LABELS, berlinIsoDate, formatCents, formatGermanDate } from "@/lib/portal/core";
 import { requireAdminContext } from "@/lib/portal/access";
 import { paginateItems } from "@/lib/portal/listing";
 
@@ -128,48 +128,19 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
       {queryValue(params, "error") ? <p className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900" role="alert">{queryValue(params, "error")}</p> : null}
 
       <div className="grid gap-5">
-        <Panel title="Immobilie mit erstem Gebäude anlegen">
-          <form action={createPropertyAction} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <AcceptedOfferPropertyFields
-              customers={selectableCustomers.map((customer) => {
-                const category = customer.category as keyof typeof CUSTOMER_CATEGORY_LABELS;
-                return {
-                  id: customer.id,
-                  label: `${customerLabel(customer)} · ${CUSTOMER_CATEGORY_LABELS[category] ?? customer.category}`,
-                };
-              })}
-              offers={acceptedOfferOptions}
-            />
-            <Field label="Immobilienname"><input name="name" required placeholder="z. B. WEG Musterstraße 1–7" className={inputClass} /></Field>
-            <Field label="Interner Objektschlüssel"><input name="objectKey" placeholder="optional" className={inputClass} /></Field>
-            <Field label="Objektart">
-              <select name="propertyType" required defaultValue="multi_family" className={inputClass}>
-                {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </Field>
-            <Field label="Immobilienstatus">
-              <select name="status" required defaultValue="active" className={inputClass}>
-                <option value="planning">In Planung</option>
-                <option value="active">Aktiv</option>
-                <option value="paused">Pausiert</option>
-              </select>
-            </Field>
-            <Field label="WEG-/Eigentümerbezeichnung"><input name="ownershipName" className={inputClass} /></Field>
-            <Field label="Monatliche Grundvergütung netto"><input name="monthlyFee" required inputMode="decimal" defaultValue="0,00" className={inputClass} /></Field>
-            <Field label="Umsatzsteuersatz in %"><input name="taxRate" required inputMode="decimal" defaultValue="19" className={inputClass} /></Field>
-            <Field label="Maximale Einsatzdauer in Minuten"><input name="maxVisitMinutes" required type="number" min="1" max="1440" defaultValue="120" className={inputClass} /></Field>
-            <Field label="Betreuungsbeginn"><input name="careStartDate" required type="date" className={inputClass} /></Field>
-            <Field label="Bezeichnung erstes Gebäude"><input name="buildingLabel" placeholder="z. B. Haus A" className={inputClass} /></Field>
-            <Field label="Straße"><input name="street" required autoComplete="address-line1" className={inputClass} /></Field>
-            <Field label="Hausnummer"><input name="houseNumber" required className={inputClass} /></Field>
-            <Field label="Postleitzahl"><input name="postalCode" required inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" className={inputClass} /></Field>
-            <Field label="Ort"><input name="city" required autoComplete="address-level2" className={inputClass} /></Field>
-            <Field label="Land"><input name="country" required defaultValue="Deutschland" autoComplete="country-name" className={inputClass} /></Field>
-            <label className="block md:col-span-2"><span className="text-sm font-bold text-slate-800">Interne Zugangs- oder Objekthinweise</span><textarea name="accessNotes" rows={3} className={inputClass} /></label>
-            <label className="block md:col-span-2"><span className="text-sm font-bold text-slate-800">Internes Briefing</span><textarea name="internalBriefing" rows={3} className={inputClass} /></label>
-            <button className={`${buttonClass} md:col-span-2 xl:col-span-4`}>Immobilie und Gebäude anlegen</button>
-          </form>
-        </Panel>
+        <CreatePropertyWizard
+          careStartDate={berlinIsoDate()}
+          customers={selectableCustomers.map((customer) => {
+            const category = customer.category as keyof typeof CUSTOMER_CATEGORY_LABELS;
+            const categoryLabel = CUSTOMER_CATEGORY_LABELS[category] ?? (customer.category ? String(customer.category) : "Kunde");
+            const emailLabel = customer.email ? ` · ${customer.email}` : "";
+            return {
+              id: customer.id,
+              label: `${customerLabel(customer)} · ${categoryLabel}${emailLabel}`,
+            };
+          })}
+          offers={acceptedOfferOptions}
+        />
 
         <Panel title="Immobilien filtern">
           <form method="get" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

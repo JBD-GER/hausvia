@@ -52,7 +52,7 @@ export function AcceptedOfferPropertyFields({
 
   return (
     <>
-      <Field label="Kunde">
+      <Field label="Kunde" required>
         <select
           name="customerId"
           required

@@ -13,7 +13,12 @@ function pathForRole(
 ) {
   if (role === "admin") return `/admin/properties/${propertyId}`;
   if (role === "employee") return `/app/properties/${propertyId}`;
-  return `/portal/properties/${propertyId}`;
+  return `/portal/properties/${propertyId}?view=chat`;
+}
+
+function withFeedback(path: string, key: "error", value: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${key}=${encodeURIComponent(value)}`;
 }
 
 export async function reactToPropertyMessageAction(formData: FormData) {
@@ -24,7 +29,7 @@ export async function reactToPropertyMessageAction(formData: FormData) {
   const emoji = String(formData.get("emoji") ?? "");
   const fallback = pathForRole(profile.role, propertyId);
   if (!messageId || !propertyId || !ALLOWED_REACTIONS.has(emoji))
-    redirect(`${fallback}?error=Ungültige%20Reaktion`);
+    redirect(withFeedback(fallback, "error", "Ungültige Reaktion"));
   const supabase = await createSupabaseServerClient();
   const { data: message } = await supabase
     .from("property_messages")
@@ -32,7 +37,8 @@ export async function reactToPropertyMessageAction(formData: FormData) {
     .eq("id", messageId)
     .eq("property_id", propertyId)
     .maybeSingle();
-  if (!message) redirect(`${fallback}?error=Nachricht%20nicht%20verfügbar`);
+  if (!message)
+    redirect(withFeedback(fallback, "error", "Nachricht nicht verfügbar"));
   const { data: existing } = await supabase
     .from("message_reactions")
     .select("id")
@@ -51,7 +57,7 @@ export async function reactToPropertyMessageAction(formData: FormData) {
       .from("message_reactions")
       .insert({ message_id: messageId, user_id: profile.id, emoji });
   }
-  revalidatePath(fallback);
+  revalidatePath(fallback.split("?")[0]);
 }
 
 export async function markPropertyMessagesReadAction(formData: FormData) {
@@ -78,5 +84,5 @@ export async function markPropertyMessagesReadAction(formData: FormData) {
       { onConflict: "message_id,user_id" },
     );
   }
-  revalidatePath(fallback);
+  revalidatePath(fallback.split("?")[0]);
 }

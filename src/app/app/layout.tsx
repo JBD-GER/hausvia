@@ -20,7 +20,6 @@ const navItems = [
   { label: "Kunden", href: "/app/customers", icon: "customers", group: "Weitere Bereiche" },
   { label: "Projekte", href: "/app/projects", icon: "projects", group: "Weitere Bereiche" },
   { label: "Material", href: "/app/orders", icon: "material", group: "Weitere Bereiche" },
-  { label: "Schichten", href: "/app/shifts", icon: "shifts", group: "Weitere Bereiche" },
 ] satisfies PortalNavItem[];
 
 export default async function EmployeeLayout({
