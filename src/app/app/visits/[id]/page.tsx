@@ -407,8 +407,8 @@ export default async function EmployeeVisitPage({
               <input type="hidden" name="visitId" value={visit.id} />
               <p className="text-sm leading-6 text-amber-950">
                 Starten Sie den Einsatz erst bei Ihrer Ankunft. Die Startzeit
-                wird sicher auf dem Server gespeichert und die Aufgaben werden
-                genau einmal erstellt.
+                wird sicher auf dem Server gespeichert; die vorgeplante
+                Checkliste wird dabei verbindlich für diesen Einsatz geöffnet.
               </p>
               <button className="mt-4 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 font-black text-white">
                 <PlayCircle size={22} /> Ankunft starten
@@ -624,8 +624,8 @@ export default async function EmployeeVisitPage({
                 </div>
               ) : visit.status === "scheduled" ? (
                 <EmptyState
-                  title="Aufgaben bei Ankunft"
-                  text="Die fälligen Leistungen und offenen Schadensaufgaben werden beim Start einmalig als Snapshot erzeugt."
+                  title="Für diesen Termin ist nichts fällig"
+                  text="Saisonale Leistungen und offene Schadensmeldungen werden automatisch eingeplant, sobald sie für diesen Einsatz gelten."
                 />
               ) : (
                 <EmptyState

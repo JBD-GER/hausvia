@@ -19,7 +19,7 @@ export function PropertyRealtimeRefresh({
       refreshTimer = setTimeout(() => router.refresh(), 150);
     };
     const channel = supabase
-      .channel(`property-messages:${propertyId}`)
+      .channel(`property-live:${propertyId}`)
       .on(
         "postgres_changes",
         {
@@ -43,6 +43,56 @@ export function PropertyRealtimeRefresh({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "message_reads" },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "visits",
+          filter: `property_id=eq.${propertyId}`,
+        },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "visit_tasks",
+          filter: `property_id=eq.${propertyId}`,
+        },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "visit_plans",
+          filter: `property_id=eq.${propertyId}`,
+        },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "damage_reports",
+          filter: `property_id=eq.${propertyId}`,
+        },
+        refresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "property_services",
+          filter: `property_id=eq.${propertyId}`,
+        },
         refresh,
       )
       .subscribe();

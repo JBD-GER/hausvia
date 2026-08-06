@@ -264,6 +264,36 @@ insert into public.visit_buildings (visit_id, building_id) values (
   'c0000000-0000-0000-0000-000000000001'
 );
 
+-- Generated visits now receive immutable service/checklist snapshots before
+-- an employee starts them. This fixture mirrors that operational state.
+insert into public.visit_tasks (
+  id, visit_id, property_id, building_id, property_service_id,
+  source_type, source_id, title, description, category, checklist_snapshot,
+  status, photo_required, customer_visible, due_period_key, dedupe_key
+) values (
+  'f3000000-0000-0000-0000-000000000001',
+  'f0000000-0000-0000-0000-000000000001',
+  'b0000000-0000-0000-0000-000000000001',
+  'c0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-000000000001',
+  'service', 'd0000000-0000-0000-0000-000000000001',
+  'RLS Regelservice', 'Sichere Kundenbeschreibung', 'Kontrolle',
+  jsonb_build_array(jsonb_build_object(
+    'id', 'd1000000-0000-0000-0000-000000000001',
+    'label', 'RLS Prüfschritt',
+    'required', true
+  )),
+  'open', false, true, 'visit:f0000000-0000-0000-0000-000000000001',
+  'service-planned:rls-fixture'
+);
+
+insert into public.visit_task_instructions (
+  visit_task_id, internal_instruction
+) values (
+  'f3000000-0000-0000-0000-000000000001',
+  'RLS GEHEIME INTERNE ANWEISUNG'
+);
+
 insert into public.property_messages (
   id, property_id, sender_id, sender_display_name, message_type, body
 ) values
@@ -473,8 +503,8 @@ select public.__portal_test_assert_fails(
 );
 reset role;
 
--- Assigned employee A can start, work and complete the visit. Server timestamps
--- and actor identity are asserted after the transition.
+-- Assigned employee A can start, work and complete the already planned visit.
+-- Server timestamps and actor identity are asserted after the transition.
 set local role authenticated;
 select set_config(
   'request.jwt.claims',
@@ -529,7 +559,7 @@ select public.__portal_test_assert(
 );
 select public.__portal_test_assert(
   (select count(*) = 1 from public.visit_tasks where visit_id = 'f0000000-0000-0000-0000-000000000001'),
-  'start_visit must materialize one idempotent recurring task'
+  'start_visit must preserve one preplanned recurring task'
 );
 select public.__portal_test_assert(
   exists (

@@ -1249,7 +1249,7 @@ export async function createVisitPlanAction(formData: FormData) {
   go(
     fallback,
     "status",
-    "Besuchsplan und nächste Termine wurden erstellt.",
+    "Besuchsplan, Termine und fällige Checklisten wurden im Voraus erstellt.",
   );
 }
 
@@ -1327,7 +1327,59 @@ export async function updateVisitPlanAction(formData: FormData) {
   go(
     fallback,
     "status",
-    "Besuchsplan aktualisiert. Manuell angepasste und bereits gestartete Termine blieben unverändert.",
+    "Besuchsplan aktualisiert. Zukünftige Termine und Checklisten wurden neu berechnet; manuell angepasste und bereits gestartete Termine blieben unverändert.",
+  );
+}
+
+export async function deleteVisitPlanAction(formData: FormData) {
+  const { supabase } = await requireAdminContext();
+  const propertyId = formValue(formData, "propertyId");
+  const visitPlanId = formValue(formData, "visitPlanId");
+  const expectedUpdatedAt = formValue(formData, "updatedAt");
+  const fallback = propertyViewPath(propertyId, "einsaetze");
+  if (
+    !/^[0-9a-f-]{36}$/i.test(propertyId) ||
+    !/^[0-9a-f-]{36}$/i.test(visitPlanId) ||
+    !expectedUpdatedAt
+  ) {
+    go(fallback, "error", "Ungültiger Besuchsplanbezug.");
+  }
+
+  const { data: result, error } = await supabase.rpc(
+    "delete_visit_plan_configuration",
+    {
+      p_property_id: propertyId,
+      p_visit_plan_id: visitPlanId,
+      p_expected_updated_at: expectedUpdatedAt,
+    },
+  );
+  if (error) {
+    const message = error.message.toLowerCase();
+    go(
+      fallback,
+      "error",
+      message.includes("laufend") || message.includes("gestartet")
+        ? "Ein laufender Einsatz muss zuerst abgeschlossen werden, bevor der Plan entfernt werden kann."
+        : message.includes("zwischenzeitlich")
+          ? "Der Besuchsplan wurde zwischenzeitlich geändert. Bitte laden Sie die Seite neu."
+          : "Der Besuchsplan konnte nicht sicher entfernt werden.",
+    );
+  }
+
+  const mutation = (result ?? {}) as {
+    deleted_visits?: number;
+    preserved_history?: number;
+  };
+  revalidatePath(fallback);
+  revalidatePath("/app/today");
+  const removed = Number(mutation.deleted_visits ?? 0);
+  const preserved = Number(mutation.preserved_history ?? 0);
+  go(
+    fallback,
+    "status",
+    preserved
+      ? `Besuchsplan entfernt. ${removed} offene Termine wurden gelöscht; ${preserved} abgeschlossene oder stornierte Einsätze bleiben revisionssicher erhalten.`
+      : `Besuchsplan und ${removed} offene Termine wurden vollständig entfernt.`,
   );
 }
 

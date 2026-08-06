@@ -24,6 +24,7 @@ import {
   updatePropertyAdminSettingsAction,
   updatePropertyBillingProfileAction,
   updatePropertyServiceSortOrderAction,
+  deleteVisitPlanAction,
   updateVisitPlanAction,
   updateVisitPlanStatusAction,
 } from "@/app/actions/portalAdmin";
@@ -47,7 +48,9 @@ import {
 } from "@/app/actions/portalServiceAdmin";
 import { PropertyChat } from "@/components/portal/PropertyChat";
 import { PropertyRealtimeRefresh } from "@/components/portal/PropertyRealtimeRefresh";
+import { ConfirmSubmitButton } from "@/components/portal/ConfirmSubmitButton";
 import { ServiceCatalogSelect } from "@/components/portal/ServiceCatalogSelect";
+import { VisitCalendar } from "@/components/portal/VisitCalendar";
 import { VisitPlanScheduleFields } from "@/components/portal/VisitPlanScheduleFields";
 import { PortalTabs } from "@/components/portal/PortalTabs";
 import {
@@ -73,6 +76,12 @@ import { attachChatSenderRoles } from "@/lib/portal/chatSenderRoles";
 import { createPrivateAttachmentUrls } from "@/lib/portal/files";
 import { requireAdminContext } from "@/lib/portal/access";
 import { getVisitScheduleSummary } from "@/lib/portal/visitRecurrence";
+import {
+  getVisitCalendarRange,
+  isCalendarDate,
+  normalizeCalendarDate,
+  normalizeVisitCalendarView,
+} from "@/lib/portal/visitCalendar";
 import {
   parseVisitReportSnapshot,
   parseVisitOperationalReportsSnapshot,
@@ -144,6 +153,16 @@ const propertyStatusLabels: Record<string, string> = {
   paused: "Pausiert",
   archived: "Archiviert",
 };
+const availablePropertyViews = new Set([
+  "uebersicht",
+  "gebaeude",
+  "leistungen",
+  "einsaetze",
+  "schaeden",
+  "team",
+  "chat",
+  "abrechnung",
+]);
 
 function queryValue(params: Awaited<SearchParams>, key: string) {
   const value = params[key];
@@ -188,6 +207,22 @@ export default async function AdminPropertyDetailPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
+  const today = berlinIsoDate();
+  const requestedView = queryValue(query, "view");
+  const activeView = availablePropertyViews.has(requestedView)
+    ? requestedView
+    : "uebersicht";
+  const isVisitsView = activeView === "einsaetze";
+  const requestedCalendarDate = queryValue(query, "calendarDate");
+  const hasExplicitCalendarDate = isCalendarDate(requestedCalendarDate);
+  const calendarView = normalizeVisitCalendarView(
+    queryValue(query, "calendarView"),
+  );
+  const calendarDate = normalizeCalendarDate(
+    requestedCalendarDate,
+    today,
+  );
+  const calendarRange = getVisitCalendarRange(calendarView, calendarDate);
   const { profile, admin: supabase } = await requireAdminContext();
   const { data: property, error: propertyError } = await supabase
     .from("properties")
@@ -210,7 +245,9 @@ export default async function AdminPropertyDetailPage({
     { data: billingProfile },
     { data: companySettings },
     { data: visitPlans },
-    { data: visits },
+    { data: calendarVisits },
+    { data: upcomingVisits },
+    { data: recentCompletedVisits },
     { data: damages },
     { data: operationalReports },
     { data: complaints },
@@ -293,9 +330,29 @@ export default async function AdminPropertyDetailPage({
       .from("visits")
       .select("*")
       .eq("property_id", id)
+      .neq("status", "canceled")
+      .gte("scheduled_date", calendarRange.start)
+      .lte("scheduled_date", calendarRange.end)
+      .order("scheduled_date")
+      .order("planned_start_time")
+      .limit(isVisitsView ? 500 : 0),
+    supabase
+      .from("visits")
+      .select("*")
+      .eq("property_id", id)
+      .eq("status", "scheduled")
+      .gte("scheduled_date", today)
+      .order("scheduled_date")
+      .order("planned_start_time")
+      .limit(120),
+    supabase
+      .from("visits")
+      .select("*")
+      .eq("property_id", id)
+      .eq("status", "completed")
       .order("scheduled_date", { ascending: false })
       .order("planned_start_time", { ascending: false })
-      .limit(40),
+      .limit(24),
     supabase
       .from("damage_reports")
       .select("*,damage_attachments(id,bucket,path,filename,mime_type)")
@@ -364,7 +421,46 @@ export default async function AdminPropertyDetailPage({
       .order("accepted_at", { ascending: false }),
   ]);
 
-  const currentMonth = berlinIsoDate().slice(0, 7);
+  const requestedVisitId = queryValue(query, "visit");
+  const requestedVisitIsValid =
+    isVisitsView && /^[0-9a-f-]{36}$/i.test(requestedVisitId);
+  let selectedVisit = requestedVisitIsValid
+    ? (calendarVisits ?? []).find((visit) => visit.id === requestedVisitId) ??
+      null
+    : null;
+  if (requestedVisitIsValid && !selectedVisit) {
+    const { data } = await supabase
+      .from("visits")
+      .select("*")
+      .eq("id", requestedVisitId)
+      .eq("property_id", id)
+      .neq("status", "canceled")
+      .maybeSingle();
+    selectedVisit = data ?? null;
+  }
+  if (!selectedVisit) {
+    selectedVisit =
+      (calendarVisits ?? []).find(
+        (visit) => visit.scheduled_date === calendarDate,
+      ) ??
+      (!hasExplicitCalendarDate
+        ? (calendarVisits ?? []).find(
+            (visit) =>
+              visit.status === "scheduled" && visit.scheduled_date >= today,
+          ) ?? (calendarVisits ?? [])[0]
+        : null) ??
+      null;
+  }
+  const operationalVisitById = new Map(
+    [
+      ...(calendarVisits ?? []),
+      ...(recentCompletedVisits ?? []),
+      ...(selectedVisit ? [selectedVisit] : []),
+    ].map((visit) => [visit.id, visit]),
+  );
+  const operationalVisits = Array.from(operationalVisitById.values());
+
+  const currentMonth = today.slice(0, 7);
   const requestedMetricsMonth = queryValue(query, "metricsMonth");
   const selectedMetricsMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(
     requestedMetricsMonth,
@@ -412,20 +508,25 @@ export default async function AdminPropertyDetailPage({
   const serviceChecklistItems = checklistResult.data ?? [];
   const serviceEquipment = serviceEquipmentResult.data ?? [];
 
-  const visitIds = (visits ?? []).map((visit) => visit.id);
-  const [{ data: visitTasks }, { data: visitAdminMetrics }] = visitIds.length
-    ? await Promise.all([
-        supabase.from("visit_tasks").select("*").in("visit_id", visitIds),
-        supabase
+  const visitIds = operationalVisits.map((visit) => visit.id);
+  const taskVisitIds = isVisitsView ? visitIds : [];
+  const metricVisitIds =
+    isVisitsView || activeView === "uebersicht" ? visitIds : [];
+  const [{ data: visitTasks }, { data: visitAdminMetrics }] = await Promise.all([
+    taskVisitIds.length
+      ? supabase.from("visit_tasks").select("*").in("visit_id", taskVisitIds)
+      : Promise.resolve({ data: [] }),
+    metricVisitIds.length
+      ? supabase
           .from("visit_admin_metrics")
           .select(
             "visit_id,max_visit_minutes,overtime_minutes,operational_reports_snapshot",
           )
-          .in("visit_id", visitIds),
-      ])
-    : [{ data: [] }, { data: [] }];
+          .in("visit_id", metricVisitIds)
+      : Promise.resolve({ data: [] }),
+  ]);
   const reportByVisitId = new Map(
-    (visits ?? []).map((visit) => [
+    operationalVisits.map((visit) => [
       visit.id,
       parseVisitReportSnapshot(visit.report_snapshot),
     ]),
@@ -457,14 +558,18 @@ export default async function AdminPropertyDetailPage({
       ...(complaints ?? []).flatMap(
         (complaint) => complaint.complaint_attachments ?? [],
       ),
-      ...(visits ?? []).flatMap((visit) =>
-        visitReportPhotos(reportByVisitId.get(visit.id) ?? null),
-      ),
-      ...(visits ?? []).flatMap((visit) =>
-        (operationalSnapshotByVisitId.get(visit.id) ?? []).flatMap(
-          (operationalReport) => operationalReport.photos,
-        ),
-      ),
+      ...(isVisitsView
+        ? operationalVisits.flatMap((visit) =>
+            visitReportPhotos(reportByVisitId.get(visit.id) ?? null),
+          )
+        : []),
+      ...(isVisitsView
+        ? operationalVisits.flatMap((visit) =>
+            (operationalSnapshotByVisitId.get(visit.id) ?? []).flatMap(
+              (operationalReport) => operationalReport.photos,
+            ),
+          )
+        : []),
     ],
   );
 
@@ -489,6 +594,32 @@ export default async function AdminPropertyDetailPage({
   const employeeById = new Map(
     (employees ?? []).map((employee) => [employee.id, employee]),
   );
+  const visitPlanById = new Map(
+    (visitPlans ?? []).map((plan) => [plan.id, plan]),
+  );
+  const taskCountByVisitId = new Map<string, number>();
+  for (const task of visitTasks ?? []) {
+    taskCountByVisitId.set(
+      task.visit_id,
+      (taskCountByVisitId.get(task.visit_id) ?? 0) + 1,
+    );
+  }
+  const calendarEvents = (calendarVisits ?? []).map((visit) => ({
+    id: visit.id,
+    date: visit.scheduled_date,
+    time:
+      visit.planned_start_time?.slice(0, 5) ??
+      visit.window_start?.slice(0, 5) ??
+      null,
+    status: visit.status,
+    planLabel:
+      visitPlanById.get(visit.visit_plan_id)?.label ??
+      (visit.manually_adjusted ? "Manueller Einsatz" : "Einsatz"),
+    employeeName:
+      employeeById.get(visit.primary_employee_id)?.full_name ??
+      "Noch nicht zugewiesen",
+    taskCount: taskCountByVisitId.get(visit.id) ?? 0,
+  }));
   const equipmentById = new Map(
     (equipment ?? []).map((item) => [item.id, item]),
   );
@@ -515,7 +646,7 @@ export default async function AdminPropertyDetailPage({
   const openDamages = (damages ?? []).filter(
     (damage) => !["resolved", "rejected"].includes(damage.status),
   );
-  const scheduledVisits = (visits ?? [])
+  const scheduledVisits = (upcomingVisits ?? [])
     .filter(
       (visit) =>
         visit.status === "scheduled" && visit.scheduled_date >= berlinIsoDate(),
@@ -525,9 +656,7 @@ export default async function AdminPropertyDetailPage({
         `${right.scheduled_date}${right.planned_start_time || ""}`,
       ),
     );
-  const completedVisits = (visits ?? []).filter(
-    (visit) => visit.status === "completed",
-  );
+  const completedVisits = recentCompletedVisits ?? [];
   const latestCompletedVisit = completedVisits[0] ?? null;
   const averageDurationMinutes = completedVisits.length
     ? Math.round(
@@ -600,20 +729,6 @@ export default async function AdminPropertyDetailPage({
     String(customer?.billing_country || "Deutschland");
   const billingEmail = billingProfile?.email || String(customer?.email || "");
   const taxRateBps = Number(adminSettings?.tax_rate_bps || 1900);
-  const availableViews = new Set([
-    "uebersicht",
-    "gebaeude",
-    "leistungen",
-    "einsaetze",
-    "schaeden",
-    "team",
-    "chat",
-    "abrechnung",
-  ]);
-  const requestedView = queryValue(query, "view");
-  const activeView = availableViews.has(requestedView)
-    ? requestedView
-    : "uebersicht";
 
   return (
     <>
@@ -2178,17 +2293,26 @@ export default async function AdminPropertyDetailPage({
                 Neue Pläne und Einsätze sind im Archiv gesperrt. Historische Einsätze und revisionspflichtige Zeitkorrekturen bleiben sichtbar.
               </p>
             ) : null}
-            <div className="grid gap-4 lg:grid-cols-2">
+            <VisitCalendar
+              events={calendarEvents}
+              view={calendarView}
+              calendarDate={calendarDate}
+              today={today}
+              selectedVisitId={selectedVisit?.id ?? null}
+              baseHref={`/admin/properties/${id}`}
+            />
+            <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)]">
               <fieldset
                 disabled={propertyReadOnly}
                 aria-label="Besuchspläne verwalten"
                 className="contents disabled:cursor-not-allowed"
               >
-              <div>
-                <h3 className="font-extrabold text-slate-950">
-                  Besuchspläne
-                </h3>
-                <div className="mt-3 grid gap-3">
+              <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-extrabold text-slate-950 marker:hidden [&::-webkit-details-marker]:hidden">
+                  <span>Besuchspläne verwalten</span>
+                  <StatusPill>{(visitPlans ?? []).length}</StatusPill>
+                </summary>
+                <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4">
                   {(visitPlans ?? []).map((plan) => {
                     const planBuildingIds = new Set(
                       (plan.visit_plan_buildings ?? []).map(
@@ -2377,6 +2501,20 @@ export default async function AdminPropertyDetailPage({
                             </button>
                           </form>
                         </details>
+                        <form
+                          action={deleteVisitPlanAction}
+                          className="mt-3 border-t border-red-200 pt-3"
+                        >
+                          <input type="hidden" name="propertyId" value={id} />
+                          <input type="hidden" name="visitPlanId" value={plan.id} />
+                          <input type="hidden" name="updatedAt" value={plan.updated_at} />
+                          <ConfirmSubmitButton
+                            confirmation={`Besuchsplan „${plan.label}“ wirklich entfernen? Alle noch nicht gestarteten Termine dieses Plans werden automatisch gelöscht. Abgeschlossene Einsätze bleiben aus Nachweisgründen erhalten.`}
+                            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-extrabold text-red-800 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            Plan und offene Termine löschen
+                          </ConfirmSubmitButton>
+                        </form>
                       </article>
                     );
                   })}
@@ -2387,15 +2525,18 @@ export default async function AdminPropertyDetailPage({
                     />
                   ) : null}
                 </div>
-              </div>
+              </details>
               </fieldset>
               <div>
                 <h3 className="font-extrabold text-slate-950">
-                  Letzte und kommende Einsätze
+                  Ausgewählter Einsatz
                 </h3>
                 <div className="mt-3 grid gap-3">
-                  {(visits ?? []).slice(0, 12).map((visit) => {
+                  {(selectedVisit ? [selectedVisit] : []).map((visit) => {
                     const report = reportByVisitId.get(visit.id) ?? null;
+                    const tasksForVisit = (visitTasks ?? []).filter(
+                      (task) => task.visit_id === visit.id,
+                    );
                     return (
                     <article
                       key={visit.id}
@@ -2413,13 +2554,49 @@ export default async function AdminPropertyDetailPage({
                         {employeeById.get(visit.primary_employee_id)
                           ?.full_name || "nicht zugewiesen"}{" "}
                         ·{" "}
-                        {
-                          (visitTasks ?? []).filter(
-                            (task) => task.visit_id === visit.id,
-                          ).length
-                        }{" "}
+                        {tasksForVisit.length}{" "}
                         Aufgaben
                       </p>
+                      {tasksForVisit.length ? (
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                            Geplante Checkliste
+                          </p>
+                          <ul className="mt-2 grid gap-2">
+                            {tasksForVisit.map((task) => (
+                              <li
+                                key={task.id}
+                                className="flex items-start justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2"
+                              >
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-extrabold text-slate-950">
+                                    {task.title}
+                                  </span>
+                                  <span className="block text-xs font-semibold text-slate-500">
+                                    {task.category ||
+                                      (task.source_type === "damage"
+                                        ? "Schadensmeldung"
+                                        : "Leistung")}
+                                  </span>
+                                </span>
+                                <StatusPill>
+                                  {task.status === "open"
+                                    ? "Offen"
+                                    : task.status === "in_progress"
+                                      ? "In Arbeit"
+                                      : task.status === "done"
+                                        ? "Erledigt"
+                                        : "Nicht ausführbar"}
+                                </StatusPill>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
+                        <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm text-slate-600">
+                          Für diesen Termin ist nach Leistungs- und Saisonprüfung keine Aufgabe fällig.
+                        </p>
+                      )}
                       {visit.status === "scheduled" ? (
                         <div className="mt-3 grid gap-2">
                           <details className="rounded-lg border border-slate-200 bg-white p-3">
@@ -2737,10 +2914,10 @@ export default async function AdminPropertyDetailPage({
                     </article>
                     );
                   })}
-                  {!(visits ?? []).length ? (
+                  {!selectedVisit ? (
                     <EmptyState
-                      title="Keine Einsätze"
-                      text="Nach einem Besuchsplan werden Termine automatisch erzeugt."
+                      title="Termin auswählen"
+                      text="Wählen Sie einen Eintrag im Kalender aus, um Checkliste, Verschiebung und Bericht zu öffnen."
                     />
                   ) : null}
                 </div>

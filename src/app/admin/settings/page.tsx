@@ -297,8 +297,9 @@ export default async function AdminSettingsPage({
             <div className="rounded-lg bg-slate-50 p-4">
               <p className="font-extrabold text-slate-950">Terminbildung</p>
               <p>
-                Rollierende, duplikatfreie Ergänzung geplanter Einsätze für 90
-                Tage.
+                Rollierende, duplikatfreie Vorausplanung für 366 Tage –
+                inklusive saisonaler Leistungen, Checklisten und offener
+                Schadensmeldungen.
               </p>
             </div>
             <div className="rounded-lg bg-slate-50 p-4">
