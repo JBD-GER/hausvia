@@ -34,7 +34,7 @@ export function Header() {
             href="/angebot-anfragen"
             className="inline-flex min-h-11 items-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
           >
-            Angebot anfragen
+            Hausmeisterservice anfragen
           </Link>
         </div>
 
@@ -67,7 +67,7 @@ export function Header() {
               className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-5 py-3 text-base font-bold text-white"
               onClick={() => setOpen(false)}
             >
-              Angebot anfragen
+              Hausmeisterservice anfragen
             </Link>
           </div>
         </div>

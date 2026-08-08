@@ -5,7 +5,7 @@ export function CTASection({
   title = "Betreuung für Ihr Objekt prüfen",
   text = "Stellen Sie in wenigen Schritten zusammen, welche Leistungen Sie benötigen. Hausvia meldet sich mit einer passenden Einschätzung für Ihr Objekt.",
   href = "/angebot-anfragen",
-  label = "Jetzt Bedarf ermitteln",
+  label = "Hausmeisterservice anfragen",
 }: {
   title?: string;
   text?: string;

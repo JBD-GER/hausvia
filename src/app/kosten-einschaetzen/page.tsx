@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { Hero } from "@/components/Hero";
+import { InternalLinks } from "@/components/InternalLinks";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { ServiceFunnel } from "@/components/ServiceFunnel";
+import { staticPageInternalLinks } from "@/lib/internalLinking";
 import { ASSETS, type FaqItem } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
@@ -59,7 +61,7 @@ export default function KostenEinschaetzenPage() {
         primaryHref="#anfrage"
         primaryLabel="Kosten jetzt einschätzen"
         secondaryHref="/angebot-anfragen"
-        secondaryLabel="Einfach Angebot anfragen"
+        secondaryLabel="Hausmeisterservice-Angebot anfragen"
         trustText="Realistische Einschätzung für WEG, Privathaushalt und Gewerbeobjekt"
         aside={<ServiceFunnel compact />}
         showActions={false}
@@ -91,6 +93,11 @@ export default function KostenEinschaetzenPage() {
         </div>
       </section>
 
+      <InternalLinks
+        links={staticPageInternalLinks.costEstimate}
+        title="Leistungen hinter der Kosteneinschätzung"
+        currentHref="/kosten-einschaetzen"
+      />
       <SEOJsonLd
         data={graph([
           webPageSchema({

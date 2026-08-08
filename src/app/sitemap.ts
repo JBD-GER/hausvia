@@ -3,8 +3,8 @@ import { ASSETS, allSeoPaths, blogCategories, blogPosts, locationPages, marketin
 import { serviceLandingPages } from "@/lib/serviceLandingPages";
 import { absoluteUrl } from "@/lib/seo";
 
-const siteUpdatedAt = new Date("2026-07-28");
-const winterServiceUpdatedAt = new Date("2026-08-04");
+const siteUpdatedAt = new Date("2026-08-08");
+const winterServiceUpdatedAt = new Date("2026-08-08");
 const redirectedPaths = new Set(["/leistungen/winterdienst-hannover"]);
 
 function changeFrequencyFor(path: string): MetadataRoute.Sitemap[number]["changeFrequency"] {
@@ -36,7 +36,7 @@ function lastModifiedFor(path: string) {
   const blogPost = blogPosts.find((post) => path === `/ratgeber/${post.slug}`);
 
   if (path === "/winterdienst-hannover") return winterServiceUpdatedAt;
-  if (blogPost) return new Date(blogPost.updatedAt);
+  if (blogPost) return new Date(Math.max(new Date(blogPost.updatedAt).getTime(), siteUpdatedAt.getTime()));
   if (blogCategories.some((category) => path === `/ratgeber/kategorie/${category.slug}`)) return siteUpdatedAt;
   if (locationPages.some((page) => path === `/einsatzgebiete/${page.slug}`)) return siteUpdatedAt;
   if (serviceLandingPages.some((page) => path === `/leistungen/${page.slug}`)) return siteUpdatedAt;

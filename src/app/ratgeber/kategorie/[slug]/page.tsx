@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { BlogCard } from "@/components/BlogCard";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CTASection } from "@/components/CTASection";
+import { InternalLinks } from "@/components/InternalLinks";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
+import { blogCategoryPillarLinks, hausmeisterserviceHubLink } from "@/lib/internalLinking";
 import { blogCategories, findBlogCategory, postsForCategory } from "@/lib/site";
 import { breadcrumbSchema, graph, itemListSchema, metadataForPage, webPageSchema } from "@/lib/seo";
 
@@ -70,10 +72,16 @@ export default async function RatgeberKategoriePage({ params }: PageProps) {
         </div>
       </section>
 
+      <InternalLinks
+        links={[blogCategoryPillarLinks[category.slug], hausmeisterserviceHubLink]}
+        title={`Passende Hausvia Leistungen zu ${category.label}`}
+        currentHref={`/ratgeber/kategorie/${category.slug}`}
+        maxLinks={2}
+      />
       <CTASection
         title="Passende Betreuung zum Thema anfragen"
         text="Hausvia übersetzt den Ratgeber-Kontext in eine konkrete Anfrage für Ihr Objekt."
-        label="Kostenlose Anfrage starten"
+        label="Hausmeisterservice-Angebot anfragen"
       />
       <SEOJsonLd
         data={graph([

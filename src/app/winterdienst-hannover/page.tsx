@@ -248,7 +248,7 @@ export default function WinterdienstHannoverPage() {
                 href="#winterdienst-preis"
                 className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-extrabold text-brand-dark shadow-lg shadow-black/20 transition hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-brand-dark"
               >
-                Preis berechnen
+                Winterdienst-Preis berechnen
                 <Euro aria-hidden="true" className="h-5 w-5" />
               </Link>
               <Link
@@ -378,7 +378,7 @@ export default function WinterdienstHannoverPage() {
               href="#winterdienst-preis"
               className="inline-flex min-h-12 flex-none items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-extrabold text-white transition hover:bg-brand-dark"
             >
-              Preis berechnen <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              Winterdienst-Preis berechnen <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -500,6 +500,12 @@ export default function WinterdienstHannoverPage() {
             </div>
             <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-sm font-extrabold">
               <Link
+                href="/hausmeisterservice-hannover"
+                className="text-brand underline decoration-slate-300 underline-offset-4 hover:text-brand-dark"
+              >
+                Hausmeisterservice in Hannover
+              </Link>
+              <Link
                 href="/ratgeber/winterdienst-mehrfamilienhaus-hannover-planung"
                 className="text-brand underline decoration-slate-300 underline-offset-4 hover:text-brand-dark"
               >
@@ -546,7 +552,7 @@ export default function WinterdienstHannoverPage() {
               href="#winterdienst-preis"
               className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-extrabold text-brand transition hover:bg-brand-soft"
             >
-              Preis berechnen <Euro aria-hidden="true" className="h-4 w-4" />
+              Winterdienst-Preis berechnen <Euro aria-hidden="true" className="h-4 w-4" />
             </Link>
             <Link
               href="/angebot-anfragen?leistung=winterdienst"

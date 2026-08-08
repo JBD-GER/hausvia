@@ -6,7 +6,8 @@ import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { InternalLinks } from "@/components/InternalLinks";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
-import { blogCategories, type BlogPost } from "@/lib/site";
+import { blogCategoryPillarLinks, relatedBlogPostLink } from "@/lib/internalLinking";
+import { blogCategories, blogPosts, type BlogPost } from "@/lib/site";
 import { articleSchema, breadcrumbSchema, faqSchema, graph, webPageSchema } from "@/lib/seo";
 
 function formatDate(date: string) {
@@ -19,6 +20,13 @@ function formatDate(date: string) {
 
 export function BlogPostView({ post }: { post: BlogPost }) {
   const category = blogCategories.find((item) => item.slug === post.category);
+  const relatedPost = relatedBlogPostLink(post, blogPosts);
+  const pillarLink = blogCategoryPillarLinks[post.category];
+  const internalLinks = [
+    ...(relatedPost ? [relatedPost] : []),
+    ...(pillarLink ? [pillarLink] : []),
+    ...post.internalLinks,
+  ];
 
   return (
     <main>
@@ -122,7 +130,7 @@ export function BlogPostView({ post }: { post: BlogPost }) {
                 href="/kosten-einschaetzen"
                 className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white"
               >
-                Kostenlose Anfrage starten
+                Hausmeisterservice-Kosten einschätzen
                 <ArrowRight aria-hidden="true" size={16} />
               </Link>
             </div>
@@ -139,12 +147,16 @@ export function BlogPostView({ post }: { post: BlogPost }) {
         </div>
       </section>
 
-      <InternalLinks links={post.internalLinks} title="Passende Seiten zum Thema" />
+      <InternalLinks
+        links={internalLinks}
+        title="Passende Leistungen und weitere Ratgeber"
+        currentHref={`/ratgeber/${post.slug}`}
+      />
       <CTASection
         title="Ratgeber gelesen? Jetzt Bedarf konkret machen"
         text="Der Service-Konfigurator übersetzt Ihre Anforderungen in eine strukturierte Anfrage für Hausvia."
         href="/kosten-einschaetzen"
-        label="Service zusammenstellen"
+        label="Hausmeisterservice-Kosten einschätzen"
       />
       <SEOJsonLd
         data={graph([

@@ -15,8 +15,8 @@ import { ServiceCard } from "@/components/ServiceCard";
 import { TrustBar } from "@/components/TrustBar";
 import {
   ASSETS,
+  featuredLocations,
   homeFaqs,
-  overviewLocations,
   processSteps,
   targetCards,
   trustItems,
@@ -44,7 +44,7 @@ export default function Home() {
         primaryHref="/kosten-einschaetzen"
         primaryLabel="Kosten jetzt einschätzen"
         secondaryHref="/hausmeisterservice-hannover"
-        secondaryLabel="Leistungen ansehen"
+        secondaryLabel="Hausmeisterservice-Leistungen"
         trustText="Zuverlässige Objektbetreuung für WEGs, Privathaushalte und Gewerbe"
         bullets={[
           "Unverbindliche Ersteinschätzung",
@@ -91,7 +91,7 @@ export default function Home() {
                 href="/kosten-einschaetzen"
                 className="mt-5 inline-flex min-h-12 flex-none items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-dark sm:mt-0"
               >
-                Kosten einschätzen
+                Hausmeisterservice-Kosten einschätzen
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Link>
             </div>
@@ -152,7 +152,14 @@ export default function Home() {
             text="Hausvia ist lokal auf Hannover und passende Orte im Umland ausgerichtet. Die Ortsseiten zeigen typische Objektarten und Leistungen für den jeweiligen Standort."
           />
           <div className="mt-9">
-            <LocationGrid locations={overviewLocations} />
+            <LocationGrid locations={featuredLocations} />
+            <Link
+              href="/einsatzgebiete"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-brand underline decoration-brand/25 underline-offset-4 hover:text-brand-dark"
+            >
+              Alle Einsatzgebiete in Hannover und Umgebung
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
@@ -183,7 +190,7 @@ export default function Home() {
       <CTASection
         title="Hausmeisterservice in Hannover jetzt anfragen"
         text="Vier Kontaktdaten genügen. Hausvia meldet sich persönlich bei Ihnen und klärt den Bedarf gemeinsam mit Ihnen."
-        label="Kostenlose Anfrage starten"
+        label="Hausmeisterservice kostenlos anfragen"
       />
       <SEOJsonLd
         data={graph([

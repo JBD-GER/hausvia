@@ -10,7 +10,7 @@ export function Hero({
   image,
   imageAlt,
   primaryHref = "/angebot-anfragen",
-  primaryLabel = "Kostenlose Anfrage starten",
+  primaryLabel = "Hausmeisterservice anfragen",
   secondaryHref,
   secondaryLabel,
   bullets = [],

@@ -4,11 +4,13 @@ import { ArrowRight, CheckCircle2, Clock3, PhoneCall } from "lucide-react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { Hero } from "@/components/Hero";
+import { InternalLinks } from "@/components/InternalLinks";
 import { OfferRequestForm, type WinterOfferRequestContext } from "@/components/OfferRequestForm";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { TrustBar } from "@/components/TrustBar";
 import { ASSETS, trustItems, type FaqItem } from "@/lib/site";
+import { staticPageInternalLinks } from "@/lib/internalLinking";
 import { breadcrumbSchema, faqSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 import {
   calculateWinterPrice,
@@ -89,7 +91,7 @@ export default async function AngebotAnfragenPage({
       <Breadcrumbs
         items={[
           { label: "Startseite", href: "/" },
-          { label: "Angebot anfragen", href: "/angebot-anfragen" },
+          { label: "Hausmeisterservice-Angebot", href: "/angebot-anfragen" },
         ]}
       />
       <Hero
@@ -174,7 +176,7 @@ export default async function AngebotAnfragenPage({
               href="/kosten-einschaetzen"
               className="mt-5 inline-flex min-h-12 flex-none items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-dark sm:mt-0"
             >
-              Zur Kosteneinschätzung
+              Hausmeisterservice-Kosten einschätzen
               <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
           </div>
@@ -190,6 +192,11 @@ export default async function AngebotAnfragenPage({
         </div>
       </section>
 
+      <InternalLinks
+        links={staticPageInternalLinks.offerRequest}
+        title="Passende Leistungen vor der Anfrage"
+        currentHref="/angebot-anfragen"
+      />
       <SEOJsonLd
         data={graph([
           webPageSchema({

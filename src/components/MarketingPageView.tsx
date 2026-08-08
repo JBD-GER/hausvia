@@ -1,4 +1,5 @@
-import { CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CTASection } from "@/components/CTASection";
 import { FAQAccordion } from "@/components/FAQAccordion";
@@ -7,8 +8,9 @@ import { InternalLinks } from "@/components/InternalLinks";
 import { SectionHeading } from "@/components/SectionHeading";
 import { ServiceOverview } from "@/components/ServiceOverview";
 import { TrustBar } from "@/components/TrustBar";
-import { overviewLocations, trustItems, type MarketingPage } from "@/lib/site";
+import { featuredLocations, trustItems, type MarketingPage } from "@/lib/site";
 import { LocationGrid } from "@/components/LocationGrid";
+import { hausmeisterserviceHubLink, marketingResourceLinks } from "@/lib/internalLinking";
 
 function BulletPanel({ title, intro, items }: { title: string; intro?: string; items: string[] }) {
   return (
@@ -32,6 +34,11 @@ function BulletPanel({ title, intro, items }: { title: string; intro?: string; i
 
 export function MarketingPageView({ page }: { page: MarketingPage }) {
   const includedSectionClass = page.pageType === "service" ? "bg-white" : "bg-slate-50";
+  const resourceLink = marketingResourceLinks[page.slug];
+  const hubLinks = page.slug === "hausmeisterservice-hannover" ? [] : [hausmeisterserviceHubLink];
+  const internalLinks = resourceLink
+    ? [resourceLink, ...hubLinks, ...page.internalLinks]
+    : [...hubLinks, ...page.internalLinks];
 
   return (
     <main>
@@ -47,9 +54,9 @@ export function MarketingPageView({ page }: { page: MarketingPage }) {
         text={page.intro}
         image={page.image}
         imageAlt={page.imageAlt}
-        primaryLabel={page.pageType === "target" ? "Betreuung anfragen" : "Kostenlose Anfrage starten"}
+        primaryLabel={`${page.eyebrow} anfragen`}
         secondaryHref="/einsatzgebiete"
-        secondaryLabel="Einsatzgebiete ansehen"
+        secondaryLabel="Einsatzgebiete für Hausmeisterservice"
         bullets={[
           "Feste Ansprechpartner",
           "Schnelle Rückmeldung",
@@ -110,7 +117,14 @@ export function MarketingPageView({ page }: { page: MarketingPage }) {
             text="Hausvia betreut Immobilien in Hannover und in passenden Orten der Umgebung. Auf den Ortsseiten finden Sie lokale Hinweise und typische Einsatzbereiche."
           />
           <div className="mt-8">
-            <LocationGrid locations={overviewLocations.slice(0, 12)} />
+            <LocationGrid locations={featuredLocations} />
+            <Link
+              href="/einsatzgebiete"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-brand underline decoration-brand/25 underline-offset-4 hover:text-brand-dark"
+            >
+              Alle Einsatzgebiete in Hannover und Umgebung
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
@@ -124,12 +138,16 @@ export function MarketingPageView({ page }: { page: MarketingPage }) {
         </div>
       </section>
 
-      <InternalLinks links={page.internalLinks} title="Weiterführende Seiten" />
+      <InternalLinks
+        links={internalLinks}
+        title="Passende Leistungen und Ratgeber"
+        currentHref={`/${page.slug}`}
+      />
       <CTASection
         title={`${page.eyebrow} unverbindlich anfragen`}
         text="Starten Sie die Anfrage online und stellen Sie die passenden Leistungen für Ihr Objekt zusammen."
         href="/kosten-einschaetzen"
-        label="Service zusammenstellen"
+        label="Hausmeisterservice-Kosten einschätzen"
       />
     </main>
   );

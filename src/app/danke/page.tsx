@@ -89,14 +89,14 @@ export default async function DankePage({
                 href="/"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-extrabold text-white transition hover:bg-brand-dark"
               >
-                Zur Startseite
+                Zur Hausvia Startseite
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Link>
               <Link
                 href="/kontakt"
                 className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-6 py-3 text-sm font-extrabold text-slate-900 transition hover:border-brand hover:text-brand"
               >
-                Kontakt aufnehmen
+                Hausvia kontaktieren
               </Link>
             </div>
           </div>

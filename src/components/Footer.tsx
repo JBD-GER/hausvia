@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { overviewLocations, serviceCards, SITE } from "@/lib/site";
+import { featuredLocations, serviceCards, SITE } from "@/lib/site";
 
-const footerLocations = overviewLocations.slice(0, 12);
+const footerLocations = featuredLocations.slice(0, 6);
 
 export function Footer() {
   return (
@@ -40,7 +40,7 @@ export function Footer() {
             href="/angebot-anfragen"
             className="mt-7 inline-flex min-h-11 items-center rounded-md bg-accent px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-accent-dark"
           >
-            Kostenlose Anfrage starten
+            Hausmeisterservice anfragen
           </Link>
           <div className="mt-4">
             <Link
@@ -79,6 +79,11 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link href="/einsatzgebiete" className="font-bold text-cyan-200 hover:text-white">
+                  Alle Hausvia Einsatzgebiete
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -87,17 +92,17 @@ export function Footer() {
             <ul className="mt-4 space-y-3 text-sm text-slate-300">
               <li>
                 <Link href="/kontakt" className="hover:text-white">
-                  Kontakt aufnehmen
+                  Hausvia kontaktieren
                 </Link>
               </li>
               <li>
                 <Link href="/angebot-anfragen" className="hover:text-white">
-                  Angebot anfragen
+                  Hausmeisterservice-Angebot anfragen
                 </Link>
               </li>
               <li>
                 <Link href="/kosten-einschaetzen" className="hover:text-white">
-                  Kosten einschätzen
+                  Hausmeisterservice-Kosten einschätzen
                 </Link>
               </li>
               <li>
@@ -107,7 +112,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/ratgeber" className="hover:text-white">
-                  Ratgeber
+                  Ratgeber zum Hausmeisterservice
                 </Link>
               </li>
               <li>

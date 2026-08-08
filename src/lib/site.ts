@@ -1319,6 +1319,14 @@ export const overviewLocations: LinkItem[] = [
   { label: "Barsinghausen", href: "/einsatzgebiete" },
 ];
 
+export const featuredLocations = overviewLocations
+  .filter(
+    (location, index, locations) =>
+      location.href !== "/einsatzgebiete" &&
+      locations.findIndex((candidate) => candidate.href === location.href) === index,
+  )
+  .slice(0, 8);
+
 export const locationPages: LocationPage[] = [
   {
     slug: "hausmeisterservice-hannover",

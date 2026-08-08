@@ -17,7 +17,7 @@ export function MobileStickyCTA() {
           href="#winterdienst-preis"
           className="flex min-h-12 items-center justify-center rounded-md bg-brand px-3 py-3 text-center text-sm font-bold text-white"
         >
-          Preis berechnen
+          Winterdienst-Preis berechnen
         </Link>
         <Link
           href="/angebot-anfragen?leistung=winterdienst"
@@ -35,7 +35,7 @@ export function MobileStickyCTA() {
         href="/angebot-anfragen"
         className="flex min-h-12 items-center justify-center rounded-md bg-brand px-4 py-3 text-sm font-bold text-white"
       >
-        Kostenlose Anfrage starten
+        Hausmeisterservice anfragen
       </Link>
     </div>
   );

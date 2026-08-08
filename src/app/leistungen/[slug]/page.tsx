@@ -11,6 +11,7 @@ import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
 import { TrustBar } from "@/components/TrustBar";
 import { trustItems } from "@/lib/site";
+import { hausmeisterserviceHubLink, serviceResourceLinks } from "@/lib/internalLinking";
 import { findServiceLandingPage, serviceLandingPages } from "@/lib/serviceLandingPages";
 import { breadcrumbSchema, faqSchema, graph, metadataForPage, serviceSchema, webPageSchema } from "@/lib/seo";
 
@@ -82,9 +83,9 @@ export default async function IndividualServicePage({ params }: PageProps) {
         image={page.image}
         imageAlt={page.imageAlt}
         primaryHref="/kosten-einschaetzen"
-        primaryLabel="Kosteneinschätzung anfordern"
+        primaryLabel={`Kosten für ${page.eyebrow} einschätzen`}
         secondaryHref="/kontakt"
-        secondaryLabel="Klassisch anfragen"
+        secondaryLabel={`${page.eyebrow} direkt anfragen`}
         trustText="Einzelleistung oder im Rundum-Sorglos-Paket kombinierbar"
         bullets={[
           "Hannover und Umgebung",
@@ -144,12 +145,16 @@ export default async function IndividualServicePage({ params }: PageProps) {
         </div>
       </section>
 
-      <InternalLinks links={page.relatedLinks} title="Passende Seiten und nächste Schritte" />
+      <InternalLinks
+        links={[serviceResourceLinks[page.serviceId], hausmeisterserviceHubLink, ...page.relatedLinks]}
+        title="Passende Leistungen und Ratgeber"
+        currentHref={`/leistungen/${page.slug}`}
+      />
       <CTASection
         title={`${page.eyebrow} in Hannover anfragen`}
         text="Stellen Sie Objektart, Flächen und gewünschte Leistungen zusammen. Die unverbindliche Einschätzung wird per E-Mail vorbereitet."
         href="/kosten-einschaetzen"
-        label="Kostencheck starten"
+        label={`Kosten für ${page.eyebrow} einschätzen`}
       />
       <SEOJsonLd
         data={graph([

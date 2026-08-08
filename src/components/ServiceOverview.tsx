@@ -126,7 +126,7 @@ export function ServiceOverview({
                         }
                         className="mt-5 inline-flex text-sm font-bold text-brand hover:text-brand-dark"
                       >
-                        Details ansehen
+                        {service.label} in Hannover ansehen
                       </Link>
                     </article>
                   );
@@ -147,7 +147,7 @@ export function ServiceOverview({
             href="/kosten-einschaetzen"
             className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white sm:mt-0"
           >
-            Service konfigurieren
+            Hausmeisterservice-Kosten einschätzen
           </Link>
         </div>
       </div>

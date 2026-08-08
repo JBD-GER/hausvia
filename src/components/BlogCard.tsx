@@ -38,7 +38,7 @@ export function BlogCard({ post }: { post: BlogPost }) {
           href={`/ratgeber/${post.slug}`}
           className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-brand"
         >
-          Beitrag lesen
+          Ratgeber zu {category?.label ?? "Hausmeisterservice"} lesen
           <ArrowRight aria-hidden="true" size={16} />
         </Link>
       </div>

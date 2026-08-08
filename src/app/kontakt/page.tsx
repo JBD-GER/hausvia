@@ -5,7 +5,9 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ContactForm } from "@/components/ContactForm";
 import { CTASection } from "@/components/CTASection";
 import { Hero } from "@/components/Hero";
+import { InternalLinks } from "@/components/InternalLinks";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
+import { staticPageInternalLinks } from "@/lib/internalLinking";
 import { ASSETS, SITE } from "@/lib/site";
 import { breadcrumbSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
@@ -35,9 +37,9 @@ export default function KontaktPage() {
         image={ASSETS.hero}
         imageAlt="Hausvia Kontakt für Hausmeisterservice in Hannover"
         primaryHref="#kontaktformular"
-        primaryLabel="Klassische Anfrage senden"
+        primaryLabel="Hausmeisterservice direkt anfragen"
         secondaryHref="/kosten-einschaetzen"
-        secondaryLabel="Kostencheck nutzen"
+        secondaryLabel="Hausmeisterservice-Kosten einschätzen"
       />
 
       <section className="bg-white">
@@ -76,7 +78,7 @@ export default function KontaktPage() {
               href="/kosten-einschaetzen"
               className="mt-6 inline-flex min-h-11 items-center rounded-md bg-brand px-5 py-2.5 text-sm font-bold text-white"
             >
-              Jetzt Bedarf ermitteln
+              Hausmeisterservice-Kosten einschätzen
             </Link>
           </aside>
 
@@ -96,10 +98,15 @@ export default function KontaktPage() {
         </div>
       </section>
 
+      <InternalLinks
+        links={staticPageInternalLinks.contact}
+        title="Leistungen und Einsatzgebiete"
+        currentHref="/kontakt"
+      />
       <CTASection
         title="Noch strukturierter anfragen"
         text="Der Service-Konfigurator führt Sie Schritt für Schritt durch Objektart, Standort, Leistungen und Umfang."
-        label="Zum Anfrage-Funnel"
+        label="Hausmeisterservice-Kosten einschätzen"
       />
       <SEOJsonLd
         data={graph([

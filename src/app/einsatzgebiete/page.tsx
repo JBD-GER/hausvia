@@ -6,7 +6,7 @@ import { Hero } from "@/components/Hero";
 import { LocationGrid } from "@/components/LocationGrid";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
-import { ASSETS, overviewLocations, type FaqItem } from "@/lib/site";
+import { ASSETS, featuredLocations, overviewLocations, type FaqItem } from "@/lib/site";
 import { breadcrumbSchema, faqSchema, graph, itemListSchema, metadataForPage, webPageSchema } from "@/lib/seo";
 
 const faqs: FaqItem[] = [
@@ -52,9 +52,9 @@ export default function EinsatzgebietePage() {
         text="Hausvia betreut passende Immobilien in Hannover, wichtigen Stadtteilen und Orten der Region. Entscheidend sind Objektart, Leistungsumfang und ein sinnvoller Turnus."
         image={ASSETS.hero}
         imageAlt="Hausvia Hausmeisterservice in Hannover und Umgebung"
-        primaryLabel="Standort anfragen"
+        primaryLabel="Hausmeisterservice am Standort anfragen"
         secondaryHref="/hausmeisterservice-hannover"
-        secondaryLabel="Leistungen ansehen"
+        secondaryLabel="Hausmeisterservice-Leistungen"
       />
 
       <section className="bg-white">
@@ -64,7 +64,7 @@ export default function EinsatzgebietePage() {
             text="Die folgenden Standorte bilden den lokalen Fokus. Ausgebaute Ortsseiten enthalten zusätzliche Hinweise zu typischen Objektarten und Leistungen."
           />
           <div className="mt-9">
-            <LocationGrid locations={overviewLocations} />
+            <LocationGrid locations={overviewLocations} currentHref="/einsatzgebiete" />
           </div>
         </div>
       </section>
@@ -105,7 +105,7 @@ export default function EinsatzgebietePage() {
       <CTASection
         title="Einsatzgebiet für Ihr Objekt prüfen"
         text="Nennen Sie Standort, Objektart und gewünschte Leistungen. Hausvia prüft, ob eine passende Betreuung möglich ist."
-        label="Jetzt Standort anfragen"
+        label="Hausmeisterservice am Standort anfragen"
       />
       <SEOJsonLd
         data={graph([
@@ -124,7 +124,7 @@ export default function EinsatzgebietePage() {
           itemListSchema({
             name: "Hausvia Einsatzgebiete",
             path: "/einsatzgebiete",
-            items: overviewLocations.map((location) => ({
+            items: featuredLocations.map((location) => ({
               name: location.label,
               href: location.href,
             })),

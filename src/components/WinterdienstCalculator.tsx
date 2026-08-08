@@ -1345,7 +1345,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                   <Link
                     href="https://www.krueger-services.de/dienstleistungen/winterdienst/hannover/mittelfeld"
                     target="_blank"
-                    rel="noreferrer"
+                    rel="nofollow noreferrer"
                     className="font-extrabold text-brand underline underline-offset-2"
                   >
                     Hannover-Richtwerten
@@ -1354,7 +1354,7 @@ export function WinterdienstCalculator({ googleMapsApiKey = "" }: { googleMapsAp
                   <Link
                     href="https://www.shinytouchgebaeudereinigung.de/blog/winterdienst-kosten"
                     target="_blank"
-                    rel="noreferrer"
+                    rel="nofollow noreferrer"
                     className="font-extrabold text-brand underline underline-offset-2"
                   >
                     Marktübersicht 2026

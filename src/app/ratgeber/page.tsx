@@ -35,10 +35,10 @@ export default function RatgeberPage() {
         text="Praxiswissen für Hausverwaltungen, WEGs, Eigentümer und Gewerbekunden: verständlich, lokal und auf echte Entscheidungen rund um Immobilienpflege ausgerichtet."
         image={ASSETS.blogManagement}
         imageAlt="Hausvia Ratgeber zur Objektbetreuung in Hannover"
-        primaryLabel="Beiträge ansehen"
+        primaryLabel="Ratgeberbeiträge ansehen"
         primaryHref="#beitraege"
         secondaryHref="/kosten-einschaetzen"
-        secondaryLabel="Bedarf ermitteln"
+        secondaryLabel="Hausmeisterservice-Kosten einschätzen"
       />
 
       <section className="bg-white">
@@ -86,7 +86,7 @@ export default function RatgeberPage() {
         title="Vom Ratgeber zur konkreten Objektbetreuung"
         text="Wenn Sie schon wissen, welche Themen relevant sind, können Sie den Bedarf direkt im Service-Konfigurator zusammenstellen."
         href="/kosten-einschaetzen"
-        label="Service konfigurieren"
+        label="Hausmeisterservice-Kosten einschätzen"
       />
       <SEOJsonLd
         data={graph([

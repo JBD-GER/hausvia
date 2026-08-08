@@ -3,8 +3,10 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CTASection } from "@/components/CTASection";
 import { Hero } from "@/components/Hero";
 import { ImageSection } from "@/components/ImageSection";
+import { InternalLinks } from "@/components/InternalLinks";
 import { SectionHeading } from "@/components/SectionHeading";
 import { SEOJsonLd } from "@/components/SEOJsonLd";
+import { staticPageInternalLinks } from "@/lib/internalLinking";
 import { ASSETS } from "@/lib/site";
 import { breadcrumbSchema, graph, metadataForPage, webPageSchema } from "@/lib/seo";
 
@@ -33,9 +35,9 @@ export default function UeberUnsPage() {
         text="Hausvia arbeitet lokal, verbindlich und serviceorientiert. Im Fokus stehen gepflegte Immobilien, klare Rückmeldungen und Leistungen, die zu Hausverwaltungen, WEGs, Eigentümern und Gewerbeobjekten passen."
         image={ASSETS.garden}
         imageAlt="Hausvia Team bei der Gartenpflege in Hannover"
-        primaryLabel="Betreuung anfragen"
+        primaryLabel="Objektbetreuung anfragen"
         secondaryHref="/hausmeisterservice-hannover"
-        secondaryLabel="Leistungen ansehen"
+        secondaryLabel="Hausmeisterservice in Hannover"
       />
 
       <ImageSection
@@ -81,10 +83,15 @@ export default function UeberUnsPage() {
         </div>
       </section>
 
+      <InternalLinks
+        links={staticPageInternalLinks.about}
+        title="Mehr über unsere Objektbetreuung"
+        currentHref="/ueber-uns"
+      />
       <CTASection
         title="Hausvia für Ihr Objekt kennenlernen"
         text="Starten Sie die Anfrage und beschreiben Sie, welche Betreuung Ihre Immobilie in Hannover oder Umgebung braucht."
-        label="Kostenlose Anfrage starten"
+        label="Objektbetreuung in Hannover anfragen"
       />
       <SEOJsonLd
         data={graph([

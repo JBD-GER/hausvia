@@ -42,7 +42,7 @@ export function ServiceCard({ item }: { item: LinkItem }) {
         <p className="mt-3 flex-1 text-sm leading-6 text-slate-650">{item.description}</p>
       ) : null}
       <span className="mt-5 inline-flex items-center gap-1 text-sm font-bold text-brand">
-        Mehr erfahren
+        Details zu {item.label}
         <ChevronRight aria-hidden="true" className="h-4 w-4 transition group-hover:translate-x-0.5" />
       </span>
     </Link>

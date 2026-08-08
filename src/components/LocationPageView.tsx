@@ -6,6 +6,7 @@ import { FAQAccordion } from "@/components/FAQAccordion";
 import { Hero } from "@/components/Hero";
 import { InternalLinks } from "@/components/InternalLinks";
 import { SectionHeading } from "@/components/SectionHeading";
+import { hausmeisterserviceHubLink, regionalResourceLink } from "@/lib/internalLinking";
 import type { LocationPage } from "@/lib/site";
 
 export function LocationPageView({ page }: { page: LocationPage }) {
@@ -24,9 +25,9 @@ export function LocationPageView({ page }: { page: LocationPage }) {
         text={page.intro}
         image={page.image}
         imageAlt={page.imageAlt}
-        primaryLabel="Betreuung für dieses Objekt prüfen"
+        primaryLabel="Hausmeisterservice am Standort anfragen"
         secondaryHref="/einsatzgebiete"
-        secondaryLabel="Alle Einsatzgebiete"
+        secondaryLabel="Alle Hausvia Einsatzgebiete"
         bullets={[
           "Hausmeisterservice",
           "Objektbetreuung",
@@ -89,11 +90,15 @@ export function LocationPageView({ page }: { page: LocationPage }) {
         </div>
       </section>
 
-      <InternalLinks links={page.internalLinks} title="Leistungen und nächste Schritte" />
+      <InternalLinks
+        links={[regionalResourceLink, hausmeisterserviceHubLink, ...page.internalLinks]}
+        title="Passende Leistungen und Ratgeber"
+        currentHref={`/einsatzgebiete/${page.slug}`}
+      />
       <CTASection
         title="Hausmeisterservice für diesen Standort anfragen"
         text="Beschreiben Sie Objektart, Standort und gewünschte Leistungen. Hausvia prüft, welche Betreuung für Ihr Objekt passt."
-        label="Kostenlose Anfrage starten"
+        label="Hausmeisterservice am Standort anfragen"
       />
     </main>
   );
