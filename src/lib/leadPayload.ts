@@ -86,6 +86,7 @@ const costFunnelFields = new Set([
   "unitCount",
   "averageUnitArea",
   "outdoorArea",
+  "gardenArea",
   "services",
   "servicePackage",
   "frequency",
@@ -139,6 +140,7 @@ const numberLikeFields = [
   "unitCount",
   "averageUnitArea",
   "outdoorArea",
+  "gardenArea",
   "computedUsableArea",
   "winterMapArea",
   "winterArea",
@@ -239,7 +241,14 @@ function copyNumberLike(
   ) {
     return failure(`Das Feld „${field}“ ist ungültig oder zu lang.`);
   }
-  output[field] = value.trim();
+  const normalizedValue = value.trim();
+  if (normalizedValue) {
+    const numericValue = Number(normalizedValue.replace(",", "."));
+    if (!Number.isFinite(numericValue) || Math.abs(numericValue) > 100_000_000) {
+      return failure(`Das Feld „${field}“ ist ungültig.`);
+    }
+  }
+  output[field] = normalizedValue;
   return null;
 }
 
@@ -382,6 +391,29 @@ function sanitizeLead(source: LeadSource, input: Record<string, unknown>) {
     if (!fieldsBySource[source].has(field)) continue;
     const error = copyNumberLike(input, output, field);
     if (error) return error;
+  }
+
+  if (source === "cost-funnel") {
+    const costNumber = (field: string) => {
+      const value = output[field];
+      if (typeof value === "number") return value;
+      if (typeof value === "string" && value.trim()) return Number(value.replace(",", "."));
+      return 0;
+    };
+    const unitCount = costNumber("unitCount");
+    const averageUnitArea = costNumber("averageUnitArea");
+    const outdoorArea = costNumber("outdoorArea");
+    const gardenArea = costNumber("gardenArea");
+
+    if (!Number.isInteger(unitCount) || unitCount <= 0) {
+      return failure("Die Anzahl der Einheiten ist ungültig.");
+    }
+    if (averageUnitArea < 0 || outdoorArea < 0 || gardenArea < 0) {
+      return failure("Flächenangaben dürfen nicht negativ sein.");
+    }
+    if (Object.prototype.hasOwnProperty.call(output, "gardenArea") && gardenArea > outdoorArea) {
+      return failure("Die Grün-/Gartenfläche darf nicht größer als die gesamte Außenfläche sein.");
+    }
   }
 
   const servicesError = copyStringList(input, output, "services");

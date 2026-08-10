@@ -14,7 +14,7 @@ const faqs: FaqItem[] = [
   {
     question: "Ist die Kosteneinschätzung kostenlos?",
     answer:
-      "Ja. Der Online-Kostencheck dient der ersten Einordnung. Die unverbindliche Kostenspanne wird nach dem Absenden per E-Mail bereitgestellt.",
+      "Ja. Der Online-Kostencheck dient der ersten Einordnung. Für online kalkulierbare Flächen wird eine unverbindliche Kostenspanne per E-Mail bereitgestellt; Großflächen werden persönlich kalkuliert.",
   },
   {
     question: "Muss ich schon alle Leistungen genau kennen?",
@@ -55,7 +55,7 @@ export default function KostenEinschaetzenPage() {
       <Hero
         eyebrow="Kostencheck"
         title="Hausmeisterservice-Kosten in 60 Sekunden einschätzen"
-        text="Beantworten Sie wenige Fragen zu Objektart, Fläche und gewünschten Leistungen. Hausvia bereitet daraus eine realistische Kostenspanne für Ihre Objektbetreuung oder einen einmaligen Einsatz vor."
+        text="Beantworten Sie wenige Fragen zu Objektart, Fläche und gewünschten Leistungen. Hausvia bereitet daraus eine realistische Kostenspanne vor oder kennzeichnet Großflächen transparent für die persönliche Kalkulation."
         image={ASSETS.hero}
         imageAlt="Hausvia Kosten für Hausmeisterservice in Hannover einschätzen"
         primaryHref="#anfrage"

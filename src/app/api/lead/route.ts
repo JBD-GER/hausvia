@@ -159,16 +159,21 @@ function enrichCostFunnelLead(lead: Record<string, unknown>) {
   const services = Array.isArray(lead.services) ? lead.services.filter(isService) : [];
   if (!services.length) return sanitizedLead;
 
-  const unitCount = asNumber(lead.unitCount);
-  const averageUnitArea = asNumber(lead.averageUnitArea);
+  const unitCount = Math.max(0, asNumber(lead.unitCount));
+  const averageUnitArea = Math.max(0, asNumber(lead.averageUnitArea));
+  const hasSubmittedAverageUnitArea = Object.prototype.hasOwnProperty.call(lead, "averageUnitArea");
   const computedUsableArea =
-    unitCount > 0 && averageUnitArea > 0
+    unitCount > 0 && hasSubmittedAverageUnitArea
       ? unitCount * averageUnitArea
-      : asNumber(lead.computedUsableArea);
+      : Math.max(0, asNumber(lead.computedUsableArea));
+  const outdoorArea = Math.max(0, asNumber(lead.outdoorArea));
+  const hasSubmittedGardenArea = Object.prototype.hasOwnProperty.call(lead, "gardenArea");
+  const submittedGardenArea = hasSubmittedGardenArea ? Math.max(0, asNumber(lead.gardenArea)) : undefined;
   const estimate = calculateEstimate({
     objectType: lead.objectType,
     usableArea: computedUsableArea,
-    outdoorArea: asNumber(lead.outdoorArea),
+    outdoorArea,
+    gardenArea: submittedGardenArea,
     services,
     frequency: lead.frequency,
     complexity: lead.complexity,
@@ -179,14 +184,19 @@ function enrichCostFunnelLead(lead: Record<string, unknown>) {
     pricingConfig.frequencies.find((item) => item.id === lead.frequency)?.label ?? asString(lead.frequency);
   const complexityLabel =
     pricingConfig.complexity.find((item) => item.id === lead.complexity)?.label ?? asString(lead.complexity);
-  const estimateText = `${estimate.lower.toLocaleString("de-DE")} €–${estimate.upper.toLocaleString(
-    "de-DE",
-  )} € ${estimate.billingPeriodLabel}`;
+  const estimateText = estimate.requiresManualReview
+    ? "Individuelle Kalkulation erforderlich"
+    : `${estimate.lower.toLocaleString("de-DE")} €–${estimate.upper.toLocaleString(
+        "de-DE",
+      )} € ${estimate.billingPeriodLabel}`;
 
   return {
     ...sanitizedLead,
     services,
     computedUsableArea,
+    outdoorArea,
+    gardenArea: estimate.gardenArea,
+    pavedOutdoorArea: estimate.pavedOutdoorArea,
     selectedServiceLabels: getServiceLabels(services),
     objectTypeLabel,
     frequencyLabel,
@@ -403,6 +413,47 @@ function winterPricingEmailFacts(lead: Record<string, unknown>) {
   };
 }
 
+function costFunnelEmailFacts(lead: Record<string, unknown>) {
+  const estimate = isRecord(lead.estimate) ? lead.estimate : null;
+  if (estimate?.requiresManualReview !== true) return undefined;
+
+  const rows = [
+    { label: "Ergebnis", value: "Individuelle Kalkulation erforderlich" },
+    {
+      label: "Grund",
+      value:
+        asString(estimate.manualReviewReason) ||
+        "Die Objektgröße liegt außerhalb des verlässlich automatisierbaren Bereichs.",
+    },
+  ];
+  const computedUsableArea = asNumber(lead.computedUsableArea);
+  const outdoorArea = asNumber(lead.outdoorArea);
+  const gardenArea = asNumber(estimate.gardenArea);
+  const pavedOutdoorArea = asNumber(estimate.pavedOutdoorArea);
+
+  if (computedUsableArea > 0) {
+    rows.push({
+      label: "Betreute Innenfläche",
+      value: `${computedUsableArea.toLocaleString("de-DE")} m²`,
+    });
+  }
+  if (outdoorArea > 0) {
+    rows.push({
+      label: "Außenfläche gesamt",
+      value: `${outdoorArea.toLocaleString("de-DE")} m²`,
+    });
+    rows.push({
+      label: "Flächenaufteilung",
+      value: `${gardenArea.toLocaleString("de-DE")} m² Garten · ${pavedOutdoorArea.toLocaleString("de-DE")} m² befestigt`,
+    });
+  }
+
+  return {
+    title: "Persönliche Kalkulation",
+    rows,
+  };
+}
+
 export async function POST(request: Request) {
   let payload: ValidatedLeadPayload;
 
@@ -583,6 +634,7 @@ export async function POST(request: Request) {
   const winterResponseEstimate = hasWinterEstimate ? enrichedLead.estimate : undefined;
   const isWinterServiceRequest = requestsWinterService || hasWinterEstimate;
   const winterEmailFacts = hasWinterEstimate ? winterPricingEmailFacts(enrichedLead) : undefined;
+  const manualCostReview = source === "cost-funnel" ? costFunnelEmailFacts(enrichedLead) : undefined;
   const headerSubmissionId = asString(request.headers.get("idempotency-key"));
   const payloadSubmissionId = asString(payload.submissionId);
   if (headerSubmissionId && payloadSubmissionId && headerSubmissionId !== payloadSubmissionId) {
@@ -711,7 +763,9 @@ export async function POST(request: Request) {
         : "Ihre Anfrage bei Hausvia";
   const customerIntro =
     source === "cost-funnel"
-      ? "Vielen Dank für Ihre Angaben. Ihre unverbindliche Ersteinschätzung wurde vorbereitet und ist dieser E-Mail als PDF beigefügt."
+      ? manualCostReview
+        ? "Vielen Dank für Ihre Angaben. Aufgrund der Objektgröße ist eine persönliche Kalkulation erforderlich. Die geprüften Flächendaten und der nächste Schritt sind dieser E-Mail als PDF beigefügt."
+        : "Vielen Dank für Ihre Angaben. Ihre unverbindliche Ersteinschätzung wurde vorbereitet und ist dieser E-Mail als PDF beigefügt."
       : isWinterServiceRequest
         ? hasWinterEstimate
           ? "Vielen Dank für Ihre Angaben. Ihre Objekt- und Flächendaten wurden serverseitig geprüft. Beide Tarifvarianten und die optionalen Zusatzleistungen finden Sie unten sowie vollständig im PDF."
@@ -719,7 +773,9 @@ export async function POST(request: Request) {
         : "Vielen Dank für Ihre Anfrage. Die übermittelten Angaben wurden im beigefügten PDF übersichtlich zusammengefasst.";
   const customerNote =
     source === "cost-funnel"
-      ? "Die Einschätzung ist unverbindlich. Für ein finales Angebot prüfen wir die Objekt- und Leistungsdaten persönlich."
+      ? manualCostReview
+        ? "Für diese Großfläche weisen wir bewusst keinen automatischen Richtpreis aus. Hausvia prüft die Flächenaufteilung und den Leistungsumfang persönlich."
+        : "Die Einschätzung ist unverbindlich. Für ein finales Angebot prüfen wir die Objekt- und Leistungsdaten persönlich."
       : isWinterServiceRequest
         ? hasWinterEstimate
           ? "Diese Online-Preiseinschätzung stellt ausdrücklich kein Angebot dar. Die finale Kalkulation und ein Angebot erfolgen erst nach Prüfung durch Hausvia und, falls erforderlich, nach einem Vor-Ort-Termin."
@@ -730,11 +786,13 @@ export async function POST(request: Request) {
     eyebrow: isWinterServiceRequest ? "Winterdienst Hannover" : "Ihre Anfrage bei Hausvia",
     headline: customerHeadline,
     intro: `${firstName ? `Hallo ${firstName},\n\n` : ""}${customerIntro}`,
-    summary: winterEmailFacts,
+    summary: winterEmailFacts ?? manualCostReview,
     note: customerNote,
     attachment: {
       filename,
-      description: "Ihre Angaben und die geprüfte Preiseinschätzung finden Sie vollständig im PDF-Anhang.",
+      description: manualCostReview
+        ? "Ihre Angaben und der Hinweis zur persönlichen Kalkulation stehen vollständig im PDF-Anhang."
+        : "Ihre Angaben und die geprüfte Preiseinschätzung finden Sie vollständig im PDF-Anhang.",
     },
     action: {
       label: "Hausvia kontaktieren",
@@ -746,7 +804,9 @@ export async function POST(request: Request) {
     : "Neue Hausvia Anfrage";
   const adminIntro =
     source === "cost-funnel"
-      ? `Eine neue Kostencheck-Anfrage von ${customerName || "unbekannt"} ist eingegangen. Das PDF enthält alle Angaben und die serverseitige Einschätzung.`
+      ? manualCostReview
+        ? `Eine neue Großflächen-Anfrage von ${customerName || "unbekannt"} ist eingegangen und benötigt eine persönliche Kalkulation. Das PDF enthält die geprüfte Flächenaufteilung.`
+        : `Eine neue Kostencheck-Anfrage von ${customerName || "unbekannt"} ist eingegangen. Das PDF enthält alle Angaben und die serverseitige Einschätzung.`
       : isWinterServiceRequest
         ? hasWinterEstimate
           ? `Eine neue Winterdienst-Preiseinschätzung von ${customerName || "unbekannt"} ist eingegangen. Die serverseitig geprüften Eckwerte stehen in der Übersicht.`
@@ -757,10 +817,12 @@ export async function POST(request: Request) {
     eyebrow: "Interne Lead-Benachrichtigung",
     headline: adminHeadline,
     intro: adminIntro,
-    summary: winterEmailFacts,
+    summary: winterEmailFacts ?? manualCostReview,
     note:
       isWinterServiceRequest && hasWinterEstimate
         ? "Variable Abrechnung, Pauschalpaket und optionale Zusatzleistungen wurden serverseitig neu berechnet. Die Online-Einschätzung ist noch kein Angebot."
+        : manualCostReview
+          ? "Bitte Flächenaufteilung und Leistungsumfang prüfen und anschließend eine individuelle Kalkulation erstellen."
         : "Bitte die Anfrage prüfen und den nächsten Bearbeitungsschritt im Hausvia-System dokumentieren.",
     attachment: {
       filename,

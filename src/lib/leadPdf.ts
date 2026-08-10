@@ -407,6 +407,12 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
   const winterEstimate = getWinterEstimate(lead);
   const winterMapDiagram = getWinterMapDiagram(lead);
   const winterPricingInput = valueAsRecord(lead.winterPricingInput);
+  const generalEstimate = valueAsRecord(lead.estimate);
+  const requiresManualReview = generalEstimate?.requiresManualReview === true;
+  const manualReviewReason = valueAsString(
+    generalEstimate?.manualReviewReason,
+    "Die angegebene Objektgröße liegt außerhalb des verlässlich automatisierbaren Bereichs.",
+  );
   const leadServices = valueAsStringList(lead.selectedServiceLabels).length
     ? valueAsStringList(lead.selectedServiceLabels)
     : valueAsStringList(lead.services);
@@ -693,6 +699,11 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
       "Wichtig: Diese Preiseinschätzung ist kein Angebot",
       "Die finale Kalkulation und ein verbindliches Angebot erfolgen erst nach Prüfung durch Hausvia und, falls erforderlich, nach einem Vor-Ort-Termin.",
     );
+  } else if (requiresManualReview) {
+    addInfoCard(
+      "Individuelle Kalkulation erforderlich",
+      `${manualReviewReason} Deshalb weisen wir hier bewusst keinen automatischen Richtpreis aus. Hausvia prüft Flächenaufteilung und Leistungsumfang persönlich.`,
+    );
   } else if (estimateText) {
     addEstimateCard(estimateText);
   } else {
@@ -809,9 +820,11 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
     addRow("Standort", valueAsString(lead.location));
     addRow("Außerhalb Standard-Einsatzgebiet", valueAsString(lead.outsideArea));
     addRow("Einheiten / Nutzbereiche", `${valueAsString(lead.unitCount, "0")} Einheit(en)`);
-    addRow("Ø Fläche je Einheit", `${valueAsString(lead.averageUnitArea, "0")} m²`);
-    addRow("Berechnete Wohn-/Nutzfläche", `${valueAsString(lead.computedUsableArea, "0")} m²`);
-    addRow("Aktiv betreute Außenfläche", `${valueAsString(lead.outdoorArea, "0")} m²`);
+    addRow("Anteil betreute Innenfläche je Einheit", `${valueAsString(lead.averageUnitArea, "0")} m²`);
+    addRow("Berechnete betreute Innenfläche", `${valueAsString(lead.computedUsableArea, "0")} m²`);
+    addRow("Aktiv betreute Außenfläche gesamt", `${valueAsString(lead.outdoorArea, "0")} m²`);
+    addRow("Davon Grün-/Gartenfläche", `${valueAsString(lead.gardenArea, "0")} m²`);
+    addRow("Davon befestigte Außenfläche", `${valueAsString(lead.pavedOutdoorArea, "0")} m²`);
     addRow("Häufigkeit", valueAsString(lead.frequencyLabel ?? lead.frequency));
     addRow("Komplexität", valueAsString(lead.complexityLabel ?? lead.complexity));
   }
@@ -853,6 +866,13 @@ export function createLeadPdf({ source, submittedAt, lead }: LeadPdfInput) {
       "Diese Winterdienst-Anfrage enthält noch keine automatisierte Preiseinschätzung. Fläche, Zugänglichkeit, Leistungsumfang und Tourenkapazität werden vor einem Angebot persönlich geprüft.",
     );
   } else {
+    if (requiresManualReview) {
+      addParagraph(
+        "Für diese Objektgröße wird bewusst keine automatische Kostenspanne ausgegeben. Die Flächenaufteilung und der konkrete Leistungsumfang werden vor einer Preiseinschätzung persönlich geprüft.",
+        10,
+        brand,
+      );
+    }
     addParagraph(
       "Diese Einschätzung ist unverbindlich und dient als erste Orientierung. Der finale Preis hängt von Objektzustand, Zugänglichkeit, Leistungsumfang, Häufigkeit, saisonalen Aufgaben und Abstimmung vor Ort ab.",
     );

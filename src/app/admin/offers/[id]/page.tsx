@@ -110,7 +110,32 @@ export default async function AdminOfferDetailPage({
 
   const selectedId = queryValue(query, "version") || text(offer.draft_version_id || offer.current_version_id || offer.active_version_id);
   const selectedVersion = (versions ?? []).find((version) => text(version.id) === selectedId) ?? versions?.[0];
-  if (!selectedVersion) notFound();
+  if (!selectedVersion) {
+    return (
+      <>
+        <div className="mb-4">
+          <Link href="/admin/offers" className="inline-flex min-h-11 items-center gap-2 text-sm font-extrabold text-brand hover:underline">
+            <ArrowLeft size={18} aria-hidden="true" /> Zur Angebotsübersicht
+          </Link>
+        </div>
+        <PageHeader
+          eyebrow={text(offer.offer_number, "Historisches Angebot")}
+          title={text(offer.title, "Angebot ohne Version")}
+          text="Der Angebotsdatensatz ist vorhanden, seine bearbeitbare Version fehlt jedoch. Das ist ein unvollständiger historischer Datenstand und kein unbekanntes Angebot."
+        />
+        <EmptyState
+          title="Angebotsversion wird noch benötigt"
+          text="Bitte den Datenstand administrativ prüfen oder über die Kundenverknüpfung ein neues Angebot anlegen. Dieser unvollständige Datensatz bleibt sichtbar, kann aber nicht sicher bearbeitet oder versendet werden."
+          action={(
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href={`/admin/offers/${id}`} className={secondaryButton()}>Erneut laden</Link>
+              <Link href={`/admin/offers/new?customerId=${encodeURIComponent(text(offer.customer_id))}`} className={buttonClass}>Neues Angebot erstellen</Link>
+            </div>
+          )}
+        />
+      </>
+    );
+  }
 
   const [
     itemsResult,
@@ -200,6 +225,8 @@ export default async function AdminOfferDetailPage({
     overallDiscounts: overallEditorDiscounts(discountsResult.data ?? []),
   };
   const billingTotals = jsonObject(selectedVersion.billing_totals);
+  const calculationSnapshot = jsonObject(selectedVersion.calculation_snapshot);
+  const isRecoveredFunnelDraft = calculationSnapshot.source === "orphan-offer-backfill";
   const billingRows = (Object.entries(billingTotals) as Array<[BillingBucket, unknown]>).filter(([bucket]) => bucket in billingBucketLabels).map(([bucket, value]) => ({ bucket, values: jsonObject(value) }));
   const requestedView = queryValue(query, "view");
   const activeView = ["overview", "content", "history", "decision"].includes(requestedView)
@@ -215,6 +242,13 @@ export default async function AdminOfferDetailPage({
       </div>
       <PageHeader eyebrow={`${text(selectedVersion.offer_number)} · Version ${selectedVersion.version_number}`} title={text(selectedVersion.title)} text={isEditableDraft ? "Bearbeitbarer Entwurf. Beim Versand wird diese Version versiegelt und danach unveränderlich archiviert." : isDraftLifecycle ? "Diese Version ist bereits versiegelt. Ein unterbrochener Versand kann sicher fortgesetzt werden." : "Versiegelte Angebotsversion. Inhalt und Original-PDF bleiben unveränderlich nachvollziehbar."} />
 
+      {isRecoveredFunnelDraft ? (
+        <p role="alert" className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-950">
+          Wiederhergestellter Funnel-Entwurf: Die angezeigten Beträge stammen aus der früheren Automatik und dürfen
+          nicht ungeprüft versendet werden. Bitte Flächenaufteilung, Leistungsumfang und Positionen im Reiter „Inhalt“
+          persönlich neu kalkulieren.
+        </p>
+      ) : null}
       {successMessage ? <p role="status" className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">{successMessage}</p> : null}
       {queryValue(query, "error") ? <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900">{queryValue(query, "error")}</p> : null}
 
@@ -233,7 +267,7 @@ export default async function AdminOfferDetailPage({
       <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
         <Panel title="Version & Aktionen">
           <div className="flex flex-wrap gap-2">
-            {isDraftLifecycle && isSelectedDraft && !selectedVersion.sent_at ? <form action={sendOfferVersionAction}><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><button className={buttonClass}><Send size={17} aria-hidden="true" /> {selectedVersion.frozen_at ? "Versand fortsetzen" : "Version versiegeln und senden"}</button></form> : null}
+            {isDraftLifecycle && isSelectedDraft && !selectedVersion.sent_at && !isRecoveredFunnelDraft ? <form action={sendOfferVersionAction}><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><button className={buttonClass}><Send size={17} aria-hidden="true" /> {selectedVersion.frozen_at ? "Versand fortsetzen" : "Version versiegeln und senden"}</button></form> : null}
             {selectedVersion.sent_at && selectedVersion.original_pdf_path ? <form action={resendOfferVersionAction}><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><button className={secondaryButton()}><Mail size={17} aria-hidden="true" /> Erneut senden</button></form> : null}
             {selectedVersion.original_pdf_path ? <Link href={`/api/documents/offers/${id}?version=${selectedVersion.id}`} className={secondaryButton()}><FileDown size={17} aria-hidden="true" /> Original-PDF</Link> : null}
             <form action={duplicateOfferAction}><input type="hidden" name="offerId" value={id} /><input type="hidden" name="versionId" value={selectedVersion.id} /><button className={secondaryButton()}><Copy size={17} aria-hidden="true" /> Als neues Angebot duplizieren</button></form>

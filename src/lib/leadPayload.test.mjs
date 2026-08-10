@@ -46,6 +46,7 @@ test("akzeptiert die bestehenden Kostenfunnel- und Winterdienstfelder", () => {
         unitCount: "12",
         averageUnitArea: "80",
         outdoorArea: "400",
+        gardenArea: "250",
         services: ["caretaker", "gardenCare"],
         servicePackage: false,
         frequency: "weekly",
@@ -70,6 +71,7 @@ test("akzeptiert die bestehenden Kostenfunnel- und Winterdienstfelder", () => {
     4_000,
   );
   assert.equal(costResult.ok, true);
+  if (costResult.ok) assert.equal(costResult.payload.lead.gardenArea, "250");
 
   const polygon = [
     { lat: 52.375, lng: 9.732 },
@@ -133,6 +135,50 @@ test("weist unbekannte, überlange und vervielfachte Felder zurück", () => {
     3_000,
   );
   assert.deepEqual(tooManyServices.ok ? null : tooManyServices.status, 400);
+});
+
+test("prüft Kostenfunnel-Flächen auch serverseitig und akzeptiert keine abgeleitete Clientfläche", () => {
+  const baseLead = {
+    objectType: "weg",
+    location: "Hannover",
+    outsideArea: false,
+    unitCount: "12",
+    averageUnitArea: "15",
+    outdoorArea: "400",
+    gardenArea: "250",
+    services: ["gardenCare", "outdoorCleaning"],
+    servicePackage: false,
+    frequency: "weekly",
+    complexity: "normal",
+    name: "Max Mustermann",
+    company: "Musterverwaltung",
+    email: "max@example.com",
+    phone: "+49 511 123456",
+    objectAddress: "Lister Meile 1, Hannover",
+    message: "",
+    desiredStartDate: "",
+    preferredCallbackTime: "",
+    privacyAccepted: true,
+    termsAccepted: true,
+  };
+
+  const oversizedGarden = validateAndSanitizeLeadPayload(
+    { source: "cost-funnel", lead: { ...baseLead, gardenArea: "401" } },
+    4_000,
+  );
+  assert.equal(oversizedGarden.ok, false);
+
+  const hugeNumericString = validateAndSanitizeLeadPayload(
+    { source: "cost-funnel", lead: { ...baseLead, outdoorArea: "999999999999999999999999" } },
+    4_000,
+  );
+  assert.equal(hugeNumericString.ok, false);
+
+  const clientDerivedArea = validateAndSanitizeLeadPayload(
+    { source: "cost-funnel", lead: { ...baseLead, pavedOutdoorArea: 150 } },
+    4_000,
+  );
+  assert.equal(clientDerivedArea.ok, false);
 });
 
 test("setzt für alle Lead-Arten ein enges Body-Limit", () => {

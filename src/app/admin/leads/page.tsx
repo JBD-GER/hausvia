@@ -35,6 +35,7 @@ type OfferRow = {
 
 function estimateText(estimate: Record<string, unknown> | null) {
   if (!estimate) return "-";
+  if (estimate.requiresManualReview === true) return "Individuelle Kalkulation erforderlich";
   if (estimate.pricingModel === "winter-season-plus-deployment") {
     const monthlyBase = Number(estimate.monthlyBaseGross ?? 0);
     const deployment = Number(estimate.deploymentGross ?? 0);
@@ -82,6 +83,9 @@ export default async function AdminLeadsPage() {
           <div className="grid gap-4">
             {((leads ?? []) as LeadRow[]).map((lead) => {
               const offer = lead.customer_id ? offerByCustomer.get(lead.customer_id) : null;
+              const requiresManualReview = lead.estimate?.requiresManualReview === true;
+              const gardenArea = Number(lead.estimate?.gardenArea ?? 0);
+              const pavedOutdoorArea = Number(lead.estimate?.pavedOutdoorArea ?? 0);
 
               return (
               <article key={lead.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -117,8 +121,19 @@ export default async function AdminLeadsPage() {
                         <p className="mt-1 text-slate-650">{asText(lead.object_address)}</p>
                       </div>
                       <div className="rounded-xl bg-slate-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Kostenspanne</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Einschätzung</p>
                         <p className="mt-1 font-semibold text-slate-900">{estimateText(lead.estimate)}</p>
+                        {requiresManualReview ? (
+                          <>
+                            <p className="mt-1 text-slate-650">{asText(lead.estimate?.manualReviewReason)}</p>
+                            {gardenArea > 0 || pavedOutdoorArea > 0 ? (
+                              <p className="mt-1 text-slate-650">
+                                {gardenArea.toLocaleString("de-DE")} m² Garten ·{" "}
+                                {pavedOutdoorArea.toLocaleString("de-DE")} m² befestigt
+                              </p>
+                            ) : null}
+                          </>
+                        ) : null}
                         <p className="mt-1 text-slate-650">{asText(lead.frequency)}</p>
                       </div>
                       <div className="rounded-xl bg-slate-50 p-4">

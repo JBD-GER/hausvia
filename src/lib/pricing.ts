@@ -22,6 +22,7 @@ export type EstimateInput = {
   objectType: ObjectTypeId;
   usableArea: number;
   outdoorArea: number;
+  gardenArea?: number;
   services: ServiceId[];
   frequency: FrequencyId;
   complexity: ComplexityId;
@@ -41,6 +42,10 @@ export type EstimateResult = {
   outdoorRate: number;
   serviceFactor: number;
   hasGardenCare: boolean;
+  gardenArea: number;
+  pavedOutdoorArea: number;
+  requiresManualReview: boolean;
+  manualReviewReason?: string;
   gardenNote?: string;
 };
 
@@ -50,6 +55,7 @@ export const pricingConfig = {
     simpleOutdoorPerSqm: 0.35,
   },
   roundingStep: 10,
+  manualReviewAreaThreshold: 5_000,
   oneTimeSurchargeMultiplier: 1.35,
   objectTypes: [
     {
@@ -282,7 +288,9 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
 
   const usableArea = Math.max(0, Number(input.usableArea) || 0);
   const outdoorArea = Math.max(0, Number(input.outdoorArea) || 0);
-  const selectedServices = pricingConfig.services.filter((service) => input.services.includes(service.id as ServiceId));
+  const selectedServices = pricingConfig.services.filter((service) =>
+    input.services.includes(service.id as ServiceId),
+  );
 
   const hasGardenCare = input.services.some((serviceId) => pricingConfig.gardenServiceIds.includes(serviceId));
   const hasUsableAreaService = input.services.some((serviceId) =>
@@ -291,25 +299,68 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
   const hasSimpleOutdoor = input.services.some((serviceId) =>
     pricingConfig.simpleOutdoorServiceIds.includes(serviceId),
   );
-  // Garden guidance is a complete price band. Excluding its overlapping tasks
-  // here prevents garden care, mowing, hedge cutting and leaf removal from
-  // multiplying the same square-meter basis several times.
-  const nonGardenServices = selectedServices.filter(
-    (service) => !pricingConfig.gardenServiceIds.includes(service.id as ServiceId),
+
+  // `outdoorArea` is the total actively serviced outdoor area. It must be split
+  // before pricing so that the same square metres cannot be billed once as a
+  // paved/cleaned area and a second time as garden. Older callers do not yet
+  // provide `gardenArea`; for garden requests, treating the full outdoor area
+  // as garden is the conservative, non-duplicating fallback.
+  const requestedGardenArea =
+    input.gardenArea === undefined
+      ? hasGardenCare
+        ? outdoorArea
+        : 0
+      : Math.max(0, Number(input.gardenArea) || 0);
+  const gardenArea = Math.min(outdoorArea, requestedGardenArea);
+  const pavedOutdoorArea = Math.max(0, outdoorArea - gardenArea);
+
+  const usableAreaServices = selectedServices.filter((service) =>
+    pricingConfig.usableAreaServiceIds.includes(service.id as ServiceId),
   );
-  const nonGardenBasePrice =
-    (hasUsableAreaService ? usableArea * pricingConfig.areaRates.usableAreaPerSqm : 0) +
-    (hasSimpleOutdoor ? outdoorArea * pricingConfig.areaRates.simpleOutdoorPerSqm : 0);
-  const serviceFactor = 1 + nonGardenServices.reduce((sum, service) => sum + service.surcharge, 0);
-  const recurringEstimate =
-    nonGardenBasePrice * objectType.factor * frequency.factor * serviceFactor * complexity.factor;
+  const simpleOutdoorServices = selectedServices.filter((service) =>
+    pricingConfig.simpleOutdoorServiceIds.includes(service.id as ServiceId),
+  );
+  const fixedServices = selectedServices.filter((service) => {
+    const serviceId = service.id as ServiceId;
+
+    return (
+      !pricingConfig.gardenServiceIds.includes(serviceId) &&
+      !pricingConfig.usableAreaServiceIds.includes(serviceId) &&
+      !pricingConfig.simpleOutdoorServiceIds.includes(serviceId)
+    );
+  });
+
+  const usableAreaServiceFactor =
+    1 + usableAreaServices.reduce((sum, service) => sum + service.surcharge, 0);
+  const simpleOutdoorServiceFactor =
+    1 + simpleOutdoorServices.reduce((sum, service) => sum + service.surcharge, 0);
+  const fixedServiceShare = fixedServices.reduce((sum, service) => sum + service.surcharge, 0);
+  const rawUsableAreaBase = hasUsableAreaService
+    ? usableArea * pricingConfig.areaRates.usableAreaPerSqm
+    : 0;
+  const rawSimpleOutdoorBase = hasSimpleOutdoor
+    ? pavedOutdoorArea * pricingConfig.areaRates.simpleOutdoorPerSqm
+    : 0;
+  const usableAreaBase = rawUsableAreaBase * usableAreaServiceFactor;
+  const simpleOutdoorBase = rawSimpleOutdoorBase * simpleOutdoorServiceFactor;
+  // Mülldienst and Winterdienst have no reliable area basis. A share of the
+  // object minimum keeps them priced without making large, unrelated areas
+  // inflate their cost.
+  const fixedServiceBase = objectType.minimumMonthly * fixedServiceShare;
+  const nonGardenBasePrice = usableAreaBase + simpleOutdoorBase + fixedServiceBase;
+  const rawAreaBase = rawUsableAreaBase + rawSimpleOutdoorBase;
+  const serviceFactor = rawAreaBase
+    ? (usableAreaBase + simpleOutdoorBase) / rawAreaBase
+    : 1 + fixedServiceShare;
   const isOneTime = input.frequency === "oneTime";
   const oneTimeMultiplier = isOneTime ? pricingConfig.oneTimeSurchargeMultiplier : 1;
+  const workloadFactor =
+    objectType.factor * frequency.factor * complexity.factor * oneTimeMultiplier;
   const minimumPrice = objectType.minimumMonthly * oneTimeMultiplier;
-  const nonGardenEstimate = recurringEstimate * oneTimeMultiplier;
-  const gardenGuidance = hasGardenCare ? getGardenGuidance(outdoorArea) : undefined;
-  const gardenLower = gardenGuidance?.lower ?? 0;
-  const gardenUpper = gardenGuidance?.upper ?? 0;
+  const nonGardenEstimate = nonGardenBasePrice * workloadFactor;
+  const gardenGuidance = hasGardenCare ? getGardenGuidance(gardenArea) : undefined;
+  const gardenLower = (gardenGuidance?.lower ?? 0) * workloadFactor;
+  const gardenUpper = (gardenGuidance?.upper ?? 0) * workloadFactor;
   const gardenMidpoint = (gardenLower + gardenUpper) / 2;
   const minimumAdjustedEstimate = Math.max(nonGardenEstimate + gardenMidpoint, minimumPrice);
 
@@ -327,14 +378,30 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
     gardenNote = gardenGuidance.note;
   }
 
-  const basePrice = nonGardenBasePrice + gardenMidpoint;
+  const basePrice =
+    nonGardenBasePrice +
+    (gardenGuidance ? (gardenGuidance.lower + gardenGuidance.upper) / 2 : 0);
   const outdoorRate = hasGardenCare
-    ? outdoorArea > 0
-      ? gardenMidpoint / outdoorArea
+    ? gardenArea > 0
+      ? gardenMidpoint / gardenArea
       : 0
     : hasSimpleOutdoor
       ? pricingConfig.areaRates.simpleOutdoorPerSqm
       : 0;
+  const oversizedAreas: string[] = [];
+
+  if (usableArea > pricingConfig.manualReviewAreaThreshold) {
+    oversizedAreas.push("Innenfläche");
+  }
+
+  if (outdoorArea > pricingConfig.manualReviewAreaThreshold) {
+    oversizedAreas.push("Außenfläche");
+  }
+
+  const requiresManualReview = oversizedAreas.length > 0;
+  const manualReviewReason = requiresManualReview
+    ? `${oversizedAreas.join(" und ")} über ${pricingConfig.manualReviewAreaThreshold.toLocaleString("de-DE")} m² ${oversizedAreas.length === 1 ? "erfordert" : "erfordern"} eine individuelle Kalkulation.`
+    : undefined;
 
   return {
     lower: Math.max(minimumPrice, roundDown(lower, pricingConfig.roundingStep)),
@@ -350,6 +417,10 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
     outdoorRate,
     serviceFactor,
     hasGardenCare,
+    gardenArea,
+    pavedOutdoorArea,
+    requiresManualReview,
+    manualReviewReason,
     gardenNote,
   };
 }

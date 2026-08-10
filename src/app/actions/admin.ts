@@ -403,6 +403,7 @@ export async function createOfferFromLeadAction(formData: FormData) {
     .select("id,status,created_at")
     .eq("customer_id", customerId)
     .in("status", ["draft", "released", "accepted"])
+    .not("current_version_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(1);
 

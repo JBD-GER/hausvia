@@ -35,6 +35,7 @@ type LeadData = {
   unitCount: string;
   averageUnitArea: string;
   outdoorArea: string;
+  gardenArea: string;
   services: ServiceId[];
   servicePackage: boolean;
   frequency: FrequencyId | "";
@@ -58,6 +59,7 @@ const initialLead: LeadData = {
   unitCount: "1",
   averageUnitArea: "",
   outdoorArea: "",
+  gardenArea: "",
   services: [],
   servicePackage: false,
   frequency: "",
@@ -225,6 +227,9 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
   const unitCount = Math.max(0, Number(lead.unitCount) || 0);
   const averageUnitArea = Math.max(0, Number(lead.averageUnitArea) || 0);
   const computedUsableArea = unitCount * averageUnitArea;
+  const outdoorArea = Math.max(0, Number(lead.outdoorArea) || 0);
+  const gardenArea = Math.min(outdoorArea, Math.max(0, Number(lead.gardenArea) || 0));
+  const pavedOutdoorArea = Math.max(0, outdoorArea - gardenArea);
   const selectedFrequency = pricingConfig.frequencies.find((item) => item.id === lead.frequency);
   const selectedComplexity = pricingConfig.complexity.find((item) => item.id === lead.complexity);
 
@@ -280,11 +285,18 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
       const unitCountValue = Number(lead.unitCount);
       const averageUnitAreaValue = Number(lead.averageUnitArea);
       const outdoorArea = Number(lead.outdoorArea || "0");
+      const gardenArea = Number(lead.gardenArea || "0");
       if (!unitCountValue || unitCountValue <= 0) return "Bitte geben Sie die Anzahl der Einheiten an.";
-      if (!averageUnitAreaValue || averageUnitAreaValue <= 0) {
-        return "Bitte geben Sie die durchschnittliche Wohn- oder Nutzfläche pro Einheit an.";
+      if (!Number.isFinite(averageUnitAreaValue) || averageUnitAreaValue < 0) {
+        return "Bitte geben Sie eine gültige aktiv betreute Innenfläche ein.";
       }
       if (outdoorArea < 0) return "Bitte geben Sie eine gültige Außenfläche ein.";
+      if (outdoorArea > 0 && !lead.gardenArea.trim()) {
+        return "Bitte geben Sie an, wie viel davon Grün-/Gartenfläche ist (0 m², falls keine).";
+      }
+      if (gardenArea < 0 || gardenArea > outdoorArea) {
+        return "Die Grün-/Gartenfläche darf nicht größer als die gesamte Außenfläche sein.";
+      }
     }
     if (currentStep === 3 && lead.services.length === 0) return "Bitte wählen Sie mindestens eine Leistung aus.";
     if (currentStep === 4 && !lead.frequency) return "Bitte wählen Sie eine Häufigkeit aus.";
@@ -495,8 +507,8 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
           <div>
             <h3 className="text-xl font-extrabold text-slate-950">Wie groß ist das Objekt ungefähr?</h3>
             <p className="mt-2 text-sm text-slate-650">
-              Eine grobe Schätzung reicht. Bei WEGs oder Mehrfamilienhäusern können Sie einfach die Anzahl der
-              Einheiten und eine durchschnittliche Fläche pro Einheit angeben.
+              Eine grobe Schätzung reicht. Bitte geben Sie nur Flächen an, die Hausvia tatsächlich betreuen soll.
+              Wohnflächen innerhalb der Wohnungen zählen nicht automatisch dazu.
             </p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <NumberInput
@@ -507,27 +519,43 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                 helper="Bei Privathaushalten reicht 1. Bei Gewerbeobjekten grob nach Nutzbereichen schätzen."
               />
               <NumberInput
-                label="Ø Wohn-/Nutzfläche pro Einheit in m²"
+                label="Betreute Innenfläche je Einheit (anteilig) in m² (optional)"
                 value={lead.averageUnitArea}
                 onChange={(value) => update("averageUnitArea", value)}
-                placeholder="z. B. 75"
-                helper="Ein Durchschnittswert genügt. Daraus berechnen wir die ungefähre Gesamtfläche."
+                placeholder="z. B. 15"
+                helper="Gesamte Treppenhaus-, Flur- und Gemeinschaftsfläche durch die Zahl der Einheiten teilen. Wohnflächen in Wohnungen nicht eintragen; bei keiner Innenbetreuung 0."
               />
               <NumberInput
-                label="Aktiv zu betreuende Außenfläche in m²"
+                label="Aktiv zu betreuende Außenfläche gesamt in m²"
                 value={lead.outdoorArea}
                 onChange={(value) => update("outdoorArea", value)}
                 placeholder="z. B. 300"
-                helper="Gemeint ist vor allem die aktiv zu pflegende Außenfläche, nicht zwingend das komplette Flurstück."
+                helper="Nur die tatsächlich betreuten Außenflächen – nicht automatisch das komplette Grundstück oder Flurstück."
+              />
+              <NumberInput
+                label="Davon Grün-/Gartenfläche in m²"
+                value={lead.gardenArea}
+                onChange={(value) => update("gardenArea", value)}
+                placeholder="z. B. 180"
+                helper="Der übrige Teil wird als befestigte Außenfläche eingeordnet. Bitte 0 eintragen, falls es keine Grünfläche gibt."
               />
               <div className="rounded-xl border border-brand/15 bg-brand-soft p-4">
-                <p className="text-sm font-extrabold text-brand">Automatisch berechnet</p>
+                <p className="text-sm font-extrabold text-brand">Aktiv betreute Innenfläche</p>
                 <p className="mt-2 text-3xl font-extrabold text-slate-950">
                   ca. {computedUsableArea.toLocaleString("de-DE")} m²
                 </p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-650">
-                  Wohn-/Nutzfläche aus {lead.unitCount || "0"} Einheit(en) ×{" "}
-                  {lead.averageUnitArea || "0"} m² Durchschnittsfläche.
+                  {lead.unitCount || "0"} Einheit(en) × {lead.averageUnitArea || "0"} m² betreute
+                  Gemeinschaftsfläche. Private Wohnflächen bleiben außen vor.
+                </p>
+              </div>
+              <div className="rounded-xl border border-brand/15 bg-brand-soft p-4">
+                <p className="text-sm font-extrabold text-brand">Außenfläche eindeutig aufgeteilt</p>
+                <p className="mt-2 text-lg font-extrabold text-slate-950">
+                  {gardenArea.toLocaleString("de-DE")} m² Garten · {pavedOutdoorArea.toLocaleString("de-DE")} m² befestigt
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-650">
+                  Jede Außenfläche wird nur einmal angesetzt. Über 5.000 m² erfolgt eine persönliche Kalkulation.
                 </p>
               </div>
             </div>
@@ -625,10 +653,10 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
 
         {step === 6 ? (
           <div>
-            <h3 className="text-2xl font-extrabold text-slate-950">Kosteneinschätzung per E-Mail anfordern</h3>
+            <h3 className="text-2xl font-extrabold text-slate-950">Einschätzung per E-Mail anfordern</h3>
             <p className="mt-2 text-sm leading-6 text-slate-650">
-              Die Kostenspanne wird erst nach dem Absenden serverseitig berechnet und als offizielles Hausvia-Dokument
-              per E-Mail verschickt.
+              Bei online kalkulierbaren Flächen wird die Kostenspanne serverseitig berechnet. Bei Großflächen erhalten
+              Sie stattdessen einen klaren Hinweis zur persönlichen Kalkulation – jeweils als Hausvia-Dokument per E-Mail.
             </p>
             <div id="funnel-contact" className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-5">
               <h4 className="text-xl font-extrabold text-slate-950">
@@ -780,12 +808,12 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                 Einschätzung per E-Mail erhalten
               </p>
               <div className="mt-5 grid gap-2 text-sm font-semibold text-slate-750 sm:grid-cols-2">
-                <span className="rounded-md bg-white px-3 py-2">Kostenspanne als Dokument</span>
+                <span className="rounded-md bg-white px-3 py-2">Einschätzung oder Prüfhinweis als Dokument</span>
                 <span className="rounded-md bg-white px-3 py-2">alle Angaben aufgelistet</span>
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-700">
-                Vor dem Absenden wird keine konkrete Kostenspanne angezeigt. Der genaue Richtwert wird serverseitig
-                berechnet und zusammen mit Objektart, Flächen, Leistungen und Kontaktdaten als PDF versendet.
+                Vor dem Absenden wird kein Preis angezeigt. Ein passender Richtwert oder bei Großflächen der Hinweis zur
+                persönlichen Kalkulation wird zusammen mit allen Angaben als PDF versendet.
               </p>
             </div>
 
@@ -794,9 +822,11 @@ export function ServiceFunnel({ compact = false }: { compact?: boolean }) {
                 ["Objektart", selectedObjectType?.label ?? lead.objectType],
                 ["Standort", lead.outsideArea ? `Außerhalb: ${lead.location}` : lead.location],
                 ["Einheiten", `${lead.unitCount || "0"} Einheit(en)`],
-                ["Ø Fläche je Einheit", `${lead.averageUnitArea || "0"} m²`],
-                ["Wohn-/Nutzfläche", `${computedUsableArea.toLocaleString("de-DE")} m² berechnet`],
-                ["Außenfläche", `${lead.outdoorArea || "0"} m² aktiv zu betreuende Fläche`],
+                ["Anteil betreute Innenfläche je Einheit", `${lead.averageUnitArea || "0"} m²`],
+                ["Betreute Innenfläche", `${computedUsableArea.toLocaleString("de-DE")} m² berechnet`],
+                ["Außenfläche gesamt", `${outdoorArea.toLocaleString("de-DE")} m² aktiv zu betreuen`],
+                ["Davon Garten / Grün", `${gardenArea.toLocaleString("de-DE")} m²`],
+                ["Davon befestigt", `${pavedOutdoorArea.toLocaleString("de-DE")} m²`],
                 ["Leistungen", selectedServiceLabels.join(", ")],
                 ["Häufigkeit", selectedFrequency?.label ?? lead.frequency],
                 ["Komplexität", selectedComplexity?.label ?? lead.complexity],
